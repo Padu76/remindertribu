@@ -15,7 +15,7 @@ interface SectionData {
   id: string
   title: string
   description: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: any
   completed: boolean
   fields: { [key: string]: string }
 }
@@ -180,29 +180,33 @@ export default function BusinessPlanGenerator() {
 
   useEffect(() => {
     // Load saved data from localStorage
-    const savedData = localStorage.getItem('upstarter-business-plan')
-    if (savedData) {
-      try {
-        const parsed = JSON.parse(savedData)
-        setSectionData(parsed.sections || sections)
-        setCurrentSection(parsed.currentSection || 0)
-        if (parsed.lastSaved) {
-          setLastSaved(new Date(parsed.lastSaved))
+    if (typeof window !== 'undefined') {
+      const savedData = localStorage.getItem('upstarter-business-plan')
+      if (savedData) {
+        try {
+          const parsed = JSON.parse(savedData)
+          setSectionData(parsed.sections || sections)
+          setCurrentSection(parsed.currentSection || 0)
+          if (parsed.lastSaved) {
+            setLastSaved(new Date(parsed.lastSaved))
+          }
+        } catch (error) {
+          console.error('Error loading saved business plan:', error)
         }
-      } catch (error) {
-        console.error('Error loading saved business plan:', error)
       }
     }
   }, [])
 
   const saveToLocalStorage = () => {
-    const dataToSave = {
-      sections: sectionData,
-      currentSection,
-      lastSaved: new Date().toISOString()
+    if (typeof window !== 'undefined') {
+      const dataToSave = {
+        sections: sectionData,
+        currentSection,
+        lastSaved: new Date().toISOString()
+      }
+      localStorage.setItem('upstarter-business-plan', JSON.stringify(dataToSave))
+      setLastSaved(new Date())
     }
-    localStorage.setItem('upstarter-business-plan', JSON.stringify(dataToSave))
-    setLastSaved(new Date())
   }
 
   const updateSectionField = (sectionIndex: number, field: string, value: string) => {
@@ -215,7 +219,7 @@ export default function BusinessPlanGenerator() {
     
     setSectionData(newSectionData)
     
-    // Auto-save every 5 seconds after last change
+    // Auto-save every 1 second after last change
     setTimeout(() => {
       saveToLocalStorage()
     }, 1000)
@@ -238,12 +242,77 @@ export default function BusinessPlanGenerator() {
           financialSummary: 'Proiezione €2M ricavi anno 3, break-even mese 18',
           fundingRequest: '€500K per sviluppo prodotto e acquisizione clienti'
         },
+        'company-description': {
+          companyHistory: 'Fondata nel 2024 da un team di esperti AI e business development',
+          legalStructure: 'Società a Responsabilità Limitata Semplificata (SRLS)',
+          location: 'Sede principale a Milano, team distribuito in Italia',
+          facilities: 'Uffici co-working a Milano e hub tecnologico a Torino',
+          companyGoals: 'Diventare il punto di riferimento per l\'AI nelle PMI italiane',
+          milestones: 'MVP completato, primi 10 clienti acquisiti, team di 5 persone',
+          successFactors: 'Expertise tecnica, comprensione mercato PMI, supporto localizzato'
+        },
         'market-analysis': {
           industryOverview: 'Il mercato AI B2B in Italia vale €1.2B e cresce del 25% annuo',
           marketSize: 'TAM €8B (Europa), SAM €1.2B (Italia), SOM €120M',
           targetCustomers: 'PMI 50-500 dipendenti nei settori manifatturiero e servizi',
           marketTrends: 'Crescente adozione AI, focus su automazione, carenza competenze tecniche',
-          growthProjections: 'Crescita mercato AI del 25% annuo fino al 2028'
+          growthProjections: 'Crescita mercato AI del 25% annuo fino al 2028',
+          marketSegmentation: 'Manifatturiero (40%), Servizi (35%), Retail (25%)',
+          customerNeeds: 'Automazione processi, riduzione costi, miglioramento efficienza'
+        },
+        'competitive-analysis': {
+          directCompetitors: 'Microsoft Power Platform, Salesforce Einstein, UiPath',
+          indirectCompetitors: 'Consulenti IT tradizionali, software house locali',
+          competitiveAdvantages: 'Soluzione no-code, prezzi accessibili, supporto italiano',
+          swotAnalysis: 'Forze: team esperto, prodotto innovativo. Debolezze: startup, risorse limitate',
+          marketPosition: 'Challenger nel segmento PMI con focus su accessibilità',
+          pricingStrategy: 'Modello freemium con piani enterprise personalizzati',
+          barrierToEntry: 'Expertise tecnica, investimenti R&D, rete commerciale'
+        },
+        'products-services': {
+          productDescription: 'Piattaforma SaaS no-code per automazione processi con AI',
+          features: 'Drag&drop workflow, AI pre-addestrata, integrazioni native',
+          benefits: 'Riduzione costi 40%, aumento produttività 60%, ROI in 6 mesi',
+          developmentStage: 'MVP completato, beta testing con 10 clienti pilota',
+          intellectualProperty: '2 brevetti in corso, algoritmi proprietari, marchi registrati',
+          researchDevelopment: 'Investimento 30% ricavi in R&D, partnership università',
+          futureProducts: 'AI verticali per settori specifici, mobile app, API marketplace'
+        },
+        'marketing-sales': {
+          marketingStrategy: 'Content marketing, eventi settore, partnership con consulenti',
+          salesStrategy: 'Inside sales qualificato, demo personalizzate, trial gratuiti',
+          pricingModel: 'SaaS mensile: €49/user Basic, €99/user Pro, €199/user Enterprise',
+          distributionChannels: 'Vendita diretta online, partner channel, marketplace',
+          promotionalPlan: 'Webinar educativi, case studies, programma referral',
+          customerRetention: 'Customer success dedicato, formazione continua, roadmap condivisa',
+          salesProjections: 'Anno 1: 50 clienti, Anno 2: 200 clienti, Anno 3: 500 clienti'
+        },
+        'team-management': {
+          founders: 'CEO: Marco Rossi (ex-McKinsey), CTO: Sara Bianchi (ex-Google)',
+          keyTeamMembers: '2 AI Engineers, 1 Product Manager, 1 Sales Manager',
+          advisors: 'Advisory board con esperti AI, imprenditori seriali, investitori',
+          organizationalStructure: 'Struttura piatta, team agili, decisioni collaborative',
+          hiringPlan: 'Piano assunzioni: +10 persone entro 18 mesi (eng, sales, marketing)',
+          compensationPlan: 'Salary competitivo + equity + bonus performance',
+          boardOfDirectors: 'Founders + lead investor + independent director'
+        },
+        'financial-projections': {
+          revenueProjections: 'Anno 1: €300K, Anno 2: €1.2M, Anno 3: €2.5M',
+          expenseProjections: 'Personnel 60%, Marketing 25%, Tech 10%, Operations 5%',
+          profitLoss: 'Break-even mese 18, EBITDA positivo anno 3',
+          cashFlow: 'Burn rate €50K/mese, runway 15 mesi con funding attuale',
+          breakEvenAnalysis: '120 clienti paganti per raggiungere break-even',
+          fundingNeeds: '€800K Serie A per crescita team e acquisizione clienti',
+          useOfFunds: 'Team 50%, Marketing 30%, Prodotto 15%, Operations 5%'
+        },
+        'implementation': {
+          implementationTimeline: 'Q1: Team building, Q2: Product launch, Q3: Scale sales',
+          keyMilestones: 'M6: 25 clienti, M12: €500K ARR, M18: Serie A',
+          riskAnalysis: 'Rischi: competizione, adozione lenta, recession, talent acquisition',
+          contingencyPlans: 'Pivot prodotto, riduzione burn, focus nicchia, partnership',
+          successMetrics: 'ARR growth, CAC/LTV ratio, churn rate, customer satisfaction',
+          exitStrategy: 'IPO entro 7 anni o acquisizione strategica da tech giant',
+          nextSteps: 'Chiusura Serie A, hiring key roles, lancio marketing campaign'
         }
       }
 
@@ -274,16 +343,10 @@ export default function BusinessPlanGenerator() {
 
   const exportBusinessPlan = () => {
     // Mock export functionality
-    const link = document.createElement('a')
-    link.href = '#'
-    link.download = 'business-plan.pdf'
-    link.click()
-    
-    alert('Business Plan esportato in PDF!')
+    alert('Business Plan esportato in PDF! (Funzionalità simulata)')
   }
 
   const currentSectionData = sectionData[currentSection]
-  const CurrentSectionIcon = currentSectionData.icon
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -347,7 +410,8 @@ export default function BusinessPlanGenerator() {
               
               <div className="space-y-2">
                 {sectionData.map((section, index) => {
-                  const SectionIcon = section.icon
+                  // CORREZIONE: Assegna l'icona a una variabile prima di usarla
+                  const IconComponent = section.icon
                   return (
                     <button
                       key={section.id}
@@ -368,7 +432,7 @@ export default function BusinessPlanGenerator() {
                         {section.completed ? (
                           <CheckCircle className="w-4 h-4" />
                         ) : (
-                          <SectionIcon className="w-4 h-4" />
+                          <IconComponent className="w-4 h-4" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -400,7 +464,11 @@ export default function BusinessPlanGenerator() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <CurrentSectionIcon className="w-5 h-5 text-purple-600" />
+                      {/* CORREZIONE: Assegna l'icona a una variabile prima di usarla */}
+                      {(() => {
+                        const CurrentIcon = currentSectionData.icon
+                        return <CurrentIcon className="w-5 h-5 text-purple-600" />
+                      })()}
                     </div>
                     <div>
                       <h1 className="text-xl font-semibold text-gray-900">
@@ -488,7 +556,11 @@ export default function BusinessPlanGenerator() {
               <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-6 mb-6 min-h-[200px]">
                 <div className="text-center">
                   <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                    <CurrentSectionIcon className="w-6 h-6 text-purple-600" />
+                    {/* CORREZIONE: Assegna l'icona a una variabile prima di usarla */}
+                    {(() => {
+                      const PreviewIcon = currentSectionData.icon
+                      return <PreviewIcon className="w-6 h-6 text-purple-600" />
+                    })()}
                   </div>
                   <h4 className="font-semibold text-gray-900 mb-2">{currentSectionData.title}</h4>
                   <div className="space-y-2 text-sm text-gray-600">
