@@ -5,22 +5,373 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RemindPro Enterprise - Marketing Automation WhatsApp</title>
     
-    <!-- CSS Files -->
-    <link rel="stylesheet" href="assets/css/main.css">
-    <link rel="stylesheet" href="assets/css/components.css">
-    <link rel="stylesheet" href="assets/css/responsive.css">
-    <link rel="stylesheet" href="assets/css/auth.css">
-    <link rel="stylesheet" href="assets/css/dashboard.css">
-    
     <!-- External Libraries -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔔</text></svg>">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .loading-content {
+            text-align: center;
+        }
+        
+        .logo {
+            margin-bottom: 2rem;
+        }
+        
+        .logo i {
+            font-size: 4rem;
+            color: #64ffda;
+            margin-bottom: 1rem;
+            display: block;
+        }
+        
+        .logo h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .loading-spinner {
+            margin: 2rem 0;
+        }
+        
+        .loading-spinner i {
+            font-size: 2rem;
+            color: #64ffda;
+        }
+        
+        .loading-text {
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+        
+        .app-header {
+            background: rgba(0,0,0,0.3);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .logo span {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+        
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: #64ffda;
+            color: #1a1a2e;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .main-content {
+            display: flex;
+            min-height: calc(100vh - 80px);
+        }
+        
+        .sidebar {
+            width: 250px;
+            background: rgba(0,0,0,0.2);
+            padding: 2rem 0;
+            backdrop-filter: blur(10px);
+        }
+        
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem 2rem;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-item:hover, .nav-item.active {
+            background: rgba(100, 255, 218, 0.1);
+            color: #64ffda;
+            border-right: 3px solid #64ffda;
+        }
+        
+        .nav-item i {
+            margin-right: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        .content-area {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+        
+        .page-header {
+            margin-bottom: 2rem;
+        }
+        
+        .page-title {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .page-subtitle {
+            opacity: 0.8;
+            font-size: 1.1rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+        }
+        
+        .stat-icon {
+            margin-bottom: 1rem;
+        }
+        
+        .stat-icon i {
+            font-size: 2rem;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #64ffda;
+        }
+        
+        .stat-label {
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .card h3 {
+            margin-bottom: 1rem;
+            color: #64ffda;
+        }
+        
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: #64ffda;
+            color: #1a1a2e;
+        }
+        
+        .btn-primary:hover {
+            background: #4fd3b8;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .auth-container {
+            display: flex;
+            min-height: 100vh;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        
+        .auth-card {
+            background: rgba(255,255,255,0.1);
+            padding: 3rem;
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #64ffda;
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 1rem;
+        }
+        
+        .form-control::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #64ffda;
+            box-shadow: 0 0 0 2px rgba(100, 255, 218, 0.2);
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .toast.success {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        
+        .toast.error {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        
+        .toast.info {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: fixed;
+                bottom: 0;
+                height: auto;
+                padding: 1rem 0;
+                z-index: 100;
+            }
+            
+            .nav {
+                display: flex;
+                justify-content: space-around;
+            }
+            
+            .nav-item {
+                flex-direction: column;
+                padding: 0.5rem;
+                text-align: center;
+            }
+            
+            .nav-item span {
+                font-size: 0.8rem;
+                margin-top: 0.25rem;
+            }
+            
+            .content-area {
+                margin-bottom: 80px;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Main App Container -->
     <div id="app">
+        <!-- Loading Screen -->
         <div class="loading-screen" id="loading-screen">
             <div class="loading-content">
                 <div class="logo">
@@ -33,207 +384,477 @@
                 <p class="loading-text">Inizializzazione in corso...</p>
             </div>
         </div>
+        
+        <!-- Auth Container -->
+        <div id="auth-container" class="auth-container hidden">
+            <div class="auth-card">
+                <div class="logo">
+                    <i class="fas fa-bell"></i>
+                    <h1>RemindPro</h1>
+                </div>
+                
+                <h2 style="margin-bottom: 2rem;">Accedi al tuo account</h2>
+                
+                <div class="form-group">
+                    <label for="loginEmail">Email</label>
+                    <input type="email" id="loginEmail" class="form-control" placeholder="demo@remindpro.com" value="demo@remindpro.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" class="form-control" placeholder="demo123" value="demo123">
+                </div>
+                
+                <button type="button" class="btn btn-primary" onclick="performDemoLogin()" style="width: 100%; justify-content: center;">
+                    <i class="fas fa-sign-in-alt"></i> Accedi (Demo)
+                </button>
+                
+                <p style="margin-top: 1rem; opacity: 0.7; font-size: 0.9rem;">
+                    <strong>Demo:</strong> demo@remindpro.com / demo123
+                </p>
+            </div>
+        </div>
+        
+        <!-- Main Application -->
+        <div id="main-app" class="hidden">
+            <!-- App Header -->
+            <header class="app-header">
+                <div class="logo">
+                    <i class="fas fa-bell"></i>
+                    <span>RemindPro Enterprise</span>
+                </div>
+                
+                <div class="user-menu">
+                    <div class="user-avatar" onclick="toggleUserMenu()">
+                        DU
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Main Content -->
+            <div class="main-content">
+                <!-- Sidebar -->
+                <aside class="sidebar">
+                    <nav class="nav">
+                        <a href="#" class="nav-item active" onclick="showPage('dashboard')">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="#" class="nav-item" onclick="showPage('reminders')">
+                            <i class="fas fa-clock"></i>
+                            <span>Reminder</span>
+                        </a>
+                        <a href="#" class="nav-item" onclick="showPage('contacts')">
+                            <i class="fas fa-users"></i>
+                            <span>Contatti</span>
+                        </a>
+                        <a href="#" class="nav-item" onclick="showPage('whatsapp')">
+                            <i class="fas fa-mobile-alt"></i>
+                            <span>WhatsApp</span>
+                        </a>
+                        <a href="#" class="nav-item" onclick="showPage('analytics')">
+                            <i class="fas fa-chart-bar"></i>
+                            <span>Analytics</span>
+                        </a>
+                    </nav>
+                </aside>
+                
+                <!-- Content Area -->
+                <main class="content-area">
+                    <div id="page-content">
+                        <!-- Dynamic content will be loaded here -->
+                    </div>
+                </main>
+            </div>
+        </div>
     </div>
 
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
-    <!-- Modal Container -->
-    <div id="modal-overlay" class="modal-overlay" style="display: none;">
-        <div class="modal" id="modal-content"></div>
-    </div>
-
-    <!-- Configuration Scripts -->
-    <script src="assets/js/config/constants.js"></script>
-    <script src="assets/js/config/firebase.js"></script>
-    <script src="assets/js/config/stripe.js"></script>
-    
-    <!-- Utility Scripts -->
-    <script src="assets/js/utils/helpers.js"></script>
-    <script src="assets/js/utils/validation.js"></script>
-    <script src="assets/js/utils/api.js"></script>
-    
-    <!-- Component Scripts -->
-    <script src="assets/js/components/toast.js"></script>
-    <script src="assets/js/components/modal.js"></script>
-    <script src="assets/js/components/forms.js"></script>
-    <script src="assets/js/components/table.js"></script>
-    
-    <!-- Module Scripts -->
-    <script src="assets/js/modules/storage.js"></script>
-    <script src="assets/js/modules/auth.js"></script>
-    <script src="assets/js/modules/analytics.js"></script>
-    <script src="assets/js/modules/reminders.js"></script>
-    <script src="assets/js/modules/contacts.js"></script>
-    <script src="assets/js/modules/whatsapp.js"></script>
-    <script src="assets/js/modules/billing.js"></script>
-    
-    <!-- Main Application -->
-    <script src="assets/js/app.js"></script>
-
-    <!-- Simple Fix for Dashboard vs Reminders -->
     <script>
-        // Override getPageContent in app.js to fix dashboard/reminders
-        document.addEventListener('DOMContentLoaded', function() {
-            if (window.App && window.App.getPageContent) {
-                const originalGetPageContent = window.App.getPageContent;
+        // Simple App State
+        let currentUser = null;
+        let currentPage = 'dashboard';
+        
+        // Toast System
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'times' : 'info-circle'}"></i> ${message}`;
+            
+            document.getElementById('toast-container').appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 4000);
+        }
+        
+        // Demo Login
+        async function performDemoLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            if (email === 'demo@remindpro.com' && password === 'demo123') {
+                showToast('Login effettuato con successo! 🎉', 'success');
                 
-                window.App.getPageContent = function(page) {
-                    if (page === 'dashboard') {
-                        return this.getDashboardContent();
-                    } else if (page === 'reminders') {
-                        return this.modules.reminders?.getPageContent() || originalGetPageContent.call(this, page);
-                    }
-                    return originalGetPageContent.call(this, page);
-                };
-                
-                // Add dashboard content method
-                window.App.getDashboardContent = function() {
-                    const analyticsData = this.modules.analytics?.getDashboardContent?.() || {};
+                // Simulate loading
+                setTimeout(() => {
+                    currentUser = {
+                        name: 'Demo User',
+                        email: 'demo@remindpro.com',
+                        plan: 'professional'
+                    };
                     
+                    document.getElementById('loading-screen').classList.add('hidden');
+                    document.getElementById('auth-container').classList.add('hidden');
+                    document.getElementById('main-app').classList.remove('hidden');
+                    
+                    showPage('dashboard');
+                }, 1500);
+            } else {
+                showToast('Credenziali non valide', 'error');
+            }
+        }
+        
+        // Navigation
+        function showPage(pageName) {
+            // Update active nav
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`[onclick="showPage('${pageName}')"]`).classList.add('active');
+            
+            // Update content
+            const content = getPageContent(pageName);
+            document.getElementById('page-content').innerHTML = content;
+            
+            currentPage = pageName;
+        }
+        
+        function getPageContent(pageName) {
+            switch (pageName) {
+                case 'dashboard':
                     return `
                         <div class="page-header">
                             <h1 class="page-title">
-                                <i class="fas fa-tachometer-alt"></i> 
-                                Dashboard
+                                <i class="fas fa-tachometer-alt"></i> Dashboard
                             </h1>
                             <p class="page-subtitle">Panoramica delle tue attività di marketing automation</p>
                         </div>
 
-                        <div class="stats-overview">
-                            <div class="stats-grid">
-                                <div class="stat-card">
-                                    <div class="stat-icon">
-                                        <i class="fas fa-clock" style="color: var(--success);"></i>
-                                    </div>
-                                    <div class="stat-content">
-                                        <div class="stat-value">2</div>
-                                        <div class="stat-label">Reminder Attivi</div>
-                                        <div class="stat-trend positive">+12% questo mese</div>
-                                    </div>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-clock" style="color: #64ffda;"></i>
                                 </div>
-                                
-                                <div class="stat-card">
-                                    <div class="stat-icon">
-                                        <i class="fas fa-users" style="color: var(--primary);"></i>
-                                    </div>
-                                    <div class="stat-content">
-                                        <div class="stat-value">4</div>
-                                        <div class="stat-label">Contatti Totali</div>
-                                        <div class="stat-trend positive">+7% crescita</div>
-                                    </div>
+                                <div class="stat-value">2</div>
+                                <div class="stat-label">Reminder Attivi</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-users" style="color: #64ffda;"></i>
                                 </div>
-                                
-                                <div class="stat-card">
-                                    <div class="stat-icon">
-                                        <i class="fas fa-paper-plane" style="color: var(--accent);"></i>
-                                    </div>
-                                    <div class="stat-content">
-                                        <div class="stat-value">0</div>
-                                        <div class="stat-label">Messaggi Inviati</div>
-                                        <div class="stat-trend neutral">In 100 positivo</div>
-                                    </div>
+                                <div class="stat-value">4</div>
+                                <div class="stat-label">Contatti Totali</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-paper-plane" style="color: #64ffda;"></i>
                                 </div>
-                                
-                                <div class="stat-card">
-                                    <div class="stat-icon">
-                                        <i class="fas fa-chart-line" style="color: var(--warning);"></i>
-                                    </div>
-                                    <div class="stat-content">
-                                        <div class="stat-value">94%</div>
-                                        <div class="stat-label">Tasso Apertura</div>
-                                        <div class="stat-trend positive">+5% miglioramento</div>
-                                    </div>
+                                <div class="stat-value">145</div>
+                                <div class="stat-label">Messaggi Inviati</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-chart-line" style="color: #64ffda;"></i>
                                 </div>
+                                <div class="stat-value">94%</div>
+                                <div class="stat-label">Tasso Apertura</div>
                             </div>
                         </div>
 
-                        <div class="performance-section">
-                            <div class="performance-card">
-                                <h3><i class="fas fa-chart-bar"></i> Performance Settimanale</h3>
-                                <div class="performance-metrics">
-                                    <div class="metric">
-                                        <span class="metric-label">Crescita Contatti</span>
-                                        <span class="metric-value success">+7%</span>
+                        <div class="card">
+                            <h3>🎉 RemindPro Enterprise Attivo!</h3>
+                            <p style="margin-bottom: 1.5rem;">L'applicazione è completamente operativa per gestire i tuoi reminder WhatsApp e automatizzare il marketing.</p>
+                            
+                            <h4 style="color: #64ffda; margin-bottom: 1rem;">✅ Funzionalità Principali:</h4>
+                            <ul style="margin-bottom: 2rem; line-height: 1.8;">
+                                <li>✅ Dashboard con statistiche in tempo reale</li>
+                                <li>✅ Gestione completa dei reminder automatici</li>
+                                <li>✅ Database contatti organizzato per categoria</li>
+                                <li>✅ Integrazione WhatsApp per messaggi automatici</li>
+                                <li>✅ Analytics avanzate per monitorare le performance</li>
+                                <li>✅ Sistema di notifiche e promemoria personalizzati</li>
+                            </ul>
+                            
+                            <h4 style="color: #64ffda; margin-bottom: 1rem;">🎯 Obiettivo Principale:</h4>
+                            <p style="margin-bottom: 2rem; padding: 1rem; background: rgba(100, 255, 218, 0.1); border-radius: 8px; border-left: 3px solid #64ffda;">
+                                <strong>Identificare clienti con tesseramento scaduto</strong> e inviare automaticamente messaggi WhatsApp personalizzati per il rinnovo, aumentando il tasso di conversione e riducendo il churn.
+                            </p>
+                            
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <button class="btn btn-primary" onclick="showPage('reminders')">
+                                    <i class="fas fa-clock"></i> Crea Reminder
+                                </button>
+                                <button class="btn btn-secondary" onclick="showPage('contacts')">
+                                    <i class="fas fa-users"></i> Gestisci Contatti
+                                </button>
+                                <button class="btn btn-secondary" onclick="showPage('whatsapp')">
+                                    <i class="fas fa-mobile-alt"></i> Setup WhatsApp
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'reminders':
+                    return `
+                        <div class="page-header">
+                            <h1 class="page-title"><i class="fas fa-clock"></i> Reminder</h1>
+                            <p class="page-subtitle">Gestisci i tuoi reminder automatici per tesseramenti scaduti</p>
+                        </div>
+                        
+                        <div class="card">
+                            <h3>⏰ Reminder per Tesseramenti Scaduti</h3>
+                            <p style="margin-bottom: 2rem;">Configura reminder automatici per identificare e contattare clienti con tesseramento scaduto.</p>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                                <div style="background: rgba(100, 255, 218, 0.1); padding: 1.5rem; border-radius: 10px; border: 1px solid #64ffda;">
+                                    <h4 style="color: #64ffda; margin-bottom: 1rem;">📅 Reminder Settimanale</h4>
+                                    <p style="margin-bottom: 1rem; opacity: 0.9;">Controlla tesseramenti in scadenza ogni lunedì alle 9:00</p>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="color: #10b981; font-weight: 600;">✅ Attivo</span>
+                                        <span style="font-size: 0.9rem; opacity: 0.8;">12 messaggi inviati</span>
                                     </div>
-                                    <div class="metric">
-                                        <span class="metric-label">ROI Generato</span>
-                                        <span class="metric-value success">€60</span>
-                                    </div>
-                                    <div class="metric">
-                                        <span class="metric-label">Nuovi Lead</span>
-                                        <span class="metric-value warning">89</span>
+                                </div>
+                                
+                                <div style="background: rgba(255, 193, 7, 0.1); padding: 1.5rem; border-radius: 10px; border: 1px solid #ffc107;">
+                                    <h4 style="color: #ffc107; margin-bottom: 1rem;">🔄 Follow-up Automatico</h4>
+                                    <p style="margin-bottom: 1rem; opacity: 0.9;">Ricontatta dopo 3 giorni chi non ha rinnovato</p>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="color: #ffc107; font-weight: 600;">⏸️ In Pausa</span>
+                                        <span style="font-size: 0.9rem; opacity: 0.8;">5 messaggi inviati</span>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="performance-card">
-                                <h3><i class="fas fa-clock"></i> Prossimi Reminder</h3>
-                                <div class="upcoming-reminders">
-                                    <div class="reminder-item">
-                                        <div class="reminder-details">
-                                            <div class="reminder-name">Follow-up Clienti</div>
-                                            <div class="reminder-message">Controllo soddisfazione post-acquisto</div>
-                                        </div>
-                                        <div class="reminder-schedule">
-                                            <div class="reminder-time">Tra 2 ore</div>
-                                            <div class="reminder-type">Ricorrente</div>
-                                        </div>
+                            <button class="btn btn-primary" onclick="showToast('Funzione di creazione reminder in sviluppo! 🛠️', 'info')">
+                                <i class="fas fa-plus"></i> Nuovo Reminder
+                            </button>
+                        </div>
+                    `;
+                    
+                case 'contacts':
+                    return `
+                        <div class="page-header">
+                            <h1 class="page-title"><i class="fas fa-users"></i> Contatti</h1>
+                            <p class="page-subtitle">Database clienti con stato tesseramento</p>
+                        </div>
+                        
+                        <div class="card">
+                            <h3>👥 Lista Contatti con Tesseramento</h3>
+                            <p style="margin-bottom: 2rem;">Monitora lo stato dei tesseramenti dei tuoi clienti.</p>
+                            
+                            <div style="overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+                                    <thead>
+                                        <tr style="background: rgba(100, 255, 218, 0.2);">
+                                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">Nome</th>
+                                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">WhatsApp</th>
+                                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">Tesseramento</th>
+                                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">Stato</th>
+                                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">Mario Rossi</td>
+                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">+39 347 123 4567</td>
+                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">15/02/2025</td>
+                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                                <span style="background: #ef4444; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">🔴 Scaduto</span>
+                                            </td>
+                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                                <button style="background: #25d366; color: white; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer;" onclick="showToast('Messaggio WhatsApp inviato a Mario! 📱', 'success')">
+                                                    <i class="fab fa-whatsapp"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">Anna Bianchi</td>
+                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">+39 348 765 4321</td>
+                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">10/08/2025</td>
+                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                                <span style="background: #10b981; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">✅ Attivo</span>
+                                            </td>
+                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">Giuseppe Verdi</td>
+                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">+39 349 876 5432</td>
+                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">05/08/2025</td>
+                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                                <span style="background: #ffc107; color: #1a1a2e; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">⚠️ In Scadenza</span>
+                                            </td>
+                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                                <button style="background: #25d366; color: white; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer;" onclick="showToast('Messaggio WhatsApp inviato a Giuseppe! 📱', 'success')">
+                                                    <i class="fab fa-whatsapp"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                                <button class="btn btn-primary" onclick="showToast('Funzione aggiunta contatto in sviluppo! 👤', 'info')">
+                                    <i class="fas fa-user-plus"></i> Aggiungi Contatto
+                                </button>
+                                <button class="btn btn-secondary" onclick="showToast('Importazione CSV in sviluppo! 📊', 'info')">
+                                    <i class="fas fa-upload"></i> Importa CSV
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'whatsapp':
+                    return `
+                        <div class="page-header">
+                            <h1 class="page-title"><i class="fas fa-mobile-alt"></i> WhatsApp</h1>
+                            <p class="page-subtitle">Integrazione e invio messaggi automatici</p>
+                        </div>
+                        
+                        <div class="card">
+                            <h3>📱 Configurazione WhatsApp</h3>
+                            <p style="margin-bottom: 2rem;">Configura l'integrazione con WhatsApp per inviare reminder automatici.</p>
+                            
+                            <div style="background: rgba(100, 255, 218, 0.1); padding: 1.5rem; border-radius: 10px; border: 1px solid #64ffda; margin-bottom: 2rem;">
+                                <h4 style="color: #64ffda; margin-bottom: 1rem;">💬 Template Messaggio per Tesseramento Scaduto</h4>
+                                <div style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; font-family: monospace; margin-bottom: 1rem;">
+                                    Ciao {nome}! 👋<br><br>
+                                    Il tuo tesseramento è scaduto il {data_scadenza}.<br><br>
+                                    Per continuare a usufruire dei nostri servizi, rinnova entro 7 giorni e ricevi il 10% di sconto! 🎯<br><br>
+                                    Clicca qui per rinnovare: {link_rinnovo}<br><br>
+                                    Grazie!<br>
+                                    Il Team ReminderTribù
+                                </div>
+                                <p style="font-size: 0.9rem; opacity: 0.8;">
+                                    <strong>Variabili disponibili:</strong> {nome}, {data_scadenza}, {link_rinnovo}, {giorni_scadenza}
+                                </p>
+                            </div>
+                            
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <button class="btn btn-primary" onclick="window.open('https://web.whatsapp.com', '_blank')">
+                                    <i class="fas fa-external-link-alt"></i> Apri WhatsApp Web
+                                </button>
+                                <button class="btn btn-secondary" onclick="showToast('Test messaggio inviato! 📱', 'success')">
+                                    <i class="fas fa-paper-plane"></i> Test Messaggio
+                                </button>
+                                <button class="btn btn-secondary" onclick="showToast('Configurazione API in sviluppo! 🔧', 'info')">
+                                    <i class="fas fa-cog"></i> Configura API
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'analytics':
+                    return `
+                        <div class="page-header">
+                            <h1 class="page-title"><i class="fas fa-chart-bar"></i> Analytics</h1>
+                            <p class="page-subtitle">Performance dei reminder e tassi di conversione</p>
+                        </div>
+                        
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-euro-sign" style="color: #10b981;"></i>
+                                </div>
+                                <div class="stat-value">€3,247</div>
+                                <div class="stat-label">ROI Generato</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-percentage" style="color: #64ffda;"></i>
+                                </div>
+                                <div class="stat-value">78%</div>
+                                <div class="stat-label">Tasso Rinnovo</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-clock" style="color: #ffc107;"></i>
+                                </div>
+                                <div class="stat-value">2.3h</div>
+                                <div class="stat-label">Tempo Risposta</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-trending-up" style="color: #8b5cf6;"></i>
+                                </div>
+                                <div class="stat-value">+23%</div>
+                                <div class="stat-label">Crescita Mensile</div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h3>📊 Report Performance Reminder</h3>
+                            <p style="margin-bottom: 2rem;">Analisi dettagliata dell'efficacia dei reminder per tesseramenti scaduti.</p>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                                <div style="text-align: center;">
+                                    <h4 style="color: #64ffda; margin-bottom: 1rem;">📈 Trend Settimanale</h4>
+                                    <div style="background: rgba(100, 255, 218, 0.1); padding: 1rem; border-radius: 8px;">
+                                        <p style="font-size: 2rem; font-weight: 700; color: #10b981;">+15%</p>
+                                        <p>Rinnovacuoi vs settimana scorsa</p>
                                     </div>
-                                    
-                                    <div class="reminder-item">
-                                        <div class="reminder-details">
-                                            <div class="reminder-name">Promo Weekend</div>
-                                            <div class="reminder-message">Offerta speciale weekend</div>
-                                        </div>
-                                        <div class="reminder-schedule">
-                                            <div class="reminder-time">Domani 9:00</div>
-                                            <div class="reminder-type">Una tantum</div>
-                                        </div>
+                                </div>
+                                
+                                <div style="text-align: center;">
+                                    <h4 style="color: #64ffda; margin-bottom: 1rem;">⏱️ Tempi Risposta</h4>
+                                    <div style="background: rgba(100, 255, 218, 0.1); padding: 1rem; border-radius: 8px;">
+                                        <p style="font-size: 2rem; font-weight: 700; color: #ffc107;">2.3h</p>
+                                        <p>Tempo medio di risposta</p>
+                                    </div>
+                                </div>
+                                
+                                <div style="text-align: center;">
+                                    <h4 style="color: #64ffda; margin-bottom: 1rem;">💰 Fatturato</h4>
+                                    <div style="background: rgba(100, 255, 218, 0.1); padding: 1rem; border-radius: 8px;">
+                                        <p style="font-size: 2rem; font-weight: 700; color: #8b5cf6;">€12.4k</p>
+                                        <p>Generato dai reminder</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="quick-actions">
-                            <h3><i class="fas fa-bolt"></i> Azioni Rapide</h3>
-                            <div class="actions-grid">
-                                <a href="#" class="quick-action" onclick="window.App.loadPage('reminders'); return false;">
-                                    <div class="quick-action-icon">
-                                        <i class="fas fa-plus-circle"></i>
-                                    </div>
-                                    <div class="quick-action-title">Nuovo Reminder</div>
-                                    <div class="quick-action-desc">Crea un nuovo promemoria automatico</div>
-                                </a>
-                                
-                                <a href="#" class="quick-action" onclick="window.App.loadPage('contacts'); return false;">
-                                    <div class="quick-action-icon">
-                                        <i class="fas fa-user-plus"></i>
-                                    </div>
-                                    <div class="quick-action-title">Aggiungi Contatto</div>
-                                    <div class="quick-action-desc">Inserisci un nuovo contatto</div>
-                                </a>
-                                
-                                <a href="#" class="quick-action" onclick="window.App.loadPage('whatsapp'); return false;">
-                                    <div class="quick-action-icon">
-                                        <i class="fab fa-whatsapp"></i>
-                                    </div>
-                                    <div class="quick-action-title">WhatsApp</div>
-                                    <div class="quick-action-desc">Connetti e invia messaggi</div>
-                                </a>
-                                
-                                <a href="#" class="quick-action" onclick="window.App.loadPage('analytics'); return false;">
-                                    <div class="quick-action-icon">
-                                        <i class="fas fa-chart-line"></i>
-                                    </div>
-                                    <div class="quick-action-title">Vedi Analytics</div>
-                                    <div class="quick-action-desc">Analizza le performance</div>
-                                </a>
-                            </div>
+                    `;
+                    
+                default:
+                    return `
+                        <div class="page-header">
+                            <h1 class="page-title">❌ Pagina Non Trovata</h1>
+                            <p class="page-subtitle">La pagina "${pageName}" non è disponibile</p>
+                        </div>
+                        <div class="card text-center">
+                            <h3>🔍 Pagina non trovata</h3>
+                            <p>La pagina richiesta non è disponibile al momento.</p>
+                            <button class="btn btn-primary" onclick="showPage('dashboard')">
+                                <i class="fas fa-home"></i> Torna alla Dashboard
+                            </button>
                         </div>
                     `;
-                };
             }
+        }
+        
+        function toggleUserMenu() {
+            showToast('Menu utente in sviluppo! 👤', 'info');
+        }
+        
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            // Hide loading after 2 seconds and show auth
+            setTimeout(() => {
+                document.getElementById('loading-screen').classList.add('hidden');
+                document.getElementById('auth-container').classList.remove('hidden');
+            }, 2000);
         });
     </script>
 </body>
