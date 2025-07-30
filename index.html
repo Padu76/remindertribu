@@ -1650,6 +1650,10 @@
             }).join('');
         }
         
+        // Bulk messaging state
+        let selectedClients = [];
+        let isBulkSending = false;
+        
         function updateMarketingTable(searchTerm = '') {
             const tableBody = document.getElementById('marketingTableBody');
             if (!tableBody) return;
@@ -1668,7 +1672,7 @@
             if (filtered.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="5" style="text-align: center; padding: 2rem; opacity: 0.7;">
+                        <td colspan="6" style="text-align: center; padding: 2rem; opacity: 0.7;">
                             ${marketingClienti.length === 0 ? 'Nessun cliente inserito' : 'Nessun risultato trovato'}
                         </td>
                     </tr>
@@ -1678,7 +1682,12 @@
             
             tableBody.innerHTML = filtered.map(cliente => `
                 <tr>
-                    <td><strong>${cliente.nome} ${cliente.cognome}</strong></td>
+                    <td>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" class="client-checkbox" data-client-id="${cliente.id}" onchange="updateSelectedClients()">
+                            <strong>${cliente.nome} ${cliente.cognome}</strong>
+                        </label>
+                    </td>
                     <td>${cliente.telefono}</td>
                     <td>
                         <div class="template-selector">
@@ -1704,6 +1713,308 @@
                     </td>
                 </tr>
             `).join('');
+            
+            updateBulkActionButtons();
+        }
+        
+        function updateSelectedClients() {
+            const checkboxes = document.querySelectorAll('.client-checkbox:checked');
+            selectedClients = Array.from(checkboxes).map(cb => parseInt(cb.dataset.clientId));
+            updateBulkActionButtons();
+        }
+        
+        function selectAllClients(templateType) {
+            const checkboxes = document.querySelectorAll('.client-checkbox');
+            checkboxes.forEach(checkbox => {
+                const clientId = parseInt(checkbox.dataset.clientId);
+                const client = marketingClienti.find(c => c.id === clientId);
+                
+                if (templateType === 'all' || (client && client.templates[templateType])) {
+                    checkbox.checked = true;
+                } else {
+                    checkbox.checked = false;
+                }
+            });
+            
+            updateSelectedClients();
+        }
+        
+        function clearSelection() {
+            const checkboxes = document.querySelectorAll('.client-checkbox');
+            checkboxes.forEach(checkbox => checkbox.checked = false);
+            selectedClients = [];
+            updateBulkActionButtons();
+        }
+        
+        function updateBulkActionButtons() {
+            const bulkActions = document.getElementById('bulkActions');
+            if (!bulkActions) return;
+            
+            if (selectedClients.length === 0) {
+                bulkActions.innerHTML = `
+                    <div style="opacity: 0.6; font-size: 0.9rem;">
+                        <i class="fas fa-info-circle"></i> Seleziona clienti per azioni di gruppo
+                    </div>
+                `;
+                return;
+            }
+            
+            const selectedClientsData = selectedClients.map(id => marketingClienti.find(c => c.id === id));
+            const pastiClients = selectedClientsData.filter(c => c && c.templates.pasti).length;
+            const motivazioneClients = selectedClientsData.filter(c => c && c.templates.motivazionale).length;
+            
+            bulkActions.innerHTML = `
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <div style="font-weight: 600; color: #64ffda;">
+                        <i class="fas fa-users"></i> ${selectedClients.length} clienti selezionati
+                    </div>
+                    
+                    ${pastiClients > 0 ? `
+                        <button class="btn btn-warning" onclick="showBulkMessageModal('pasti')" ${isBulkSending ? 'disabled' : ''}>
+                            <i class="fas fa-utensils"></i> Invio Massivo Pasti (${pastiClients})
+                        </button>
+                    ` : ''}
+                    
+                    ${motivazioneClients > 0 ? `
+                        <button class="btn btn-success" onclick="showBulkMessageModal('motivazionale')" ${isBulkSending ? 'disabled' : ''}>
+                            <i class="fas fa-fire"></i> Invio Massivo Motivazionale (${motivazioneClients})
+                        </button>
+                    ` : ''}
+                    
+                    <button class="btn btn-secondary btn-sm" onclick="clearSelection()">
+                        <i class="fas fa-times"></i> Deseleziona
+                    </button>
+                </div>
+            `;
+        }
+        
+        function showBulkMessageModal(templateType) {
+            const selectedClientsData = selectedClients
+                .map(id => marketingClienti.find(c => c.id === id))
+                .filter(c => c && c.templates[templateType]);
+            
+            if (selectedClientsData.length === 0) {
+                showToast('Nessun cliente con template ' + templateType + ' selezionato', 'warning');
+                return;
+            }
+            
+            const templateNames = {
+                'pasti': '🍽️ Reminder Ordine Pasti',
+                'motivazionale': '💪 Messaggio Motivazionale'
+            };
+            
+            const sampleMessage = templates[templateType]
+                .replace(/{nome}/g, 'Mario')
+                .replace(/{cognome}/g, 'Rossi')
+                .replace(/{giornoSettimana}/g, new Date().toLocaleDateString('it-IT', { weekday: 'long' }));
+            
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal(event)">
+                    <div class="modal" onclick="event.stopPropagation()">
+                        <div class="modal-header">
+                            <h3 class="modal-title">📤 Invio Massivo: ${templateNames[templateType]}</h3>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label>📋 Destinatari (${selectedClientsData.length} clienti):</label>
+                                <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; max-height: 150px; overflow-y: auto; margin-bottom: 1rem;">
+                                    ${selectedClientsData.map(c => `
+                                        <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                            <span><strong>${c.nome} ${c.cognome}</strong></span>
+                                            <span style="opacity: 0.7;">${c.telefono}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>💬 Anteprima Messaggio:</label>
+                                <div class="template-preview">
+                                    ${sampleMessage.replace(/\n/g, '<br>')}
+                                </div>
+                                <p style="font-size: 0.8rem; opacity: 0.8; margin-top: 0.5rem;">
+                                    <em>Il nome di ogni cliente verrà personalizzato automaticamente</em>
+                                </p>
+                            </div>
+                            
+                            <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                                <h4 style="color: #3b82f6; margin-bottom: 0.5rem;">ℹ️ Come Funziona l'Invio Massivo</h4>
+                                <ul style="font-size: 0.9rem; line-height: 1.6; margin: 0;">
+                                    <li>Si aprirà una nuova scheda WhatsApp Web per ogni cliente</li>
+                                    <li>Pausa di 3 secondi tra ogni invio per evitare blocchi</li>
+                                    <li>Puoi interrompere l'invio in qualsiasi momento</li>
+                                    <li>I messaggi inviati verranno tracciati automaticamente</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeModal()">
+                                <i class="fas fa-times"></i> Annulla
+                            </button>
+                            <button class="btn btn-primary" onclick="startBulkSending('${templateType}')">
+                                <i class="fas fa-paper-plane"></i> Inizia Invio Massivo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modal-container').innerHTML = modalHtml;
+        }
+        
+        async function startBulkSending(templateType) {
+            const selectedClientsData = selectedClients
+                .map(id => marketingClienti.find(c => c.id === id))
+                .filter(c => c && c.templates[templateType]);
+            
+            if (selectedClientsData.length === 0) return;
+            
+            isBulkSending = true;
+            let sentCount = 0;
+            let failedCount = 0;
+            
+            // Show progress modal
+            const progressModalHtml = `
+                <div class="modal-overlay">
+                    <div class="modal" onclick="event.stopPropagation()">
+                        <div class="modal-header">
+                            <h3 class="modal-title">📤 Invio in Corso...</h3>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label>Progresso:</label>
+                                <div style="background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; margin-bottom: 1rem;">
+                                    <div id="progressBar" style="background: #64ffda; height: 20px; width: 0%; transition: width 0.3s ease;"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                                    <span id="progressText">Preparazione...</span>
+                                    <span id="progressCount">0 / ${selectedClientsData.length}</span>
+                                </div>
+                            </div>
+                            
+                            <div id="sendingStatus" style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; max-height: 200px; overflow-y: auto;">
+                                <div style="opacity: 0.7;">Preparazione invio...</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-danger" onclick="stopBulkSending()" id="stopButton">
+                                <i class="fas fa-stop"></i> Interrompi Invio
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modal-container').innerHTML = progressModalHtml;
+            
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const progressCount = document.getElementById('progressCount');
+            const sendingStatus = document.getElementById('sendingStatus');
+            
+            // Start sending
+            for (let i = 0; i < selectedClientsData.length && isBulkSending; i++) {
+                const cliente = selectedClientsData[i];
+                
+                try {
+                    // Update progress
+                    const progress = ((i + 1) / selectedClientsData.length) * 100;
+                    progressBar.style.width = progress + '%';
+                    progressText.textContent = `Invio a ${cliente.nome} ${cliente.cognome}...`;
+                    progressCount.textContent = `${i + 1} / ${selectedClientsData.length}`;
+                    
+                    // Add status
+                    sendingStatus.innerHTML += `
+                        <div style="padding: 0.25rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <span style="color: #64ffda;">→</span> Invio a <strong>${cliente.nome} ${cliente.cognome}</strong>...
+                        </div>
+                    `;
+                    sendingStatus.scrollTop = sendingStatus.scrollHeight;
+                    
+                    // Send message
+                    await sendBulkMarketingMessage(cliente.id, templateType);
+                    
+                    sentCount++;
+                    
+                    // Update status
+                    const lastStatus = sendingStatus.lastElementChild;
+                    lastStatus.innerHTML = `
+                        <span style="color: #10b981;">✓</span> Inviato a <strong>${cliente.nome} ${cliente.cognome}</strong>
+                    `;
+                    
+                    // Wait 3 seconds before next send (except for last one)
+                    if (i < selectedClientsData.length - 1 && isBulkSending) {
+                        progressText.textContent = 'Attesa 3 secondi...';
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                    }
+                    
+                } catch (error) {
+                    failedCount++;
+                    
+                    // Update status with error
+                    const lastStatus = sendingStatus.lastElementChild;
+                    lastStatus.innerHTML = `
+                        <span style="color: #ef4444;">✗</span> Errore per <strong>${cliente.nome} ${cliente.cognome}</strong>
+                    `;
+                }
+            }
+            
+            // Complete
+            progressText.textContent = isBulkSending ? 'Invio completato!' : 'Invio interrotto';
+            document.getElementById('stopButton').innerHTML = '<i class="fas fa-check"></i> Chiudi';
+            
+            // Show summary
+            sendingStatus.innerHTML += `
+                <div style="margin-top: 1rem; padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border-left: 4px solid #10b981;">
+                    <h4 style="color: #10b981; margin-bottom: 0.5rem;">📊 Riepilogo Invio</h4>
+                    <div>✅ <strong>Inviati:</strong> ${sentCount}</div>
+                    ${failedCount > 0 ? `<div>❌ <strong>Falliti:</strong> ${failedCount}</div>` : ''}
+                    <div>📱 <strong>Totale:</strong> ${selectedClientsData.length}</div>
+                </div>
+            `;
+            
+            isBulkSending = false;
+            clearSelection();
+            updateBulkActionButtons();
+            
+            showToast(`📤 Invio massivo completato! ${sentCount} messaggi inviati`, 'success', 6000);
+        }
+        
+        async function sendBulkMarketingMessage(clienteId, templateType) {
+            const cliente = marketingClienti.find(c => c.id === clienteId);
+            if (!cliente) throw new Error('Cliente non trovato');
+            
+            let message = templates[templateType];
+            message = message
+                .replace(/{nome}/g, cliente.nome)
+                .replace(/{cognome}/g, cliente.cognome)
+                .replace(/{giornoSettimana}/g, new Date().toLocaleDateString('it-IT', { weekday: 'long' }));
+            
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/${cliente.telefono.replace('+', '')}?text=${encodedMessage}`;
+            
+            // Open WhatsApp
+            window.open(whatsappUrl, '_blank');
+            
+            // Update last message
+            cliente.lastMessage = {
+                type: templateType,
+                sentAt: new Date(),
+                message: message
+            };
+            
+            saveData();
+            
+            return true;
+        }
+        
+        function stopBulkSending() {
+            if (isBulkSending) {
+                isBulkSending = false;
+                showToast('⏹️ Invio massivo interrotto', 'info');
+            } else {
+                closeModal();
+            }
         }
         
         function getStatusText(status) {
@@ -2011,6 +2322,9 @@
         }
         
         function getMarketingContent() {
+            const pastiClienti = marketingClienti.filter(c => c.templates.pasti).length;
+            const motivazioneClienti = marketingClienti.filter(c => c.templates.motivazionale).length;
+            
             return `
                 <div class="page-header">
                     <div>
@@ -2033,6 +2347,34 @@
                         </button>
                     </div>
                 ` : `
+                    <!-- Quick Select Buttons -->
+                    <div class="card" style="margin-bottom: 1rem;">
+                        <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                            <div style="font-weight: 600; color: #64ffda;">
+                                <i class="fas fa-mouse-pointer"></i> Selezione Rapida:
+                            </div>
+                            <button class="btn btn-warning btn-sm" onclick="selectAllClients('pasti')" ${pastiClienti === 0 ? 'disabled' : ''}>
+                                <i class="fas fa-utensils"></i> Tutti Pasti (${pastiClienti})
+                            </button>
+                            <button class="btn btn-success btn-sm" onclick="selectAllClients('motivazionale')" ${motivazioneClienti === 0 ? 'disabled' : ''}>
+                                <i class="fas fa-fire"></i> Tutti Motivazionali (${motivazioneClienti})
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="selectAllClients('all')">
+                                <i class="fas fa-check-double"></i> Seleziona Tutti
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Bulk Actions -->
+                    <div class="card" style="margin-bottom: 1rem;">
+                        <div id="bulkActions">
+                            <div style="opacity: 0.6; font-size: 0.9rem;">
+                                <i class="fas fa-info-circle"></i> Seleziona clienti per azioni di gruppo
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Main Table -->
                     <div class="card">
                         <div style="margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                             <div class="search-box" style="flex: 1; min-width: 250px;">
@@ -2049,7 +2391,7 @@
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>Nome</th>
+                                        <th>Cliente</th>
                                         <th>Telefono</th>
                                         <th>Template Assegnati</th>
                                         <th>Ultimo Messaggio</th>
