@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RemindPro Enterprise - Marketing Automation WhatsApp</title>
+    <title>ReminderTribù - Gestione Tesseramenti CSEN</title>
     
     <!-- External Libraries -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔔</text></svg>">
@@ -127,6 +128,7 @@
             color: rgba(255,255,255,0.7);
             text-decoration: none;
             transition: all 0.3s ease;
+            cursor: pointer;
         }
         
         .nav-item:hover, .nav-item.active {
@@ -246,6 +248,21 @@
             background: rgba(255,255,255,0.2);
         }
         
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
         .auth-container {
             display: flex;
             min-height: 100vh;
@@ -297,6 +314,104 @@
             box-shadow: 0 0 0 2px rgba(100, 255, 218, 0.2);
         }
         
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+        
+        .file-upload input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .file-upload-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.8rem 1.5rem;
+            background: rgba(100, 255, 218, 0.1);
+            color: #64ffda;
+            border: 2px dashed #64ffda;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .file-upload-label:hover {
+            background: rgba(100, 255, 218, 0.2);
+            border-color: #4fd3b8;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin-top: 2rem;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .data-table th {
+            padding: 1rem;
+            text-align: left;
+            background: rgba(100, 255, 218, 0.2);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-weight: 600;
+        }
+        
+        .data-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .status-expired {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .status-expiring {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .status-active {
+            background: #10b981;
+            color: white;
+        }
+        
+        .whatsapp-btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 0.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.9rem;
+        }
+        
+        .whatsapp-btn:hover {
+            background: #1ea952;
+        }
+        
         .toast {
             position: fixed;
             top: 20px;
@@ -307,6 +422,7 @@
             font-weight: 500;
             z-index: 2000;
             animation: slideIn 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
         
         .toast.success {
@@ -319,6 +435,10 @@
         
         .toast.info {
             background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+        
+        .toast.warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
         }
         
         @keyframes slideIn {
@@ -334,6 +454,35 @@
         
         .hidden {
             display: none !important;
+        }
+        
+        .filter-bar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-btn.active {
+            background: #64ffda;
+            color: #1a1a2e;
+            border-color: #64ffda;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 250px;
         }
         
         @media (max-width: 768px) {
@@ -365,6 +514,15 @@
             .content-area {
                 margin-bottom: 80px;
             }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
         }
     </style>
 </head>
@@ -376,7 +534,7 @@
             <div class="loading-content">
                 <div class="logo">
                     <i class="fas fa-bell"></i>
-                    <h1>RemindPro Enterprise</h1>
+                    <h1>ReminderTribù</h1>
                 </div>
                 <div class="loading-spinner">
                     <i class="fas fa-spinner fa-spin"></i>
@@ -390,27 +548,27 @@
             <div class="auth-card">
                 <div class="logo">
                     <i class="fas fa-bell"></i>
-                    <h1>RemindPro</h1>
+                    <h1>ReminderTribù</h1>
                 </div>
                 
                 <h2 style="margin-bottom: 2rem;">Accedi al tuo account</h2>
                 
                 <div class="form-group">
                     <label for="loginEmail">Email</label>
-                    <input type="email" id="loginEmail" class="form-control" placeholder="demo@remindpro.com" value="demo@remindpro.com">
+                    <input type="email" id="loginEmail" class="form-control" placeholder="admin@tribu.com" value="admin@tribu.com">
                 </div>
                 
                 <div class="form-group">
                     <label for="loginPassword">Password</label>
-                    <input type="password" id="loginPassword" class="form-control" placeholder="demo123" value="demo123">
+                    <input type="password" id="loginPassword" class="form-control" placeholder="tribu2025" value="tribu2025">
                 </div>
                 
-                <button type="button" class="btn btn-primary" onclick="performDemoLogin()" style="width: 100%; justify-content: center;">
-                    <i class="fas fa-sign-in-alt"></i> Accedi (Demo)
+                <button type="button" class="btn btn-primary" onclick="performLogin()" style="width: 100%; justify-content: center;">
+                    <i class="fas fa-sign-in-alt"></i> Accedi
                 </button>
                 
                 <p style="margin-top: 1rem; opacity: 0.7; font-size: 0.9rem;">
-                    <strong>Demo:</strong> demo@remindpro.com / demo123
+                    <strong>Credenziali:</strong> admin@tribu.com / tribu2025
                 </p>
             </div>
         </div>
@@ -421,12 +579,12 @@
             <header class="app-header">
                 <div class="logo">
                     <i class="fas fa-bell"></i>
-                    <span>RemindPro Enterprise</span>
+                    <span>ReminderTribù</span>
                 </div>
                 
                 <div class="user-menu">
-                    <div class="user-avatar" onclick="toggleUserMenu()">
-                        DU
+                    <div class="user-avatar" onclick="showToast('Ciao! 👋', 'info')">
+                        TT
                     </div>
                 </div>
             </header>
@@ -436,26 +594,26 @@
                 <!-- Sidebar -->
                 <aside class="sidebar">
                     <nav class="nav">
-                        <a href="#" class="nav-item active" onclick="showPage('dashboard')">
+                        <div class="nav-item active" onclick="showPage('dashboard')">
                             <i class="fas fa-tachometer-alt"></i>
                             <span>Dashboard</span>
-                        </a>
-                        <a href="#" class="nav-item" onclick="showPage('reminders')">
-                            <i class="fas fa-clock"></i>
-                            <span>Reminder</span>
-                        </a>
-                        <a href="#" class="nav-item" onclick="showPage('contacts')">
+                        </div>
+                        <div class="nav-item" onclick="showPage('tesserati')">
                             <i class="fas fa-users"></i>
-                            <span>Contatti</span>
-                        </a>
-                        <a href="#" class="nav-item" onclick="showPage('whatsapp')">
-                            <i class="fas fa-mobile-alt"></i>
+                            <span>Tesserati</span>
+                        </div>
+                        <div class="nav-item" onclick="showPage('scadenze')">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>Scadenze</span>
+                        </div>
+                        <div class="nav-item" onclick="showPage('whatsapp')">
+                            <i class="fab fa-whatsapp"></i>
                             <span>WhatsApp</span>
-                        </a>
-                        <a href="#" class="nav-item" onclick="showPage('analytics')">
-                            <i class="fas fa-chart-bar"></i>
-                            <span>Analytics</span>
-                        </a>
+                        </div>
+                        <div class="nav-item" onclick="showPage('import')">
+                            <i class="fas fa-upload"></i>
+                            <span>Importa CSV</span>
+                        </div>
                     </nav>
                 </aside>
                 
@@ -473,37 +631,39 @@
     <div id="toast-container"></div>
 
     <script>
-        // Simple App State
+        // Global App State
+        let tesseratiData = [];
+        let filteredData = [];
         let currentUser = null;
         let currentPage = 'dashboard';
+        let currentFilter = 'all';
         
         // Toast System
-        function showToast(message, type = 'info') {
+        function showToast(message, type = 'info', duration = 4000) {
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
-            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'times' : 'info-circle'}"></i> ${message}`;
+            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'times' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
             
             document.getElementById('toast-container').appendChild(toast);
             
             setTimeout(() => {
                 toast.remove();
-            }, 4000);
+            }, duration);
         }
         
-        // Demo Login
-        async function performDemoLogin() {
+        // Login System
+        async function performLogin() {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             
-            if (email === 'demo@remindpro.com' && password === 'demo123') {
+            if (email === 'admin@tribu.com' && password === 'tribu2025') {
                 showToast('Login effettuato con successo! 🎉', 'success');
                 
-                // Simulate loading
                 setTimeout(() => {
                     currentUser = {
-                        name: 'Demo User',
-                        email: 'demo@remindpro.com',
-                        plan: 'professional'
+                        name: 'Tribù Admin',
+                        email: 'admin@tribu.com',
+                        role: 'admin'
                     };
                     
                     document.getElementById('loading-screen').classList.add('hidden');
@@ -517,7 +677,85 @@
             }
         }
         
-        // Navigation
+        // CSV Processing Functions
+        function calculateExpiryDate(dataRilascio) {
+            if (!dataRilascio) return null;
+            
+            const [day, month, year] = dataRilascio.split('/');
+            const releaseDate = new Date(year, month - 1, day);
+            const expiryDate = new Date(releaseDate);
+            expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+            
+            return expiryDate;
+        }
+        
+        function getExpiryStatus(expiryDate) {
+            if (!expiryDate) return 'unknown';
+            
+            const today = new Date();
+            const daysDiff = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+            
+            if (daysDiff < 0) return 'expired';
+            if (daysDiff <= 30) return 'expiring';
+            return 'active';
+        }
+        
+        function processCSVData(data) {
+            return data.map(record => {
+                const expiryDate = calculateExpiryDate(record['DATA DI RILASCIO']);
+                const status = getExpiryStatus(expiryDate);
+                
+                return {
+                    nome: record.NOME,
+                    cognome: record.COGNOME,
+                    telefono: record.TELEFONO ? '+39' + record.TELEFONO : null,
+                    email: record['E-MAIL'] || null,
+                    dataRilascio: record['DATA DI RILASCIO'],
+                    dataScadenza: expiryDate,
+                    numeroTessera: record['NUMERO TESSERA'],
+                    disciplina: record.DISCIPLINE,
+                    qualifica: record.QUALIFICA,
+                    tesseramento: record.TESSERAMENTO,
+                    status: status,
+                    daysTillExpiry: expiryDate ? Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24)) : null
+                };
+            });
+        }
+        
+        function handleCSVUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            showToast('Caricamento CSV in corso...', 'info');
+            
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                delimiter: ';',
+                complete: function(results) {
+                    if (results.errors.length > 0) {
+                        showToast('Errore nel parsing del CSV', 'error');
+                        console.error('CSV parsing errors:', results.errors);
+                        return;
+                    }
+                    
+                    tesseratiData = processCSVData(results.data);
+                    filteredData = [...tesseratiData];
+                    
+                    showToast(`✅ Caricati ${tesseratiData.length} tesserati`, 'success');
+                    
+                    // Aggiorna la pagina corrente se siamo nella sezione tesserati
+                    if (currentPage === 'tesserati' || currentPage === 'scadenze') {
+                        showPage(currentPage);
+                    }
+                    
+                    // Aggiorna la dashboard
+                    updateDashboardStats();
+                }
+            });
+        }
+        
+        // Navigation System
         function showPage(pageName) {
             // Update active nav
             document.querySelectorAll('.nav-item').forEach(item => {
@@ -530,332 +768,541 @@
             document.getElementById('page-content').innerHTML = content;
             
             currentPage = pageName;
+            
+            // Initialize page-specific functionality
+            initializePage(pageName);
         }
         
-        function getPageContent(pageName) {
-            switch (pageName) {
-                case 'dashboard':
-                    return `
-                        <div class="page-header">
-                            <h1 class="page-title">
-                                <i class="fas fa-tachometer-alt"></i> Dashboard
-                            </h1>
-                            <p class="page-subtitle">Panoramica delle tue attività di marketing automation</p>
-                        </div>
-
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-icon">
-                                    <i class="fas fa-clock" style="color: #64ffda;"></i>
-                                </div>
-                                <div class="stat-value">2</div>
-                                <div class="stat-label">Reminder Attivi</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon">
-                                    <i class="fas fa-users" style="color: #64ffda;"></i>
-                                </div>
-                                <div class="stat-value">4</div>
-                                <div class="stat-label">Contatti Totali</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon">
-                                    <i class="fas fa-paper-plane" style="color: #64ffda;"></i>
-                                </div>
-                                <div class="stat-value">145</div>
-                                <div class="stat-label">Messaggi Inviati</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon">
-                                    <i class="fas fa-chart-line" style="color: #64ffda;"></i>
-                                </div>
-                                <div class="stat-value">94%</div>
-                                <div class="stat-label">Tasso Apertura</div>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <h3>🎉 RemindPro Enterprise Attivo!</h3>
-                            <p style="margin-bottom: 1.5rem;">L'applicazione è completamente operativa per gestire i tuoi reminder WhatsApp e automatizzare il marketing.</p>
-                            
-                            <h4 style="color: #64ffda; margin-bottom: 1rem;">✅ Funzionalità Principali:</h4>
-                            <ul style="margin-bottom: 2rem; line-height: 1.8;">
-                                <li>✅ Dashboard con statistiche in tempo reale</li>
-                                <li>✅ Gestione completa dei reminder automatici</li>
-                                <li>✅ Database contatti organizzato per categoria</li>
-                                <li>✅ Integrazione WhatsApp per messaggi automatici</li>
-                                <li>✅ Analytics avanzate per monitorare le performance</li>
-                                <li>✅ Sistema di notifiche e promemoria personalizzati</li>
-                            </ul>
-                            
-                            <h4 style="color: #64ffda; margin-bottom: 1rem;">🎯 Obiettivo Principale:</h4>
-                            <p style="margin-bottom: 2rem; padding: 1rem; background: rgba(100, 255, 218, 0.1); border-radius: 8px; border-left: 3px solid #64ffda;">
-                                <strong>Identificare clienti con tesseramento scaduto</strong> e inviare automaticamente messaggi WhatsApp personalizzati per il rinnovo, aumentando il tasso di conversione e riducendo il churn.
-                            </p>
-                            
-                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                                <button class="btn btn-primary" onclick="showPage('reminders')">
-                                    <i class="fas fa-clock"></i> Crea Reminder
-                                </button>
-                                <button class="btn btn-secondary" onclick="showPage('contacts')">
-                                    <i class="fas fa-users"></i> Gestisci Contatti
-                                </button>
-                                <button class="btn btn-secondary" onclick="showPage('whatsapp')">
-                                    <i class="fas fa-mobile-alt"></i> Setup WhatsApp
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    
-                case 'reminders':
-                    return `
-                        <div class="page-header">
-                            <h1 class="page-title"><i class="fas fa-clock"></i> Reminder</h1>
-                            <p class="page-subtitle">Gestisci i tuoi reminder automatici per tesseramenti scaduti</p>
-                        </div>
-                        
-                        <div class="card">
-                            <h3>⏰ Reminder per Tesseramenti Scaduti</h3>
-                            <p style="margin-bottom: 2rem;">Configura reminder automatici per identificare e contattare clienti con tesseramento scaduto.</p>
-                            
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-                                <div style="background: rgba(100, 255, 218, 0.1); padding: 1.5rem; border-radius: 10px; border: 1px solid #64ffda;">
-                                    <h4 style="color: #64ffda; margin-bottom: 1rem;">📅 Reminder Settimanale</h4>
-                                    <p style="margin-bottom: 1rem; opacity: 0.9;">Controlla tesseramenti in scadenza ogni lunedì alle 9:00</p>
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="color: #10b981; font-weight: 600;">✅ Attivo</span>
-                                        <span style="font-size: 0.9rem; opacity: 0.8;">12 messaggi inviati</span>
-                                    </div>
-                                </div>
-                                
-                                <div style="background: rgba(255, 193, 7, 0.1); padding: 1.5rem; border-radius: 10px; border: 1px solid #ffc107;">
-                                    <h4 style="color: #ffc107; margin-bottom: 1rem;">🔄 Follow-up Automatico</h4>
-                                    <p style="margin-bottom: 1rem; opacity: 0.9;">Ricontatta dopo 3 giorni chi non ha rinnovato</p>
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="color: #ffc107; font-weight: 600;">⏸️ In Pausa</span>
-                                        <span style="font-size: 0.9rem; opacity: 0.8;">5 messaggi inviati</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <button class="btn btn-primary" onclick="showToast('Funzione di creazione reminder in sviluppo! 🛠️', 'info')">
-                                <i class="fas fa-plus"></i> Nuovo Reminder
-                            </button>
-                        </div>
-                    `;
-                    
-                case 'contacts':
-                    return `
-                        <div class="page-header">
-                            <h1 class="page-title"><i class="fas fa-users"></i> Contatti</h1>
-                            <p class="page-subtitle">Database clienti con stato tesseramento</p>
-                        </div>
-                        
-                        <div class="card">
-                            <h3>👥 Lista Contatti con Tesseramento</h3>
-                            <p style="margin-bottom: 2rem;">Monitora lo stato dei tesseramenti dei tuoi clienti.</p>
-                            
-                            <div style="overflow-x: auto;">
-                                <table style="width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
-                                    <thead>
-                                        <tr style="background: rgba(100, 255, 218, 0.2);">
-                                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">Nome</th>
-                                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">WhatsApp</th>
-                                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">Tesseramento</th>
-                                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">Stato</th>
-                                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">Azioni</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">Mario Rossi</td>
-                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">+39 347 123 4567</td>
-                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">15/02/2025</td>
-                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                                <span style="background: #ef4444; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">🔴 Scaduto</span>
-                                            </td>
-                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                                <button style="background: #25d366; color: white; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer;" onclick="showToast('Messaggio WhatsApp inviato a Mario! 📱', 'success')">
-                                                    <i class="fab fa-whatsapp"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">Anna Bianchi</td>
-                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">+39 348 765 4321</td>
-                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">10/08/2025</td>
-                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                                <span style="background: #10b981; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">✅ Attivo</span>
-                                            </td>
-                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">-</td>
-                                        </tr>
-                                        <tr>
-                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">Giuseppe Verdi</td>
-                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">+39 349 876 5432</td>
-                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">05/08/2025</td>
-                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                                <span style="background: #ffc107; color: #1a1a2e; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">⚠️ In Scadenza</span>
-                                            </td>
-                                            <td style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                                <button style="background: #25d366; color: white; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer;" onclick="showToast('Messaggio WhatsApp inviato a Giuseppe! 📱', 'success')">
-                                                    <i class="fab fa-whatsapp"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
-                                <button class="btn btn-primary" onclick="showToast('Funzione aggiunta contatto in sviluppo! 👤', 'info')">
-                                    <i class="fas fa-user-plus"></i> Aggiungi Contatto
-                                </button>
-                                <button class="btn btn-secondary" onclick="showToast('Importazione CSV in sviluppo! 📊', 'info')">
-                                    <i class="fas fa-upload"></i> Importa CSV
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    
-                case 'whatsapp':
-                    return `
-                        <div class="page-header">
-                            <h1 class="page-title"><i class="fas fa-mobile-alt"></i> WhatsApp</h1>
-                            <p class="page-subtitle">Integrazione e invio messaggi automatici</p>
-                        </div>
-                        
-                        <div class="card">
-                            <h3>📱 Configurazione WhatsApp</h3>
-                            <p style="margin-bottom: 2rem;">Configura l'integrazione con WhatsApp per inviare reminder automatici.</p>
-                            
-                            <div style="background: rgba(100, 255, 218, 0.1); padding: 1.5rem; border-radius: 10px; border: 1px solid #64ffda; margin-bottom: 2rem;">
-                                <h4 style="color: #64ffda; margin-bottom: 1rem;">💬 Template Messaggio per Tesseramento Scaduto</h4>
-                                <div style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; font-family: monospace; margin-bottom: 1rem;">
-                                    Ciao {nome}! 👋<br><br>
-                                    Il tuo tesseramento è scaduto il {data_scadenza}.<br><br>
-                                    Per continuare a usufruire dei nostri servizi, rinnova entro 7 giorni e ricevi il 10% di sconto! 🎯<br><br>
-                                    Clicca qui per rinnovare: {link_rinnovo}<br><br>
-                                    Grazie!<br>
-                                    Il Team ReminderTribù
-                                </div>
-                                <p style="font-size: 0.9rem; opacity: 0.8;">
-                                    <strong>Variabili disponibili:</strong> {nome}, {data_scadenza}, {link_rinnovo}, {giorni_scadenza}
-                                </p>
-                            </div>
-                            
-                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                                <button class="btn btn-primary" onclick="window.open('https://web.whatsapp.com', '_blank')">
-                                    <i class="fas fa-external-link-alt"></i> Apri WhatsApp Web
-                                </button>
-                                <button class="btn btn-secondary" onclick="showToast('Test messaggio inviato! 📱', 'success')">
-                                    <i class="fas fa-paper-plane"></i> Test Messaggio
-                                </button>
-                                <button class="btn btn-secondary" onclick="showToast('Configurazione API in sviluppo! 🔧', 'info')">
-                                    <i class="fas fa-cog"></i> Configura API
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    
-                case 'analytics':
-                    return `
-                        <div class="page-header">
-                            <h1 class="page-title"><i class="fas fa-chart-bar"></i> Analytics</h1>
-                            <p class="page-subtitle">Performance dei reminder e tassi di conversione</p>
-                        </div>
-                        
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-icon">
-                                    <i class="fas fa-euro-sign" style="color: #10b981;"></i>
-                                </div>
-                                <div class="stat-value">€3,247</div>
-                                <div class="stat-label">ROI Generato</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon">
-                                    <i class="fas fa-percentage" style="color: #64ffda;"></i>
-                                </div>
-                                <div class="stat-value">78%</div>
-                                <div class="stat-label">Tasso Rinnovo</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon">
-                                    <i class="fas fa-clock" style="color: #ffc107;"></i>
-                                </div>
-                                <div class="stat-value">2.3h</div>
-                                <div class="stat-label">Tempo Risposta</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon">
-                                    <i class="fas fa-trending-up" style="color: #8b5cf6;"></i>
-                                </div>
-                                <div class="stat-value">+23%</div>
-                                <div class="stat-label">Crescita Mensile</div>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h3>📊 Report Performance Reminder</h3>
-                            <p style="margin-bottom: 2rem;">Analisi dettagliata dell'efficacia dei reminder per tesseramenti scaduti.</p>
-                            
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
-                                <div style="text-align: center;">
-                                    <h4 style="color: #64ffda; margin-bottom: 1rem;">📈 Trend Settimanale</h4>
-                                    <div style="background: rgba(100, 255, 218, 0.1); padding: 1rem; border-radius: 8px;">
-                                        <p style="font-size: 2rem; font-weight: 700; color: #10b981;">+15%</p>
-                                        <p>Rinnovacuoi vs settimana scorsa</p>
-                                    </div>
-                                </div>
-                                
-                                <div style="text-align: center;">
-                                    <h4 style="color: #64ffda; margin-bottom: 1rem;">⏱️ Tempi Risposta</h4>
-                                    <div style="background: rgba(100, 255, 218, 0.1); padding: 1rem; border-radius: 8px;">
-                                        <p style="font-size: 2rem; font-weight: 700; color: #ffc107;">2.3h</p>
-                                        <p>Tempo medio di risposta</p>
-                                    </div>
-                                </div>
-                                
-                                <div style="text-align: center;">
-                                    <h4 style="color: #64ffda; margin-bottom: 1rem;">💰 Fatturato</h4>
-                                    <div style="background: rgba(100, 255, 218, 0.1); padding: 1rem; border-radius: 8px;">
-                                        <p style="font-size: 2rem; font-weight: 700; color: #8b5cf6;">€12.4k</p>
-                                        <p>Generato dai reminder</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    
-                default:
-                    return `
-                        <div class="page-header">
-                            <h1 class="page-title">❌ Pagina Non Trovata</h1>
-                            <p class="page-subtitle">La pagina "${pageName}" non è disponibile</p>
-                        </div>
-                        <div class="card text-center">
-                            <h3>🔍 Pagina non trovata</h3>
-                            <p>La pagina richiesta non è disponibile al momento.</p>
-                            <button class="btn btn-primary" onclick="showPage('dashboard')">
-                                <i class="fas fa-home"></i> Torna alla Dashboard
-                            </button>
-                        </div>
-                    `;
+        function initializePage(pageName) {
+            if (pageName === 'import') {
+                // Setup file upload handler
+                const fileInput = document.getElementById('csvFileInput');
+                if (fileInput) {
+                    fileInput.addEventListener('change', handleCSVUpload);
+                }
+            } else if (pageName === 'tesserati' || pageName === 'scadenze') {
+                setupFilters();
             }
         }
         
-        function toggleUserMenu() {
-            showToast('Menu utente in sviluppo! 👤', 'info');
+        function setupFilters() {
+            // Setup filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const filter = e.target.dataset.filter;
+                    setFilter(filter);
+                });
+            });
+            
+            // Setup search
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    searchData(e.target.value);
+                });
+            }
+        }
+        
+        function setFilter(filter) {
+            currentFilter = filter;
+            
+            // Update active filter button
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.filter === filter) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Apply filter
+            applyFilters();
+        }
+        
+        function searchData(searchTerm) {
+            applyFilters(searchTerm);
+        }
+        
+        function applyFilters(searchTerm = '') {
+            let filtered = [...tesseratiData];
+            
+            // Apply status filter
+            if (currentFilter !== 'all') {
+                filtered = filtered.filter(item => item.status === currentFilter);
+            }
+            
+            // Apply search filter
+            if (searchTerm) {
+                const term = searchTerm.toLowerCase();
+                filtered = filtered.filter(item => 
+                    item.nome.toLowerCase().includes(term) ||
+                    item.cognome.toLowerCase().includes(term) ||
+                    (item.telefono && item.telefono.includes(term))
+                );
+            }
+            
+            filteredData = filtered;
+            
+            // Update table
+            updateDataTable();
+        }
+        
+        function updateDataTable() {
+            const tableBody = document.getElementById('dataTableBody');
+            if (!tableBody) return;
+            
+            if (filteredData.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 2rem; opacity: 0.7;">
+                            ${tesseratiData.length === 0 ? 'Nessun dato caricato' : 'Nessun risultato trovato'}
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tableBody.innerHTML = filteredData.map(tesserat => `
+                <tr>
+                    <td><strong>${tesserat.nome} ${tesserat.cognome}</strong></td>
+                    <td>${tesserat.telefono || 'N/A'}</td>
+                    <td>${tesserat.dataScadenza ? tesserat.dataScadenza.toLocaleDateString('it-IT') : 'N/A'}</td>
+                    <td>
+                        <span class="status-badge status-${tesserat.status}">
+                            ${tesserat.status === 'expired' ? '🔴 Scaduto' : 
+                              tesserat.status === 'expiring' ? '🟡 In Scadenza' : 
+                              tesserat.status === 'active' ? '🟢 Attivo' : '❓ Sconosciuto'}
+                        </span>
+                    </td>
+                    <td>${tesserat.daysTillExpiry !== null ? 
+                        (tesserat.daysTillExpiry < 0 ? `${Math.abs(tesserat.daysTillExpiry)} giorni fa` : `${tesserat.daysTillExpiry} giorni`) : 'N/A'}</td>
+                    <td>
+                        ${tesserat.telefono && (tesserat.status === 'expired' || tesserat.status === 'expiring') ? 
+                            `<button class="whatsapp-btn" onclick="sendWhatsAppMessage('${tesserat.telefono}', '${tesserat.nome}', '${tesserat.cognome}')">
+                                <i class="fab fa-whatsapp"></i> Invia
+                            </button>` : 
+                            '-'
+                        }
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function sendWhatsAppMessage(telefono, nome, cognome) {
+            const message = `Ciao ${nome}! Il tuo tesseramento presso Tribù Personal Training è scaduto. Per rinnovarlo e continuare ad allenarti con noi, contattaci al più presto! 💪`;
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/${telefono.replace('+', '')}?text=${encodedMessage}`;
+            
+            window.open(whatsappUrl, '_blank');
+            showToast(`Messaggio WhatsApp inviato a ${nome} ${cognome}! 📱`, 'success');
+        }
+        
+        function updateDashboardStats() {
+            const stats = {
+                total: tesseratiData.length,
+                expired: tesseratiData.filter(t => t.status === 'expired').length,
+                expiring: tesseratiData.filter(t => t.status === 'expiring').length,
+                active: tesseratiData.filter(t => t.status === 'active').length
+            };
+            
+            // Update stat values in dashboard
+            const totalStat = document.querySelector('[data-stat="total"]');
+            const expiredStat = document.querySelector('[data-stat="expired"]');
+            const expiringStat = document.querySelector('[data-stat="expiring"]');
+            const activeStat = document.querySelector('[data-stat="active"]');
+            
+            if (totalStat) totalStat.textContent = stats.total;
+            if (expiredStat) expiredStat.textContent = stats.expired;
+            if (expiringStat) expiringStat.textContent = stats.expiring;
+            if (activeStat) activeStat.textContent = stats.active;
+        }
+        
+        // Page Content Generator
+        function getPageContent(pageName) {
+            switch (pageName) {
+                case 'dashboard':
+                    return getDashboardContent();
+                case 'tesserati':
+                    return getTesseratiContent();
+                case 'scadenze':
+                    return getScadenzeContent();
+                case 'whatsapp':
+                    return getWhatsAppContent();
+                case 'import':
+                    return getImportContent();
+                default:
+                    return getNotFoundContent(pageName);
+            }
+        }
+        
+        function getDashboardContent() {
+            const stats = {
+                total: tesseratiData.length,
+                expired: tesseratiData.filter(t => t.status === 'expired').length,
+                expiring: tesseratiData.filter(t => t.status === 'expiring').length,
+                active: tesseratiData.filter(t => t.status === 'active').length
+            };
+            
+            return `
+                <div class="page-header">
+                    <h1 class="page-title">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </h1>
+                    <p class="page-subtitle">Panoramica tesseramenti CSEN - Tribù Personal Training</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users" style="color: #64ffda;"></i>
+                        </div>
+                        <div class="stat-value" data-stat="total">${stats.total}</div>
+                        <div class="stat-label">Tesserati Totali</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-times-circle" style="color: #ef4444;"></i>
+                        </div>
+                        <div class="stat-value" data-stat="expired">${stats.expired}</div>
+                        <div class="stat-label">Scaduti</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+                        </div>
+                        <div class="stat-value" data-stat="expiring">${stats.expiring}</div>
+                        <div class="stat-label">In Scadenza (30gg)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                        </div>
+                        <div class="stat-value" data-stat="active">${stats.active}</div>
+                        <div class="stat-label">Attivi</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🎯 ReminderTribù - Sistema di Gestione Tesseramenti</h3>
+                    <p style="margin-bottom: 2rem;">Monitora automaticamente le scadenze dei tesserati e invia reminder WhatsApp personalizzati per migliorare il tasso di rinnovo.</p>
+                    
+                    ${tesseratiData.length === 0 ? `
+                        <div style="background: rgba(255, 193, 7, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #f59e0b; margin-bottom: 2rem;">
+                            <h4 style="color: #f59e0b; margin-bottom: 1rem;">📋 Primi Passi</h4>
+                            <p style="margin-bottom: 1rem;">Per iniziare, carica il file CSV con i dati dei tesserati CSEN.</p>
+                            <button class="btn btn-primary" onclick="showPage('import')">
+                                <i class="fas fa-upload"></i> Carica CSV Tesserati
+                            </button>
+                        </div>
+                    ` : `
+                        <div style="background: rgba(16, 185, 129, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #10b981; margin-bottom: 2rem;">
+                            <h4 style="color: #10b981; margin-bottom: 1rem;">✅ Sistema Operativo</h4>
+                            <p style="margin-bottom: 1rem;">I dati sono stati caricati con successo. Ora puoi gestire i tesserati e inviare reminder.</p>
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <button class="btn btn-primary" onclick="showPage('scadenze')">
+                                    <i class="fas fa-exclamation-triangle"></i> Gestisci Scadenze
+                                </button>
+                                <button class="btn btn-secondary" onclick="showPage('tesserati')">
+                                    <i class="fas fa-users"></i> Visualizza Tutti
+                                </button>
+                            </div>
+                        </div>
+                    `}
+                    
+                    <h4 style="color: #64ffda; margin-bottom: 1rem;">🔧 Funzionalità Principali:</h4>
+                    <ul style="margin-bottom: 2rem; line-height: 1.8;">
+                        <li>📊 <strong>Import CSV:</strong> Carica facilmente i dati dei tesserati CSEN</li>
+                        <li>⏰ <strong>Monitoraggio Scadenze:</strong> Identifica automaticamente tesseramenti scaduti o in scadenza</li>
+                        <li>📱 <strong>WhatsApp Integration:</strong> Invia messaggi personalizzati con un click</li>
+                        <li>🔍 <strong>Ricerca e Filtri:</strong> Trova rapidamente i tesserati per nome o stato</li>
+                        <li>📈 <strong>Dashboard Real-time:</strong> Statistiche aggiornate in tempo reale</li>
+                        <li>📋 <strong>Gestione Completa:</strong> Visualizza tutti i dettagli dei tesserati</li>
+                    </ul>
+                </div>
+            `;
+        }
+        
+        function getTesseratiContent() {
+            return `
+                <div class="page-header">
+                    <h1 class="page-title"><i class="fas fa-users"></i> Tesserati</h1>
+                    <p class="page-subtitle">Elenco completo dei tesserati CSEN</p>
+                </div>
+                
+                ${tesseratiData.length === 0 ? `
+                    <div class="card">
+                        <h3>📋 Nessun Dato Caricato</h3>
+                        <p style="margin-bottom: 2rem;">Per visualizzare i tesserati, carica prima il file CSV con i dati.</p>
+                        <button class="btn btn-primary" onclick="showPage('import')">
+                            <i class="fas fa-upload"></i> Carica CSV
+                        </button>
+                    </div>
+                ` : `
+                    <div class="card">
+                        <div class="filter-bar">
+                            <button class="filter-btn active" data-filter="all">Tutti (${tesseratiData.length})</button>
+                            <button class="filter-btn" data-filter="active">Attivi (${tesseratiData.filter(t => t.status === 'active').length})</button>
+                            <button class="filter-btn" data-filter="expiring">In Scadenza (${tesseratiData.filter(t => t.status === 'expiring').length})</button>
+                            <button class="filter-btn" data-filter="expired">Scaduti (${tesseratiData.filter(t => t.status === 'expired').length})</button>
+                            
+                            <div class="search-box">
+                                <input type="text" id="searchInput" class="form-control" placeholder="🔍 Cerca per nome o telefono...">
+                            </div>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Telefono</th>
+                                        <th>Scadenza</th>
+                                        <th>Stato</th>
+                                        <th>Giorni</th>
+                                        <th>Azioni</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dataTableBody">
+                                    <!-- Populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `}
+            `;
+        }
+        
+        function getScadenzeContent() {
+            const urgentCount = tesseratiData.filter(t => t.status === 'expired' || t.status === 'expiring').length;
+            
+            return `
+                <div class="page-header">
+                    <h1 class="page-title"><i class="fas fa-exclamation-triangle"></i> Gestione Scadenze</h1>
+                    <p class="page-subtitle">Focus sui tesserati che necessitano di rinnovo</p>
+                </div>
+                
+                ${tesseratiData.length === 0 ? `
+                    <div class="card">
+                        <h3>📋 Nessun Dato Caricato</h3>
+                        <p style="margin-bottom: 2rem;">Per gestire le scadenze, carica prima il file CSV con i dati.</p>
+                        <button class="btn btn-primary" onclick="showPage('import')">
+                            <i class="fas fa-upload"></i> Carica CSV
+                        </button>
+                    </div>
+                ` : `
+                    <div class="card">
+                        <h3>⚠️ Tesseramenti Urgenti</h3>
+                        <p style="margin-bottom: 2rem;">${urgentCount} tesserati necessitano attenzione (scaduti o in scadenza nei prossimi 30 giorni).</p>
+                        
+                        <div class="filter-bar">
+                            <button class="filter-btn" data-filter="expired">Scaduti (${tesseratiData.filter(t => t.status === 'expired').length})</button>
+                            <button class="filter-btn active" data-filter="expiring">In Scadenza (${tesseratiData.filter(t => t.status === 'expiring').length})</button>
+                            
+                            <div class="search-box">
+                                <input type="text" id="searchInput" class="form-control" placeholder="🔍 Cerca per nome o telefono...">
+                            </div>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Telefono</th>
+                                        <th>Scadenza</th>
+                                        <th>Stato</th>
+                                        <th>Giorni</th>
+                                        <th>WhatsApp</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dataTableBody">
+                                    <!-- Populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `}
+            `;
+        }
+        
+        function getWhatsAppContent() {
+            return `
+                <div class="page-header">
+                    <h1 class="page-title"><i class="fab fa-whatsapp"></i> WhatsApp</h1>
+                    <p class="page-subtitle">Template e gestione messaggi automatici</p>
+                </div>
+                
+                <div class="card">
+                    <h3>📱 Template Messaggio Rinnovo</h3>
+                    <p style="margin-bottom: 2rem;">Messaggio standard per tesserati con scadenza imminente o scaduta.</p>
+                    
+                    <div style="background: rgba(37, 211, 102, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #25d366; margin-bottom: 2rem;">
+                        <h4 style="color: #25d366; margin-bottom: 1rem;">💬 Template Attuale</h4>
+                        <div style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; font-family: monospace; line-height: 1.6; margin-bottom: 1rem;">
+Ciao {nome}! 👋<br><br>
+Il tuo tesseramento presso <strong>Tribù Personal Training</strong> è ${tesseratiData.length > 0 && tesseratiData.some(t => t.status === 'expired') ? 'scaduto' : 'in scadenza'}.<br><br>
+Per continuare ad allenarti con noi e non perdere i benefici del tuo programma personalizzato, rinnova il prima possibile! 💪<br><br>
+Contattaci per maggiori informazioni o per procedere con il rinnovo.<br><br>
+<em>Team Tribù Personal Training</em> 🏋️‍♀️
+                        </div>
+                        <p style="font-size: 0.9rem; opacity: 0.8;">
+                            <strong>Variabili disponibili:</strong> {nome}, {cognome}, {dataScadenza}, {telefono}
+                        </p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            <i class="fas fa-paper-plane" style="font-size: 2rem; color: #64ffda; margin-bottom: 0.5rem;"></i>
+                            <h4>Messaggi Inviati</h4>
+                            <p style="font-size: 1.5rem; font-weight: 700; color: #64ffda;">0</p>
+                        </div>
+                        
+                        <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            <i class="fas fa-clock" style="font-size: 2rem; color: #f59e0b; margin-bottom: 0.5rem;"></i>
+                            <h4>In Attesa</h4>
+                            <p style="font-size: 1.5rem; font-weight: 700; color: #f59e0b;">${tesseratiData.filter(t => t.status === 'expired' || t.status === 'expiring').length}</p>
+                        </div>
+                        
+                        <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            <i class="fas fa-reply" style="font-size: 2rem; color: #10b981; margin-bottom: 0.5rem;"></i>
+                            <h4>Risposte</h4>
+                            <p style="font-size: 1.5rem; font-weight: 700; color: #10b981;">0</p>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-success" onclick="showToast('Invio messaggi di massa in sviluppo! 📱', 'info')">
+                            <i class="fas fa-broadcast-tower"></i> Invio Massivo
+                        </button>
+                        <button class="btn btn-secondary" onclick="showToast('Editor template in sviluppo! ✏️', 'info')">
+                            <i class="fas fa-edit"></i> Modifica Template
+                        </button>
+                        <button class="btn btn-secondary" onclick="window.open('https://web.whatsapp.com', '_blank')">
+                            <i class="fas fa-external-link-alt"></i> Apri WhatsApp Web
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function getImportContent() {
+            return `
+                <div class="page-header">
+                    <h1 class="page-title"><i class="fas fa-upload"></i> Importa CSV</h1>
+                    <p class="page-subtitle">Carica i dati dei tesserati CSEN</p>
+                </div>
+                
+                <div class="card">
+                    <h3>📂 Caricamento File CSV</h3>
+                    <p style="margin-bottom: 2rem;">Seleziona il file CSV esportato dal sistema CSEN con i dati dei tesserati.</p>
+                    
+                    <div class="file-upload">
+                        <input type="file" id="csvFileInput" accept=".csv" />
+                        <label for="csvFileInput" class="file-upload-label">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            Seleziona File CSV
+                        </label>
+                    </div>
+                    
+                    <div style="margin: 2rem 0; padding: 1.5rem; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border-left: 4px solid #3b82f6;">
+                        <h4 style="color: #3b82f6; margin-bottom: 1rem;">ℹ️ Formato File Richiesto</h4>
+                        <p style="margin-bottom: 1rem;">Il file CSV deve contenere le seguenti colonne (separate da punto e virgola):</p>
+                        <ul style="line-height: 1.6; margin-bottom: 1rem;">
+                            <li><strong>NOME:</strong> Nome del tesserato</li>
+                            <li><strong>COGNOME:</strong> Cognome del tesserato</li>
+                            <li><strong>TELEFONO:</strong> Numero di telefono</li>
+                            <li><strong>DATA DI RILASCIO:</strong> Data rilascio tessera (formato gg/mm/aaaa)</li>
+                            <li><strong>NUMERO TESSERA:</strong> Numero identificativo tessera</li>
+                            <li><strong>E-MAIL:</strong> Email (opzionale)</li>
+                        </ul>
+                        <p style="font-size: 0.9rem; opacity: 0.8;">
+                            <strong>Nota:</strong> La data di scadenza viene calcolata automaticamente aggiungendo 1 anno alla data di rilascio.
+                        </p>
+                    </div>
+                    
+                    ${tesseratiData.length > 0 ? `
+                        <div style="margin-top: 2rem; padding: 1.5rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border-left: 4px solid #10b981;">
+                            <h4 style="color: #10b981; margin-bottom: 1rem;">✅ Dati Caricati</h4>
+                            <p style="margin-bottom: 1rem;">Attualmente sono presenti <strong>${tesseratiData.length} tesserati</strong> nel sistema.</p>
+                            <p style="font-size: 0.9rem; opacity: 0.8;">Caricando un nuovo file, i dati esistenti verranno sostituiti.</p>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <div class="card">
+                    <h3>📋 Esempio Struttura CSV</h3>
+                    <p style="margin-bottom: 1rem;">Esempio di come dovrebbe apparire il tuo file CSV:</p>
+                    
+                    <div style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.9rem; overflow-x: auto; margin-bottom: 1rem;">
+ASSOCIAZIONE;COGNOME;NOME;TELEFONO;DATA DI RILASCIO;NUMERO TESSERA;E-MAIL<br>
+tribu personal training asd;ROSSI;MARIO;3471234567;15/01/2024;123456;mario@email.com<br>
+tribu personal training asd;BIANCHI;ANNA;3487654321;20/02/2024;123457;anna@email.com
+                    </div>
+                    
+                    <p style="font-size: 0.9rem; opacity: 0.8;">
+                        <strong>Importante:</strong> Assicurati che il file sia codificato in UTF-8 e che utilizzi il punto e virgola (;) come separatore.
+                    </p>
+                </div>
+            `;
+        }
+        
+        function getNotFoundContent(pageName) {
+            return `
+                <div class="page-header">
+                    <h1 class="page-title">❌ Pagina Non Trovata</h1>
+                    <p class="page-subtitle">La pagina "${pageName}" non è disponibile</p>
+                </div>
+                <div class="card text-center">
+                    <h3>🔍 Pagina non trovata</h3>
+                    <p>La pagina richiesta non è disponibile al momento.</p>
+                    <button class="btn btn-primary" onclick="showPage('dashboard')">
+                        <i class="fas fa-home"></i> Torna alla Dashboard
+                    </button>
+                </div>
+            `;
         }
         
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
+            // Set initial filter for scadenze page
+            if (currentPage === 'scadenze') {
+                currentFilter = 'expiring';
+            }
+            
             // Hide loading after 2 seconds and show auth
             setTimeout(() => {
                 document.getElementById('loading-screen').classList.add('hidden');
                 document.getElementById('auth-container').classList.remove('hidden');
             }, 2000);
         });
+        
+        // Ensure filteredData is updated when showing tesserati or scadenze pages
+        function initializeDataView() {
+            if (currentPage === 'scadenze') {
+                // For scadenze page, show only expired and expiring by default
+                filteredData = tesseratiData.filter(t => t.status === 'expired' || t.status === 'expiring');
+                currentFilter = 'expiring';
+            } else {
+                filteredData = [...tesseratiData];
+                currentFilter = 'all';
+            }
+            
+            setTimeout(() => {
+                updateDataTable();
+                if (document.querySelector('.filter-btn')) {
+                    setFilter(currentFilter);
+                }
+            }, 100);
+        }
+        
+        // Override showPage to handle data initialization
+        const originalShowPage = showPage;
+        showPage = function(pageName) {
+            originalShowPage(pageName);
+            
+            if ((pageName === 'tesserati' || pageName === 'scadenze') && tesseratiData.length > 0) {
+                setTimeout(initializeDataView, 100);
+            }
+        };
     </script>
 </body>
 </html>
