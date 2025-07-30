@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RemindPro Enterprise - Marketing Automation WhatsApp</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+    <link rel="stylesheet" href="assets/css/auth.css">
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+    
+    <!-- External Libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔔</text></svg>">
+</head>
+<body>
+    <!-- Main App Container -->
+    <div id="app">
+        <div class="loading-screen" id="loading-screen">
+            <div class="loading-content">
+                <div class="logo">
+                    <i class="fas fa-bell"></i>
+                    <h1>RemindPro Enterprise</h1>
+                </div>
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <p class="loading-text">Inizializzazione in corso...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Modal Container -->
+    <div id="modal-overlay" class="modal-overlay" style="display: none;">
+        <div class="modal" id="modal-content"></div>
+    </div>
+
+    <!-- Configuration Scripts -->
+    <script src="assets/js/config/constants.js"></script>
+    <script src="assets/js/config/firebase.js"></script>
+    <script src="assets/js/config/stripe.js"></script>
+    
+    <!-- Utility Scripts -->
+    <script src="assets/js/utils/helpers.js"></script>
+    <script src="assets/js/utils/validation.js"></script>
+    <script src="assets/js/utils/api.js"></script>
+    
+    <!-- Component Scripts -->
+    <script src="assets/js/components/toast.js"></script>
+    <script src="assets/js/components/modal.js"></script>
+    <script src="assets/js/components/forms.js"></script>
+    <script src="assets/js/components/table.js"></script>
+    
+    <!-- Module Scripts -->
+    <script src="assets/js/modules/storage.js"></script>
+    <script src="assets/js/modules/auth.js"></script>
+    <script src="assets/js/modules/analytics.js"></script>
+    <script src="assets/js/modules/reminders.js"></script>
+    <script src="assets/js/modules/contacts.js"></script>
+    <script src="assets/js/modules/whatsapp.js"></script>
+    <script src="assets/js/modules/billing.js"></script>
+    
+    <!-- Main Application -->
+    <script src="assets/js/app.js"></script>
+
+    <!-- Simple Fix for Dashboard vs Reminders -->
+    <script>
+        // Override getPageContent in app.js to fix dashboard/reminders
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.App && window.App.getPageContent) {
+                const originalGetPageContent = window.App.getPageContent;
+                
+                window.App.getPageContent = function(page) {
+                    if (page === 'dashboard') {
+                        return this.getDashboardContent();
+                    } else if (page === 'reminders') {
+                        return this.modules.reminders?.getPageContent() || originalGetPageContent.call(this, page);
+                    }
+                    return originalGetPageContent.call(this, page);
+                };
+                
+                // Add dashboard content method
+                window.App.getDashboardContent = function() {
+                    const analyticsData = this.modules.analytics?.getDashboardContent?.() || {};
+                    
+                    return `
+                        <div class="page-header">
+                            <h1 class="page-title">
+                                <i class="fas fa-tachometer-alt"></i> 
+                                Dashboard
+                            </h1>
+                            <p class="page-subtitle">Panoramica delle tue attività di marketing automation</p>
+                        </div>
+
+                        <div class="stats-overview">
+                            <div class="stats-grid">
+                                <div class="stat-card">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-clock" style="color: var(--success);"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <div class="stat-value">2</div>
+                                        <div class="stat-label">Reminder Attivi</div>
+                                        <div class="stat-trend positive">+12% questo mese</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-users" style="color: var(--primary);"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <div class="stat-value">4</div>
+                                        <div class="stat-label">Contatti Totali</div>
+                                        <div class="stat-trend positive">+7% crescita</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-paper-plane" style="color: var(--accent);"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <div class="stat-value">0</div>
+                                        <div class="stat-label">Messaggi Inviati</div>
+                                        <div class="stat-trend neutral">In 100 positivo</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-chart-line" style="color: var(--warning);"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <div class="stat-value">94%</div>
+                                        <div class="stat-label">Tasso Apertura</div>
+                                        <div class="stat-trend positive">+5% miglioramento</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="performance-section">
+                            <div class="performance-card">
+                                <h3><i class="fas fa-chart-bar"></i> Performance Settimanale</h3>
+                                <div class="performance-metrics">
+                                    <div class="metric">
+                                        <span class="metric-label">Crescita Contatti</span>
+                                        <span class="metric-value success">+7%</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">ROI Generato</span>
+                                        <span class="metric-value success">€60</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Nuovi Lead</span>
+                                        <span class="metric-value warning">89</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="performance-card">
+                                <h3><i class="fas fa-clock"></i> Prossimi Reminder</h3>
+                                <div class="upcoming-reminders">
+                                    <div class="reminder-item">
+                                        <div class="reminder-details">
+                                            <div class="reminder-name">Follow-up Clienti</div>
+                                            <div class="reminder-message">Controllo soddisfazione post-acquisto</div>
+                                        </div>
+                                        <div class="reminder-schedule">
+                                            <div class="reminder-time">Tra 2 ore</div>
+                                            <div class="reminder-type">Ricorrente</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="reminder-item">
+                                        <div class="reminder-details">
+                                            <div class="reminder-name">Promo Weekend</div>
+                                            <div class="reminder-message">Offerta speciale weekend</div>
+                                        </div>
+                                        <div class="reminder-schedule">
+                                            <div class="reminder-time">Domani 9:00</div>
+                                            <div class="reminder-type">Una tantum</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="quick-actions">
+                            <h3><i class="fas fa-bolt"></i> Azioni Rapide</h3>
+                            <div class="actions-grid">
+                                <a href="#" class="quick-action" onclick="window.App.loadPage('reminders'); return false;">
+                                    <div class="quick-action-icon">
+                                        <i class="fas fa-plus-circle"></i>
+                                    </div>
+                                    <div class="quick-action-title">Nuovo Reminder</div>
+                                    <div class="quick-action-desc">Crea un nuovo promemoria automatico</div>
+                                </a>
+                                
+                                <a href="#" class="quick-action" onclick="window.App.loadPage('contacts'); return false;">
+                                    <div class="quick-action-icon">
+                                        <i class="fas fa-user-plus"></i>
+                                    </div>
+                                    <div class="quick-action-title">Aggiungi Contatto</div>
+                                    <div class="quick-action-desc">Inserisci un nuovo contatto</div>
+                                </a>
+                                
+                                <a href="#" class="quick-action" onclick="window.App.loadPage('whatsapp'); return false;">
+                                    <div class="quick-action-icon">
+                                        <i class="fab fa-whatsapp"></i>
+                                    </div>
+                                    <div class="quick-action-title">WhatsApp</div>
+                                    <div class="quick-action-desc">Connetti e invia messaggi</div>
+                                </a>
+                                
+                                <a href="#" class="quick-action" onclick="window.App.loadPage('analytics'); return false;">
+                                    <div class="quick-action-icon">
+                                        <i class="fas fa-chart-line"></i>
+                                    </div>
+                                    <div class="quick-action-title">Vedi Analytics</div>
+                                    <div class="quick-action-desc">Analizza le performance</div>
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                };
+            }
+        });
+    </script>
+</body>
+</html>
