@@ -1,16 +1,772 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReminderTribù - Sistema Marketing Automation</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .auth-container {
+            display: flex;
+            min-height: 100vh;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        
+        .auth-card {
+            background: rgba(255,255,255,0.1);
+            padding: 3rem;
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .app-header {
+            background: rgba(0,0,0,0.3);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .main-content {
+            display: flex;
+            min-height: calc(100vh - 80px);
+        }
+        
+        .sidebar {
+            width: 250px;
+            background: rgba(0,0,0,0.2);
+            padding: 2rem 0;
+            backdrop-filter: blur(10px);
+        }
+        
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem 2rem;
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .nav-item:hover, .nav-item.active {
+            background: rgba(100, 255, 218, 0.1);
+            color: #64ffda;
+            border-right: 3px solid #64ffda;
+        }
+        
+        .nav-item i { margin-right: 1rem; font-size: 1.1rem; }
+        
+        .content-area {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #64ffda;
+            margin-bottom: 0.5rem;
+        }
+        
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: #64ffda;
+            color: #1a1a2e;
+        }
+        
+        .btn-primary:hover {
+            background: #4fd3b8;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .btn-success { background: #10b981; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #64ffda;
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 1rem;
+        }
+        
+        .form-control::placeholder { color: rgba(255,255,255,0.5); }
+        .form-control:focus {
+            outline: none;
+            border-color: #64ffda;
+            box-shadow: 0 0 0 2px rgba(100, 255, 218, 0.2);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        
+        .modal {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 20px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            padding: 2rem 2rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .modal-title {
+            font-size: 1.5rem;
+            margin: 0;
+            color: #64ffda;
+        }
+        
+        .modal-body { padding: 2rem; }
+        
+        .modal-footer {
+            padding: 1rem 2rem 2rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .data-table th {
+            padding: 1rem;
+            text-align: left;
+            background: rgba(100, 255, 218, 0.2);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-weight: 600;
+        }
+        
+        .data-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .status-expired { background: #ef4444; color: white; }
+        .status-expiring { background: #f59e0b; color: white; }
+        .status-active { background: #10b981; color: white; }
+        .status-messagesent { background: #3b82f6; color: white; }
+        .status-renewed { background: #8b5cf6; color: white; }
+        .status-scheduled { background: #06b6d4; color: white; }
+        .status-completed { background: #10b981; color: white; }
+        .status-failed { background: #ef4444; color: white; }
+        
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .whatsapp-btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.8rem;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 2000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .toast.success { background: linear-gradient(135deg, #10b981, #059669); }
+        .toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .toast.info { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .blink-row {
+            animation: blinkRed 1.5s infinite;
+        }
+        
+        @keyframes blinkRed {
+            0%, 50% { background-color: rgba(239, 68, 68, 0.3); }
+            25%, 75% { background-color: rgba(239, 68, 68, 0.1); }
+        }
+        
+        .hidden { display: none !important; }
+        
+        .filter-bar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .filter-btn.active {
+            background: #64ffda;
+            color: #1a1a2e;
+            border-color: #64ffda;
+        }
+        
+        .template-badge {
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        
+        .template-pasti { background: #f59e0b; color: white; }
+        .template-motivazionale { background: #8b5cf6; color: white; }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: fixed;
+                bottom: 0;
+                height: auto;
+                padding: 1rem 0;
+                z-index: 100;
+            }
+            
+            .nav {
+                display: flex;
+                justify-content: space-around;
+                overflow-x: auto;
+            }
+            
+            .nav-item {
+                flex-direction: column;
+                padding: 0.5rem;
+                text-align: center;
+                min-width: 80px;
+            }
+            
+            .content-area { margin-bottom: 80px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Loading Screen -->
+        <div class="loading-screen" id="loading-screen">
+            <div style="text-align: center;">
+                <i class="fas fa-bell" style="font-size: 4rem; color: #64ffda; margin-bottom: 1rem;"></i>
+                <h1 style="font-size: 2rem; margin-bottom: 2rem;">ReminderTribù</h1>
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #64ffda;"></i>
+                <p style="margin-top: 1rem;">Inizializzazione...</p>
+            </div>
+        </div>
+        
+        <!-- Auth Container -->
+        <div id="auth-container" class="auth-container hidden">
+            <div class="auth-card">
+                <i class="fas fa-bell" style="font-size: 3rem; color: #64ffda; margin-bottom: 1rem;"></i>
+                <h1 style="margin-bottom: 2rem;">ReminderTribù</h1>
+                <h2 style="margin-bottom: 2rem;">Accedi</h2>
+                
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" class="form-control" value="admin@tribu.com">
+                </div>
+                
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" class="form-control" value="tribu2025">
+                </div>
+                
+                <button class="btn btn-primary" onclick="performLogin()" style="width: 100%; justify-content: center;">
+                    <i class="fas fa-sign-in-alt"></i> Accedi
+                </button>
+            </div>
+        </div>
+        
+        <!-- Main App -->
+        <div id="main-app" class="hidden">
+            <header class="app-header">
+                <div>
+                    <i class="fas fa-bell"></i>
+                    <span style="font-size: 1.5rem; font-weight: 600; margin-left: 0.5rem;">ReminderTribù</span>
+                </div>
+                <div style="width: 40px; height: 40px; background: #64ffda; color: #1a1a2e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; cursor: pointer;" onclick="showToast('Ciao Admin! 👋', 'info')">
+                    TT
+                </div>
+            </header>
+            
+            <div class="main-content">
+                <aside class="sidebar">
+                    <nav class="nav">
+                        <div class="nav-item active" onclick="showPage('dashboard')">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </div>
+                        <div class="nav-item" onclick="showPage('tesserati')">
+                            <i class="fas fa-id-card"></i>
+                            <span>Tesserati CSEN</span>
+                        </div>
+                        <div class="nav-item" onclick="showPage('scadenze')">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>Scadenze</span>
+                            <span class="notification-badge" id="scadenzeBadge" style="display: none;"></span>
+                        </div>
+                        <div class="nav-item" onclick="showPage('marketing')">
+                            <i class="fas fa-bullhorn"></i>
+                            <span>Marketing</span>
+                        </div>
+                        <div class="nav-item" onclick="showPage('automazione')">
+                            <i class="fas fa-robot"></i>
+                            <span>Automazione</span>
+                            <span class="notification-badge" id="automationBadge" style="display: none;"></span>
+                        </div>
+                        <div class="nav-item" onclick="showPage('whatsapp')">
+                            <i class="fab fa-whatsapp"></i>
+                            <span>WhatsApp</span>
+                        </div>
+                        <div class="nav-item" onclick="showPage('import')">
+                            <i class="fas fa-upload"></i>
+                            <span>Import CSV</span>
+                        </div>
+                    </nav>
+                </aside>
+                
+                <main class="content-area">
+                    <div id="page-content">
+                        <!-- Content loaded here -->
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+    <div id="modal-container"></div>
+
+    <script>
+        // Global variables
+        let tesseratiData = [];
+        let marketingClienti = [];
+        let scheduledMessages = [];
+        let templates = {
+            "scadenze": "Ciao {nome}! Il tuo tesseramento presso Tribù Personal Training è scaduto. Per rinnovarlo e continuare ad allenarti con noi, contattaci al più presto! 💪",
+            "pasti": "Ciao {nome}! 🍽️ È lunedì mattina, non dimenticare di ordinare i pasti per questa settimana! Ricorda che una buona alimentazione è fondamentale per raggiungere i tuoi obiettivi. 💪",
+            "motivazionale": "Ciao {nome}! 💪 Ricorda che ogni allenamento ti avvicina ai tuoi obiettivi. Non mollare, sei più forte di quanto pensi! Oggi è il giorno perfetto per dare il massimo! 🔥"
+        };
+        
+        let currentPage = 'dashboard';
+        let currentFilter = 'all';
+        let filteredData = [];
+        let selectedClients = [];
+        let seenExpiredIds = [];
+        let nextTesseraNumber = 999999;
+        let schedulerInterval = null;
+        
+        // Load data from localStorage
+        function loadData() {
+            try {
+                tesseratiData = JSON.parse(localStorage.getItem('tesseratiData') || '[]');
+                marketingClienti = JSON.parse(localStorage.getItem('marketingClienti') || '[]');
+                scheduledMessages = JSON.parse(localStorage.getItem('scheduledMessages') || '[]');
+                templates = JSON.parse(localStorage.getItem('templates') || JSON.stringify(templates));
+                seenExpiredIds = JSON.parse(localStorage.getItem('seenExpiredIds') || '[]');
+                
+                // Process dates
+                tesseratiData.forEach(t => {
+                    if (t.dataScadenza && typeof t.dataScadenza === 'string') {
+                        t.dataScadenza = new Date(t.dataScadenza);
+                    }
+                });
+                
+                marketingClienti.forEach(c => {
+                    if (c.lastMessage && c.lastMessage.sentAt && typeof c.lastMessage.sentAt === 'string') {
+                        c.lastMessage.sentAt = new Date(c.lastMessage.sentAt);
+                    }
+                });
+                
+                scheduledMessages.forEach(m => {
+                    if (m.scheduledTime && typeof m.scheduledTime === 'string') {
+                        m.scheduledTime = new Date(m.scheduledTime);
+                    }
+                });
+                
+                console.log('Data loaded successfully');
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+        
+        // Save data to localStorage
+        function saveData() {
+            try {
+                localStorage.setItem('tesseratiData', JSON.stringify(tesseratiData));
+                localStorage.setItem('marketingClienti', JSON.stringify(marketingClienti));
+                localStorage.setItem('scheduledMessages', JSON.stringify(scheduledMessages));
+                localStorage.setItem('templates', JSON.stringify(templates));
+                localStorage.setItem('seenExpiredIds', JSON.stringify(seenExpiredIds));
+            } catch (error) {
+                console.error('Error saving data:', error);
+            }
+        }
+        
+        // Toast system
+        function showToast(message, type = 'info', duration = 4000) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'times' : 'info-circle'}"></i> ${message}`;
+            
+            document.getElementById('toast-container').appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, duration);
+        }
+        
+        // Login system
+        function performLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            if (email === 'admin@tribu.com' && password === 'tribu2025') {
+                showToast('Login effettuato con successo! 🎉', 'success');
+                
+                setTimeout(() => {
+                    document.getElementById('loading-screen').classList.add('hidden');
+                    document.getElementById('auth-container').classList.add('hidden');
+                    document.getElementById('main-app').classList.remove('hidden');
+                    
+                    showPage('dashboard');
+                    initializeScheduler();
+                    checkForNewExpired();
+                }, 1500);
+            } else {
+                showToast('Credenziali non valide', 'error');
+            }
+        }
+        
+        // Navigation
+        function showPage(pageName) {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`[onclick="showPage('${pageName}')"]`).classList.add('active');
+            
+            const content = getPageContent(pageName);
+            document.getElementById('page-content').innerHTML = content;
+            
+            currentPage = pageName;
+            
+            // Initialize page-specific functionality
+            if (pageName === 'import') {
+                const fileInput = document.getElementById('csvFileInput');
+                if (fileInput) {
+                    fileInput.addEventListener('change', handleCSVUpload);
+                }
+            } else if (pageName === 'tesserati' || pageName === 'scadenze') {
+                setTimeout(() => {
+                    setupFilters();
+                    initializeDataView();
+                }, 100);
+            } else if (pageName === 'marketing') {
+                setTimeout(() => {
+                    setupMarketingFilters();
+                    updateMarketingTable();
+                }, 100);
+            }
+        }
+        
+        // Page content generators
+        function getPageContent(pageName) {
+            switch (pageName) {
+                case 'dashboard':
+                    return getDashboardContent();
+                case 'tesserati':
+                    return getTesseratiContent();
+                case 'scadenze':
+                    return getScadenzeContent();
+                case 'marketing':
+                    return getMarketingContent();
+                case 'automazione':
+                    return getAutomazioneContent();
+                case 'whatsapp':
+                    return getWhatsAppContent();
+                case 'import':
+                    return getImportContent();
+                default:
+                    return '<div class="card"><h3>Pagina non trovata</h3></div>';
+            }
+        }
+        
+        function getDashboardContent() {
+            const stats = {
+                total: tesseratiData.length,
+                expired: tesseratiData.filter(t => t.status === 'expired').length,
+                expiring: tesseratiData.filter(t => t.status === 'expiring').length,
+                marketing: marketingClienti.length,
+                scheduled: scheduledMessages.filter(m => m.status === 'scheduled').length,
+                completed: scheduledMessages.filter(m => m.status === 'completed').length
+            };
+            
+            return `
+                <div style="margin-bottom: 2rem;">
+                    <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+                    <p style="opacity: 0.8;">Sistema completo di marketing automation - Tribù Personal Training</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <i class="fas fa-id-card" style="font-size: 2rem; color: #64ffda; margin-bottom: 1rem;"></i>
+                        <div class="stat-value">${stats.total}</div>
+                        <div>Tesserati CSEN</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-times-circle" style="font-size: 2rem; color: #ef4444; margin-bottom: 1rem;"></i>
+                        <div class="stat-value">${stats.expired}</div>
+                        <div>Scaduti</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #f59e0b; margin-bottom: 1rem;"></i>
+                        <div class="stat-value">${stats.expiring}</div>
+                        <div>In Scadenza</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-bullhorn" style="font-size: 2rem; color: #8b5cf6; margin-bottom: 1rem;"></i>
+                        <div class="stat-value">${stats.marketing}</div>
+                        <div>Clienti Marketing</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-robot" style="font-size: 2rem; color: #06b6d4; margin-bottom: 1rem;"></i>
+                        <div class="stat-value">${stats.scheduled}</div>
+                        <div>Invii Programmati</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-check-circle" style="font-size: 2rem; color: #10b981; margin-bottom: 1rem;"></i>
+                        <div class="stat-value">${stats.completed}</div>
+                        <div>Completati</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🎯 ReminderTribù - Sistema Completo</h3>
+                    <p style="margin-bottom: 2rem;">Piattaforma integrata per gestione tesseramenti CSEN e marketing automation WhatsApp.</p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                        <div style="background: rgba(100, 255, 218, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #64ffda;">
+                            <h4 style="color: #64ffda; margin-bottom: 1rem;">📋 Tesserati CSEN</h4>
+                            <ul style="line-height: 1.8; margin-bottom: 1rem;">
+                                <li>Import automatico CSV</li>
+                                <li>Monitoraggio scadenze</li>
+                                <li>Alert automatici</li>
+                                <li>Gestione stati e rinnovi</li>
+                            </ul>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button class="btn btn-primary btn-sm" onclick="showPage('tesserati')">
+                                    <i class="fas fa-id-card"></i> Tesserati
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="showPage('scadenze')">
+                                    <i class="fas fa-exclamation-triangle"></i> Scadenze
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div style="background: rgba(139, 92, 246, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #8b5cf6;">
+                            <h4 style="color: #8b5cf6; margin-bottom: 1rem;">📱 Marketing</h4>
+                            <ul style="line-height: 1.8; margin-bottom: 1rem;">
+                                <li>Clienti personalizzati</li>
+                                <li>Template ordini pasti</li>
+                                <li>Messaggi motivazionali</li>
+                                <li>Invii massivi</li>
+                            </ul>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button class="btn btn-primary btn-sm" onclick="showPage('marketing')">
+                                    <i class="fas fa-bullhorn"></i> Marketing
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="showAddMarketingClientModal()">
+                                    <i class="fas fa-user-plus"></i> Nuovo Cliente
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div style="background: rgba(6, 182, 212, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #06b6d4;">
+                            <h4 style="color: #06b6d4; margin-bottom: 1rem;">🤖 Automazione</h4>
+                            <ul style="line-height: 1.8; margin-bottom: 1rem;">
+                                <li>Programmazione invii automatici</li>
+                                <li>Ricorrenze personalizzabili</li>
+                                <li>Notifiche browser</li>
+                                <li>Monitoraggio esecuzioni</li>
+                            </ul>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button class="btn btn-primary btn-sm" onclick="showPage('automazione')">
+                                    <i class="fas fa-robot"></i> Automazione
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="showScheduleModal()">
+                                    <i class="fas fa-clock"></i> Programma Invio
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
         
         function getTesseratiContent() {
             return `
-                <div class="page-header">
+                <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                     <div>
-                        <h1 class="page-title"><i class="fas fa-id-card"></i> Tesserati CSEN</h1>
-                        <p class="page-subtitle">Gestione completa tesserati e scadenze</p>
+                        <h1><i class="fas fa-id-card"></i> Tesserati CSEN</h1>
+                        <p style="opacity: 0.8;">Gestione completa tesserati e scadenze</p>
                     </div>
-                    <div class="page-actions">
-                        <button class="btn btn-primary" onclick="showAddTesseratoModal()">
-                            <i class="fas fa-user-plus"></i> Nuovo Tesserato
-                        </button>
-                    </div>
+                    <button class="btn btn-primary" onclick="showAddTesseratoModal()">
+                        <i class="fas fa-user-plus"></i> Nuovo Tesserato
+                    </button>
                 </div>
                 
                 ${tesseratiData.length === 0 ? `
@@ -36,12 +792,12 @@
                             <button class="filter-btn" data-filter="messagesent">Msg Inviati (${tesseratiData.filter(t => t.status === 'messagesent').length})</button>
                             <button class="filter-btn" data-filter="renewed">Rinnovati (${tesseratiData.filter(t => t.status === 'renewed').length})</button>
                             
-                            <div class="search-box">
+                            <div style="flex: 1; min-width: 250px;">
                                 <input type="text" id="searchInput" class="form-control" placeholder="🔍 Cerca per nome o telefono...">
                             </div>
                         </div>
                         
-                        <div class="table-container">
+                        <div style="overflow-x: auto; margin-top: 2rem;">
                             <table class="data-table">
                                 <thead>
                                     <tr>
@@ -67,11 +823,9 @@
             const urgentCount = tesseratiData.filter(t => t.status === 'expired' || t.status === 'expiring').length;
             
             return `
-                <div class="page-header">
-                    <div>
-                        <h1 class="page-title"><i class="fas fa-exclamation-triangle"></i> Gestione Scadenze</h1>
-                        <p class="page-subtitle">Focus sui tesserati che necessitano di rinnovo</p>
-                    </div>
+                <div style="margin-bottom: 2rem;">
+                    <h1><i class="fas fa-exclamation-triangle"></i> Gestione Scadenze</h1>
+                    <p style="opacity: 0.8;">Focus sui tesserati che necessitano di rinnovo</p>
                 </div>
                 
                 ${tesseratiData.length === 0 ? `
@@ -92,12 +846,12 @@
                             <button class="filter-btn active" data-filter="expiring">In Scadenza (${tesseratiData.filter(t => t.status === 'expiring').length})</button>
                             <button class="filter-btn" data-filter="messagesent">Messaggi Inviati (${tesseratiData.filter(t => t.status === 'messagesent').length})</button>
                             
-                            <div class="search-box">
+                            <div style="flex: 1; min-width: 250px;">
                                 <input type="text" id="searchInput" class="form-control" placeholder="🔍 Cerca per nome o telefono...">
                             </div>
                         </div>
                         
-                        <div class="table-container">
+                        <div style="overflow-x: auto; margin-top: 2rem;">
                             <table class="data-table">
                                 <thead>
                                     <tr>
@@ -120,20 +874,18 @@
         }
         
         function getMarketingContent() {
-            const pastiClienti = marketingClienti.filter(c => c.templates.pasti).length;
-            const motivazioneClienti = marketingClienti.filter(c => c.templates.motivazionale).length;
+            const pastiClienti = marketingClienti.filter(c => c.templates && c.templates.pasti).length;
+            const motivazioneClienti = marketingClienti.filter(c => c.templates && c.templates.motivazionale).length;
             
             return `
-                <div class="page-header">
+                <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                     <div>
-                        <h1 class="page-title"><i class="fas fa-bullhorn"></i> Marketing Clienti</h1>
-                        <p class="page-subtitle">Gestione clienti per reminder pasti e messaggi motivazionali</p>
+                        <h1><i class="fas fa-bullhorn"></i> Marketing Clienti</h1>
+                        <p style="opacity: 0.8;">Gestione clienti per reminder pasti e messaggi motivazionali</p>
                     </div>
-                    <div class="page-actions">
-                        <button class="btn btn-primary" onclick="showAddMarketingClientModal()">
-                            <i class="fas fa-user-plus"></i> Nuovo Cliente
-                        </button>
-                    </div>
+                    <button class="btn btn-primary" onclick="showAddMarketingClientModal()">
+                        <i class="fas fa-user-plus"></i> Nuovo Cliente
+                    </button>
                 </div>
                 
                 ${marketingClienti.length === 0 ? `
@@ -145,7 +897,6 @@
                         </button>
                     </div>
                 ` : `
-                    <!-- Quick Select Buttons -->
                     <div class="card" style="margin-bottom: 1rem;">
                         <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                             <div style="font-weight: 600; color: #64ffda;">
@@ -163,7 +914,6 @@
                         </div>
                     </div>
                     
-                    <!-- Bulk Actions -->
                     <div class="card" style="margin-bottom: 1rem;">
                         <div id="bulkActions">
                             <div style="opacity: 0.6; font-size: 0.9rem;">
@@ -172,10 +922,9 @@
                         </div>
                     </div>
                     
-                    <!-- Main Table -->
                     <div class="card">
                         <div style="margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                            <div class="search-box" style="flex: 1; min-width: 250px;">
+                            <div style="flex: 1; min-width: 250px;">
                                 <input type="text" id="marketingSearch" class="form-control" placeholder="🔍 Cerca clienti...">
                             </div>
                             <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -185,7 +934,7 @@
                             </div>
                         </div>
                         
-                        <div class="table-container">
+                        <div style="overflow-x: auto;">
                             <table class="data-table">
                                 <thead>
                                     <tr>
@@ -206,40 +955,180 @@
             `;
         }
         
+        function getAutomazioneContent() {
+            const scheduledCount = scheduledMessages.filter(m => m.status === 'scheduled').length;
+            const completedCount = scheduledMessages.filter(m => m.status === 'completed').length;
+            
+            return `
+                <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h1><i class="fas fa-robot"></i> Automazione Temporale</h1>
+                        <p style="opacity: 0.8;">Gestione invii programmati e ricorrenti</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="showScheduleModal()">
+                        <i class="fas fa-clock"></i> Programma Nuovo Invio
+                    </button>
+                </div>
+                
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 2rem;">
+                    <div class="stat-card">
+                        <i class="fas fa-clock" style="font-size: 2rem; color: #06b6d4; margin-bottom: 1rem;"></i>
+                        <div class="stat-value">${scheduledCount}</div>
+                        <div>Programmati</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-sync-alt" style="font-size: 2rem; color: #8b5cf6; margin-bottom: 1rem;"></i>
+                        <div class="stat-value">${scheduledMessages.filter(m => m.isRecurring).length}</div>
+                        <div>Ricorrenti</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-check-circle" style="font-size: 2rem; color: #10b981; margin-bottom: 1rem;"></i>
+                        <div class="stat-value">${completedCount}</div>
+                        <div>Completati</div>
+                    </div>
+                </div>
+                
+                ${scheduledMessages.length === 0 ? `
+                    <div class="card">
+                        <h3>⏰ Nessun Invio Programmato</h3>
+                        <p style="margin-bottom: 2rem;">Inizia a programmare invii automatici per i tuoi clienti marketing.</p>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <button class="btn btn-primary" onclick="showScheduleModal()">
+                                <i class="fas fa-clock"></i> Programma Primo Invio
+                            </button>
+                            <button class="btn btn-secondary" onclick="showPage('marketing')">
+                                <i class="fas fa-bullhorn"></i> Vai ai Clienti
+                            </button>
+                        </div>
+                    </div>
+                ` : `
+                    <div class="card">
+                        <h3>📋 Invii Programmati</h3>
+                        <div style="overflow-x: auto; margin-top: 2rem;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Template</th>
+                                        <th>Data/Ora</th>
+                                        <th>Destinatari</th>
+                                        <th>Stato</th>
+                                        <th>Azioni</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${scheduledMessages
+                                        .sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime))
+                                        .map(message => {
+                                        const isOverdue = message.status === 'scheduled' && new Date(message.scheduledTime) < new Date();
+                                        const statusClass = isOverdue ? 'failed' : message.status;
+                                        const scheduledTime = new Date(message.scheduledTime);
+                                        
+                                        return `
+                                            <tr>
+                                                <td>
+                                                    <strong>${message.name}</strong>
+                                                    ${message.isRecurring ? '<br><small style="opacity: 0.7;">🔄 Ricorrente</small>' : ''}
+                                                </td>
+                                                <td>
+                                                    <span class="template-badge template-${message.templateType}">
+                                                        ${message.templateType === 'pasti' ? '🍽️ Pasti' : '💪 Motivaz.'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    ${scheduledTime.toLocaleString('it-IT')}
+                                                    ${message.isRecurring ? `<br><small style="opacity: 0.7;">${message.frequency}</small>` : ''}
+                                                </td>
+                                                <td>${message.totalCount}</td>
+                                                <td>
+                                                    <span class="status-badge status-${statusClass}">
+                                                        ${getStatusText(isOverdue ? 'failed' : message.status)}
+                                                    </span>
+                                                    ${message.status === 'completed' && message.sentCount ? 
+                                                        `<br><small style="opacity: 0.7;">${message.sentCount}/${message.totalCount} inviati</small>` : ''
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <div class="action-buttons">
+                                                        ${message.status === 'scheduled' ? `
+                                                            <button class="btn btn-danger btn-sm" onclick="deleteScheduledMessage(${message.id})" title="Elimina">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        ` : ''}
+                                                        ${message.status === 'completed' && message.completedAt ? `
+                                                            <small style="opacity: 0.7;">
+                                                                ${new Date(message.completedAt).toLocaleString('it-IT')}
+                                                            </small>
+                                                        ` : ''}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `}
+                
+                <div class="card" style="background: linear-gradient(135deg, rgba(100, 255, 218, 0.1), rgba(59, 130, 246, 0.1)); border-left: 4px solid #64ffda; position: relative;">
+                    <div style="position: absolute; top: 1rem; right: 1rem; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.7rem; font-weight: 600; background: #10b981; color: white;">🤖 Attivo</div>
+                    <h3>⚡ Sistema di Automazione Avanzata</h3>
+                    <p style="margin-bottom: 1.5rem;">Il sistema controlla ogni minuto gli invii programmati ed esegue automaticamente i messaggi all'orario stabilito.</p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                        <div style="background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 8px; border-left: 3px solid #10b981;">
+                            <h4 style="color: #10b981; margin-bottom: 0.5rem;">✅ Funzionalità Attive</h4>
+                            <ul style="font-size: 0.9rem; line-height: 1.6; margin: 0;">
+                                <li>Controllo automatico ogni minuto</li>
+                                <li>Esecuzione precisa all'orario programmato</li>
+                                <li>Notifiche browser per ogni invio</li>
+                                <li>Ricorrenze automatiche infinite</li>
+                                <li>Gestione errori e recupero</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px; border-left: 3px solid #3b82f6;">
+                            <h4 style="color: #3b82f6; margin-bottom: 0.5rem;">🔔 Notifiche Browser</h4>
+                            <p style="font-size: 0.9rem; line-height: 1.6; margin: 0;">
+                                Ricevi notifiche push quando inizia e completa ogni invio automatico. 
+                                ${typeof Notification !== 'undefined' && Notification.permission === 'granted' ? 
+                                    '<strong style="color: #10b981;">✅ Attivate</strong>' : 
+                                    '<button class="btn btn-secondary btn-sm" style="margin-top: 0.5rem;" onclick="requestNotificationPermission()">Attiva Notifiche</button>'
+                                }
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
         function getWhatsAppContent() {
             const scadenzeMessages = tesseratiData.filter(t => t.status === 'messagesent').length;
             const marketingMessages = marketingClienti.filter(c => c.lastMessage).length;
             const totalMessages = scadenzeMessages + marketingMessages;
             
             return `
-                <div class="page-header">
-                    <div>
-                        <h1 class="page-title"><i class="fab fa-whatsapp"></i> WhatsApp Templates</h1>
-                        <p class="page-subtitle">Gestione template e messaggi automatici</p>
-                    </div>
+                <div style="margin-bottom: 2rem;">
+                    <h1><i class="fab fa-whatsapp"></i> WhatsApp Templates</h1>
+                    <p style="opacity: 0.8;">Gestione template e messaggi automatici</p>
                 </div>
                 
                 <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 2rem;">
                     <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-paper-plane" style="color: #64ffda;"></i>
-                        </div>
+                        <i class="fas fa-paper-plane" style="font-size: 2rem; color: #64ffda; margin-bottom: 1rem;"></i>
                         <div class="stat-value">${totalMessages}</div>
-                        <div class="stat-label">Messaggi Totali</div>
+                        <div>Messaggi Totali</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-id-card" style="color: #ef4444;"></i>
-                        </div>
+                        <i class="fas fa-id-card" style="font-size: 2rem; color: #ef4444; margin-bottom: 1rem;"></i>
                         <div class="stat-value">${scadenzeMessages}</div>
-                        <div class="stat-label">Scadenze CSEN</div>
+                        <div>Scadenze CSEN</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-bullhorn" style="color: #8b5cf6;"></i>
-                        </div>
+                        <i class="fas fa-bullhorn" style="font-size: 2rem; color: #8b5cf6; margin-bottom: 1rem;"></i>
                         <div class="stat-value">${marketingMessages}</div>
-                        <div class="stat-label">Marketing</div>
+                        <div>Marketing</div>
                     </div>
                 </div>
                 
@@ -298,20 +1187,18 @@
         
         function getImportContent() {
             return `
-                <div class="page-header">
-                    <div>
-                        <h1 class="page-title"><i class="fas fa-upload"></i> Import CSV CSEN</h1>
-                        <p class="page-subtitle">Carica automaticamente i dati dei tesserati</p>
-                    </div>
+                <div style="margin-bottom: 2rem;">
+                    <h1><i class="fas fa-upload"></i> Import CSV CSEN</h1>
+                    <p style="opacity: 0.8;">Carica automaticamente i dati dei tesserati</p>
                 </div>
                 
                 <div class="card">
                     <h3>📂 Caricamento File CSV</h3>
                     <p style="margin-bottom: 2rem;">Carica il file CSV esportato direttamente dal sistema CSEN.</p>
                     
-                    <div class="file-upload">
-                        <input type="file" id="csvFileInput" accept=".csv" />
-                        <label for="csvFileInput" class="file-upload-label">
+                    <div style="position: relative; display: inline-block; cursor: pointer;">
+                        <input type="file" id="csvFileInput" accept=".csv" style="position: absolute; left: -9999px;" />
+                        <label for="csvFileInput" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.8rem 1.5rem; background: rgba(100, 255, 218, 0.1); color: #64ffda; border: 2px dashed #64ffda; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
                             <i class="fas fa-cloud-upload-alt"></i>
                             Seleziona File CSV CSEN
                         </label>
@@ -328,2606 +1215,7 @@
             `;
         }
         
-        function getNotFoundContent(pageName) {
-            return `
-                <div class="page-header">
-                    <h1 class="page-title">❌ Pagina Non Trovata</h1>
-                    <p class="page-subtitle">La pagina "${pageName}" non è disponibile</p>
-                </div>
-                <div class="card text-center">
-                    <h3>🔍 Pagina non trovata</h3>
-                    <p>La pagina richiesta non è disponibile al momento.</p>
-                    <button class="btn btn-primary" onclick="showPage('dashboard')">
-                        <i class="fas fa-home"></i> Torna alla Dashboard
-                    </button>
-                </div>
-            `;
-        }
-        
-        // Initialize data view
-        function initializeDataView() {
-            if (currentPage === 'scadenze') {
-                filteredData = tesseratiData.filter(t => t.status === 'expired' || t.status === 'expiring');
-                currentFilter = 'expiring';
-            } else {
-                filteredData = [...tesseratiData];
-                currentFilter = 'all';
-            }
-            
-            setTimeout(() => {
-                updateDataTable();
-                if (document.querySelector('.filter-btn')) {
-                    setFilter(currentFilter);
-                }
-            }, 100);
-        }
-        
-        // Initialize app
-        document.addEventListener('DOMContentLoaded', function() {
-            // Load data from localStorage
-            if (tesseratiData.length > 0) {
-                // Process dates from localStorage
-                tesseratiData.forEach(t => {
-                    if (t.dataScadenza && typeof t.dataScadenza === 'string') {
-                        t.dataScadenza = new Date(t.dataScadenza);
-                    }
-                });
-            }
-            
-            if (marketingClienti.length > 0) {
-                marketingClienti.forEach(c => {
-                    if (c.createdAt && typeof c.createdAt === 'string') {
-                        c.createdAt = new Date(c.createdAt);
-                    }
-                    if (c.lastMessage && c.lastMessage.sentAt && typeof c.lastMessage.sentAt === 'string') {
-                        c.lastMessage.sentAt = new Date(c.lastMessage.sentAt);
-                    }
-                });
-            }
-            
-            if (scheduledMessages.length > 0) {
-                scheduledMessages.forEach(m => {
-                    if (m.scheduledTime && typeof m.scheduledTime === 'string') {
-                        m.scheduledTime = new Date(m.scheduledTime);
-                    }
-                    if (m.createdAt && typeof m.createdAt === 'string') {
-                        m.createdAt = new Date(m.createdAt);
-                    }
-                    if (m.executedAt && typeof m.executedAt === 'string') {
-                        m.executedAt = new Date(m.executedAt);
-                    }
-                    if (m.completedAt && typeof m.completedAt === 'string') {
-                        m.completedAt = new Date(m.completedAt);
-                    }
-                });
-            }
-            
-            // Hide loading after 2 seconds and show auth
-            setTimeout(() => {
-                document.getElementById('loading-screen').classList.add('hidden');
-                document.getElementById('auth-container').classList.remove('hidden');
-            }, 2000);
-        });
-        
-        // Override showPage to handle data initialization
-        const originalShowPage = showPage;
-        showPage = function(pageName) {
-            originalShowPage(pageName);
-            
-            if ((pageName === 'tesserati' || pageName === 'scadenze') && tesseratiData.length > 0) {
-                setTimeout(initializeDataView, 100);
-            }
-        };
-    </script>
-</body>
-</html><!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ReminderTribù - Sistema Completo di Marketing Automation</title>
-    
-    <!-- External Libraries -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔔</text></svg>">
-    
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-            color: white;
-            min-height: 100vh;
-        }
-        
-        /* Alert System */
-        .alert-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 3000;
-            animation: fadeIn 0.3s ease;
-        }
-        
-        .alert-popup {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            padding: 2rem;
-            border-radius: 20px;
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-            animation: slideDown 0.3s ease;
-        }
-        
-        .alert-icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            animation: pulse 2s infinite;
-        }
-        
-        /* Blinking Animation */
-        .blink-row {
-            animation: blinkRed 1.5s infinite;
-        }
-        
-        .notification-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background: #ef4444;
-            color: white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            font-size: 0.7rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes blinkRed {
-            0%, 50% { background-color: rgba(239, 68, 68, 0.3); }
-            25%, 75% { background-color: rgba(239, 68, 68, 0.1); }
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        @keyframes slideDown {
-            from { transform: translateY(-50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        
-        /* Modal System */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            animation: fadeIn 0.3s ease;
-        }
-        
-        .modal {
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            border-radius: 20px;
-            max-width: 700px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-            animation: slideDown 0.3s ease;
-        }
-        
-        .modal-header {
-            padding: 2rem 2rem 1rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .modal-title {
-            font-size: 1.5rem;
-            margin: 0;
-            color: #64ffda;
-        }
-        
-        .modal-body {
-            padding: 2rem;
-        }
-        
-        .modal-footer {
-            padding: 1rem 2rem 2rem;
-            display: flex;
-            gap: 1rem;
-            justify-content: flex-end;
-        }
-        
-        .loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        
-        .loading-content {
-            text-align: center;
-        }
-        
-        .logo {
-            margin-bottom: 2rem;
-        }
-        
-        .logo i {
-            font-size: 4rem;
-            color: #64ffda;
-            margin-bottom: 1rem;
-            display: block;
-        }
-        
-        .logo h1 {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .loading-spinner {
-            margin: 2rem 0;
-        }
-        
-        .loading-spinner i {
-            font-size: 2rem;
-            color: #64ffda;
-        }
-        
-        .loading-text {
-            font-size: 1.1rem;
-            opacity: 0.8;
-        }
-        
-        .app-header {
-            background: rgba(0,0,0,0.3);
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .logo span {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-left: 0.5rem;
-        }
-        
-        .user-menu {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-        
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            background: #64ffda;
-            color: #1a1a2e;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            cursor: pointer;
-            position: relative;
-        }
-        
-        .main-content {
-            display: flex;
-            min-height: calc(100vh - 80px);
-        }
-        
-        .sidebar {
-            width: 250px;
-            background: rgba(0,0,0,0.2);
-            padding: 2rem 0;
-            backdrop-filter: blur(10px);
-        }
-        
-        .nav-item {
-            display: flex;
-            align-items: center;
-            padding: 1rem 2rem;
-            color: rgba(255,255,255,0.7);
-            text-decoration: none;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            position: relative;
-        }
-        
-        .nav-item:hover, .nav-item.active {
-            background: rgba(100, 255, 218, 0.1);
-            color: #64ffda;
-            border-right: 3px solid #64ffda;
-        }
-        
-        .nav-item i {
-            margin-right: 1rem;
-            font-size: 1.1rem;
-        }
-        
-        .content-area {
-            flex: 1;
-            padding: 2rem;
-            overflow-y: auto;
-        }
-        
-        .page-header {
-            margin-bottom: 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-        
-        .page-title {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .page-subtitle {
-            opacity: 0.8;
-            font-size: 1.1rem;
-        }
-        
-        .page-actions {
-            display: flex;
-            gap: 1rem;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        
-        .stat-card {
-            background: rgba(255,255,255,0.1);
-            padding: 1.5rem;
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-            text-align: center;
-        }
-        
-        .stat-icon {
-            margin-bottom: 1rem;
-        }
-        
-        .stat-icon i {
-            font-size: 2rem;
-        }
-        
-        .stat-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            color: #64ffda;
-        }
-        
-        .stat-label {
-            opacity: 0.8;
-            font-size: 0.9rem;
-        }
-        
-        .card {
-            background: rgba(255,255,255,0.1);
-            padding: 2rem;
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 2rem;
-        }
-        
-        .card h3 {
-            margin-bottom: 1rem;
-            color: #64ffda;
-        }
-        
-        .btn {
-            padding: 0.8rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            font-size: 0.9rem;
-        }
-        
-        .btn-primary {
-            background: #64ffda;
-            color: #1a1a2e;
-        }
-        
-        .btn-primary:hover {
-            background: #4fd3b8;
-            transform: translateY(-2px);
-        }
-        
-        .btn-secondary {
-            background: rgba(255,255,255,0.1);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.3);
-        }
-        
-        .btn-secondary:hover {
-            background: rgba(255,255,255,0.2);
-        }
-        
-        .btn-success {
-            background: #10b981;
-            color: white;
-        }
-        
-        .btn-warning {
-            background: #f59e0b;
-            color: white;
-        }
-        
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-        }
-        
-        .btn-sm {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.8rem;
-        }
-        
-        .auth-container {
-            display: flex;
-            min-height: 100vh;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-        }
-        
-        .auth-card {
-            background: rgba(255,255,255,0.1);
-            padding: 3rem;
-            border-radius: 20px;
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.2);
-            max-width: 400px;
-            width: 100%;
-            text-align: center;
-        }
-        
-        .form-group {
-            margin-bottom: 1.5rem;
-            text-align: left;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #64ffda;
-            font-weight: 500;
-        }
-        
-        .form-control {
-            width: 100%;
-            padding: 0.8rem;
-            border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 8px;
-            background: rgba(255,255,255,0.1);
-            color: white;
-            font-size: 1rem;
-        }
-        
-        .form-control::placeholder {
-            color: rgba(255,255,255,0.5);
-        }
-        
-        .form-control:focus {
-            outline: none;
-            border-color: #64ffda;
-            box-shadow: 0 0 0 2px rgba(100, 255, 218, 0.2);
-        }
-        
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-        
-        .form-section {
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-section h4 {
-            color: #64ffda;
-            margin-bottom: 1rem;
-        }
-        
-        .template-editor {
-            background: rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 8px;
-            padding: 1rem;
-            color: white;
-            font-family: monospace;
-            resize: vertical;
-            min-height: 120px;
-        }
-        
-        .template-preview {
-            background: rgba(37, 211, 102, 0.1);
-            border: 1px solid #25d366;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-top: 1rem;
-            font-family: monospace;
-            line-height: 1.6;
-        }
-        
-        .file-upload {
-            position: relative;
-            display: inline-block;
-            cursor: pointer;
-        }
-        
-        .file-upload input[type="file"] {
-            position: absolute;
-            left: -9999px;
-        }
-        
-        .file-upload-label {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.8rem 1.5rem;
-            background: rgba(100, 255, 218, 0.1);
-            color: #64ffda;
-            border: 2px dashed #64ffda;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .file-upload-label:hover {
-            background: rgba(100, 255, 218, 0.2);
-            border-color: #4fd3b8;
-        }
-        
-        .table-container {
-            overflow-x: auto;
-            margin-top: 2rem;
-        }
-        
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        
-        .data-table th {
-            padding: 1rem;
-            text-align: left;
-            background: rgba(100, 255, 218, 0.2);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            font-weight: 600;
-        }
-        
-        .data-table td {
-            padding: 1rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-        }
-        
-        .status-expired {
-            background: #ef4444;
-            color: white;
-        }
-        
-        .status-expiring {
-            background: #f59e0b;
-            color: white;
-        }
-        
-        .status-active {
-            background: #10b981;
-            color: white;
-        }
-        
-        .status-messagesent {
-            background: #3b82f6;
-            color: white;
-        }
-        
-        .status-renewed {
-            background: #8b5cf6;
-            color: white;
-        }
-        
-        .status-scheduled {
-            background: #06b6d4;
-            color: white;
-        }
-        
-        .status-completed {
-            background: #10b981;
-            color: white;
-        }
-        
-        .status-failed {
-            background: #ef4444;
-            color: white;
-        }
-        
-        .status-overdue {
-            background: #dc2626;
-            color: white;
-            animation: pulse 2s infinite;
-        }
-        
-        .action-buttons {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-        
-        .whatsapp-btn {
-            background: #25d366;
-            color: white;
-            border: none;
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-            font-size: 0.8rem;
-        }
-        
-        .whatsapp-btn:hover {
-            background: #1ea952;
-        }
-        
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
-            color: white;
-            font-weight: 500;
-            z-index: 2000;
-            animation: slideIn 0.3s ease;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        }
-        
-        .toast.success {
-            background: linear-gradient(135deg, #10b981, #059669);
-        }
-        
-        .toast.error {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-        }
-        
-        .toast.info {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-        }
-        
-        .toast.warning {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-        }
-        
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-        
-        .filter-bar {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        
-        .filter-btn {
-            padding: 0.5rem 1rem;
-            border: 1px solid rgba(255,255,255,0.3);
-            background: rgba(255,255,255,0.1);
-            color: white;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.9rem;
-        }
-        
-        .filter-btn.active {
-            background: #64ffda;
-            color: #1a1a2e;
-            border-color: #64ffda;
-        }
-        
-        .search-box {
-            flex: 1;
-            min-width: 250px;
-        }
-        
-        .template-selector {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-        }
-        
-        .template-badge {
-            padding: 0.2rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-        
-        .template-pasti {
-            background: #f59e0b;
-            color: white;
-        }
-        
-        .template-motivazionale {
-            background: #8b5cf6;
-            color: white;
-        }
-        
-        /* Automation specific styles */
-        .automation-card {
-            background: linear-gradient(135deg, rgba(100, 255, 218, 0.1), rgba(59, 130, 246, 0.1));
-            border-left: 4px solid #64ffda;
-            position: relative;
-        }
-        
-        .automation-status {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-        
-        .notification-toast {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            animation: slideIn 0.3s ease;
-            z-index: 2001;
-        }
-        
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                position: fixed;
-                bottom: 0;
-                height: auto;
-                padding: 1rem 0;
-                z-index: 100;
-            }
-            
-            .nav {
-                display: flex;
-                justify-content: space-around;
-                overflow-x: auto;
-            }
-            
-            .nav-item {
-                flex-direction: column;
-                padding: 0.5rem;
-                text-align: center;
-                min-width: 80px;
-            }
-            
-            .nav-item span {
-                font-size: 0.7rem;
-                margin-top: 0.25rem;
-            }
-            
-            .content-area {
-                margin-bottom: 80px;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .filter-bar {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-            
-            .page-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            
-            .action-buttons {
-                flex-direction: column;
-            }
-        }
-    </style>
-</head>
-<body>
-    <!-- Main App Container -->
-    <div id="app">
-        <!-- Loading Screen -->
-        <div class="loading-screen" id="loading-screen">
-            <div class="loading-content">
-                <div class="logo">
-                    <i class="fas fa-bell"></i>
-                    <h1>ReminderTribù</h1>
-                </div>
-                <div class="loading-spinner">
-                    <i class="fas fa-spinner fa-spin"></i>
-                </div>
-                <p class="loading-text">Inizializzazione in corso...</p>
-            </div>
-        </div>
-        
-        <!-- Auth Container -->
-        <div id="auth-container" class="auth-container hidden">
-            <div class="auth-card">
-                <div class="logo">
-                    <i class="fas fa-bell"></i>
-                    <h1>ReminderTribù</h1>
-                </div>
-                
-                <h2 style="margin-bottom: 2rem;">Accedi al tuo account</h2>
-                
-                <div class="form-group">
-                    <label for="loginEmail">Email</label>
-                    <input type="email" id="loginEmail" class="form-control" placeholder="admin@tribu.com" value="admin@tribu.com">
-                </div>
-                
-                <div class="form-group">
-                    <label for="loginPassword">Password</label>
-                    <input type="password" id="loginPassword" class="form-control" placeholder="tribu2025" value="tribu2025">
-                </div>
-                
-                <button type="button" class="btn btn-primary" onclick="performLogin()" style="width: 100%; justify-content: center;">
-                    <i class="fas fa-sign-in-alt"></i> Accedi
-                </button>
-                
-                <p style="margin-top: 1rem; opacity: 0.7; font-size: 0.9rem;">
-                    <strong>Credenziali:</strong> admin@tribu.com / tribu2025
-                </p>
-            </div>
-        </div>
-        
-        <!-- Main Application -->
-        <div id="main-app" class="hidden">
-            <!-- App Header -->
-            <header class="app-header">
-                <div class="logo">
-                    <i class="fas fa-bell"></i>
-                    <span>ReminderTribù</span>
-                </div>
-                
-                <div class="user-menu">
-                    <div class="user-avatar" onclick="showToast('Ciao Admin! 👋', 'info')">
-                        TT
-                    </div>
-                </div>
-            </header>
-            
-            <!-- Main Content -->
-            <div class="main-content">
-                <!-- Sidebar -->
-                <aside class="sidebar">
-                    <nav class="nav">
-                        <div class="nav-item active" onclick="showPage('dashboard')">
-                            <i class="fas fa-tachometer-alt"></i>
-                            <span>Dashboard</span>
-                        </div>
-                        <div class="nav-item" onclick="showPage('tesserati')">
-                            <i class="fas fa-id-card"></i>
-                            <span>Tesserati CSEN</span>
-                        </div>
-                        <div class="nav-item" onclick="showPage('scadenze')">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <span>Scadenze</span>
-                            <span class="notification-badge" id="scadenzeBadge" style="display: none;"></span>
-                        </div>
-                        <div class="nav-item" onclick="showPage('marketing')">
-                            <i class="fas fa-bullhorn"></i>
-                            <span>Marketing</span>
-                        </div>
-                        <div class="nav-item" onclick="showPage('automazione')">
-                            <i class="fas fa-robot"></i>
-                            <span>Automazione</span>
-                            <span class="notification-badge" id="automationBadge" style="display: none;"></span>
-                        </div>
-                        <div class="nav-item" onclick="showPage('whatsapp')">
-                            <i class="fab fa-whatsapp"></i>
-                            <span>WhatsApp</span>
-                        </div>
-                        <div class="nav-item" onclick="showPage('import')">
-                            <i class="fas fa-upload"></i>
-                            <span>Import CSV</span>
-                        </div>
-                    </nav>
-                </aside>
-                
-                <!-- Content Area -->
-                <main class="content-area">
-                    <div id="page-content">
-                        <!-- Dynamic content will be loaded here -->
-                    </div>
-                </main>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast Container -->
-    <div id="toast-container"></div>
-    
-    <!-- Modal Container -->
-    <div id="modal-container"></div>
-
-    <script>
-        // Global App State
-        let tesseratiData = JSON.parse(localStorage.getItem('tesseratiData') || '[]');
-        let marketingClienti = JSON.parse(localStorage.getItem('marketingClienti') || '[]');
-        let scheduledMessages = JSON.parse(localStorage.getItem('scheduledMessages') || '[]');
-        let templates = JSON.parse(localStorage.getItem('templates') || `{
-            "scadenze": "Ciao {nome}! Il tuo tesseramento presso Tribù Personal Training è scaduto. Per rinnovarlo e continuare ad allenarti con noi, contattaci al più presto! 💪",
-            "pasti": "Ciao {nome}! 🍽️ È lunedì mattina, non dimenticare di ordinare i pasti per questa settimana! Ricorda che una buona alimentazione è fondamentale per raggiungere i tuoi obiettivi. 💪",
-            "motivazionale": "Ciao {nome}! 💪 Ricorda che ogni allenamento ti avvicina ai tuoi obiettivi. Non mollare, sei più forte di quanto pensi! Oggi è il giorno perfetto per dare il massimo! 🔥"
-        }`);
-        
-        let filteredData = [];
-        let currentUser = null;
-        let currentPage = 'dashboard';
-        let currentFilter = 'all';
-        let currentSection = 'tesserati';
-        let seenExpiredIds = JSON.parse(localStorage.getItem('seenExpiredIds') || '[]');
-        let nextTesseraNumber = 999999;
-        let schedulerInterval = null;
-        
-        // Bulk messaging state
-        let selectedClients = [];
-        let isBulkSending = false;
-        
-        // Save data to localStorage
-        function saveData() {
-            localStorage.setItem('tesseratiData', JSON.stringify(tesseratiData));
-            localStorage.setItem('marketingClienti', JSON.stringify(marketingClienti));
-            localStorage.setItem('scheduledMessages', JSON.stringify(scheduledMessages));
-            localStorage.setItem('templates', JSON.stringify(templates));
-            localStorage.setItem('seenExpiredIds', JSON.stringify(seenExpiredIds));
-        }
-        
-        // Notification System
-        function requestNotificationPermission() {
-            if ('Notification' in window && Notification.permission === 'default') {
-                Notification.requestPermission().then(permission => {
-                    if (permission === 'granted') {
-                        showToast('📱 Notifiche browser attivate!', 'success');
-                    }
-                });
-            }
-        }
-        
-        function showBrowserNotification(title, message, icon = '🔔') {
-            if ('Notification' in window && Notification.permission === 'granted') {
-                const notification = new Notification(title, {
-                    body: message,
-                    icon: `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">${icon}</text></svg>`,
-                    requireInteraction: true
-                });
-                
-                setTimeout(() => notification.close(), 10000);
-            }
-        }
-        
-        // Toast System
-        function showToast(message, type = 'info', duration = 4000) {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'times' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
-            
-            document.getElementById('toast-container').appendChild(toast);
-            
-            setTimeout(() => {
-                toast.remove();
-            }, duration);
-        }
-        
-        // Scheduler System
-        function initializeScheduler() {
-            // Request notification permission on startup
-            setTimeout(requestNotificationPermission, 2000);
-            
-            // Check scheduled messages every minute
-            if (schedulerInterval) clearInterval(schedulerInterval);
-            schedulerInterval = setInterval(checkScheduledMessages, 60000);
-            
-            // Process existing scheduled messages
-            processScheduledMessages();
-            updateAutomationBadge();
-        }
-        
-        function checkScheduledMessages() {
-            const now = new Date();
-            const messagesToExecute = scheduledMessages.filter(msg => 
-                msg.status === 'scheduled' && new Date(msg.scheduledTime) <= now
-            );
-            
-            messagesToExecute.forEach(message => {
-                executeScheduledMessage(message);
-            });
-            
-            // Update UI if on automation page
-            if (currentPage === 'automazione') {
-                showPage('automazione');
-            }
-            
-            updateAutomationBadge();
-        }
-        
-        function processScheduledMessages() {
-            const now = new Date();
-            
-            scheduledMessages.forEach(message => {
-                if (message.isRecurring && message.status === 'completed' && message.nextExecution) {
-                    const nextTime = new Date(message.nextExecution);
-                    if (nextTime <= now) {
-                        // Reschedule recurring message
-                        scheduleNextRecurrence(message);
-                    }
-                }
-            });
-            
-            saveData();
-        }
-        
-        async function executeScheduledMessage(message) {
-            try {
-                message.status = 'executing';
-                message.executedAt = new Date();
-                saveData();
-                
-                // Show notification
-                showBrowserNotification(
-                    '🚀 Invio Automatico Avviato',
-                    `Avvio invio: ${message.name}`,
-                    '📤'
-                );
-                
-                showToast(`🚀 Invio automatico avviato: ${message.name}`, 'info', 6000);
-                
-                // Execute bulk sending
-                await executeBulkScheduledSending(message);
-                
-                // Mark as completed
-                message.status = 'completed';
-                message.completedAt = new Date();
-                
-                // Schedule next recurrence if recurring
-                if (message.isRecurring) {
-                    scheduleNextRecurrence(message);
-                }
-                
-                // Show completion notification
-                showBrowserNotification(
-                    '✅ Invio Automatico Completato',
-                    `Completato: ${message.name} - ${message.recipients.length} messaggi`,
-                    '✅'
-                );
-                
-                showToast(`✅ Invio automatico completato: ${message.name}`, 'success', 6000);
-                
-            } catch (error) {
-                message.status = 'failed';
-                message.error = error.message;
-                showToast(`❌ Errore invio automatico: ${message.name}`, 'error');
-                console.error('Scheduled message execution failed:', error);
-            }
-            
-            saveData();
-        }
-        
-        async function executeBulkScheduledSending(message) {
-            const clients = message.recipients;
-            let sentCount = 0;
-            
-            for (let i = 0; i < clients.length; i++) {
-                const cliente = clients[i];
-                
-                try {
-                    // Generate personalized message
-                    let personalizedMessage = templates[message.templateType];
-                    personalizedMessage = personalizedMessage
-                        .replace(/{nome}/g, cliente.nome)
-                        .replace(/{cognome}/g, cliente.cognome)
-                        .replace(/{giornoSettimana}/g, new Date().toLocaleDateString('it-IT', { weekday: 'long' }));
-                    
-                    const encodedMessage = encodeURIComponent(personalizedMessage);
-                    const whatsappUrl = `https://wa.me/${cliente.telefono.replace('+', '')}?text=${encodedMessage}`;
-                    
-                    // Open WhatsApp
-                    window.open(whatsappUrl, '_blank');
-                    
-                    // Update client's last message
-                    const fullClient = marketingClienti.find(c => c.id === cliente.id);
-                    if (fullClient) {
-                        fullClient.lastMessage = {
-                            type: message.templateType,
-                            sentAt: new Date(),
-                            message: personalizedMessage,
-                            automated: true
-                        };
-                    }
-                    
-                    sentCount++;
-                    
-                    // Wait 3 seconds before next send (except for last one)
-                    if (i < clients.length - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 3000));
-                    }
-                    
-                } catch (error) {
-                    console.error(`Failed to send message to ${cliente.nome}:`, error);
-                }
-            }
-            
-            // Update message stats
-            message.sentCount = sentCount;
-            message.totalCount = clients.length;
-            
-            saveData();
-            return sentCount;
-        }
-        
-        function scheduleNextRecurrence(message) {
-            const currentTime = new Date(message.scheduledTime);
-            let nextTime = new Date(currentTime);
-            
-            switch (message.frequency) {
-                case 'daily':
-                    nextTime.setDate(nextTime.getDate() + 1);
-                    break;
-                case 'weekly':
-                    nextTime.setDate(nextTime.getDate() + 7);
-                    break;
-                case 'monthly':
-                    nextTime.setMonth(nextTime.getMonth() + 1);
-                    break;
-            }
-            
-            // Create new scheduled message for next recurrence
-            const newMessage = {
-                ...message,
-                id: Date.now() + Math.random(),
-                scheduledTime: nextTime,
-                status: 'scheduled',
-                executedAt: null,
-                completedAt: null,
-                sentCount: 0,
-                totalCount: message.recipients.length,
-                error: null
-            };
-            
-            scheduledMessages.push(newMessage);
-            saveData();
-        }
-        
-        function updateAutomationBadge() {
-            const badge = document.getElementById('automationBadge');
-            const activeCount = scheduledMessages.filter(m => m.status === 'scheduled').length;
-            const overdueCount = scheduledMessages.filter(m => 
-                m.status === 'scheduled' && new Date(m.scheduledTime) < new Date()
-            ).length;
-            
-            if (activeCount > 0) {
-                badge.textContent = activeCount;
-                badge.style.display = 'flex';
-                badge.style.background = overdueCount > 0 ? '#dc2626' : '#06b6d4';
-            } else {
-                badge.style.display = 'none';
-            }
-        }
-        
-        // Scheduling Functions
-        function showScheduleModal(selectedClientIds = [], templateType = null) {
-            const clientsData = selectedClientIds.length > 0 
-                ? selectedClientIds.map(id => marketingClienti.find(c => c.id === id)).filter(c => c)
-                : [];
-            
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setHours(9, 0, 0, 0);
-            
-            const modalHtml = `
-                <div class="modal-overlay" onclick="closeModal(event)">
-                    <div class="modal" onclick="event.stopPropagation()">
-                        <div class="modal-header">
-                            <h3 class="modal-title">⏰ Programma Invio Automatico</h3>
-                        </div>
-                        <div class="modal-body">
-                            <div class="form-group">
-                                <label for="scheduleName">Nome Programmazione *</label>
-                                <input type="text" id="scheduleName" class="form-control" 
-                                       placeholder="es: Reminder Pasti Settimanale" required>
-                            </div>
-                            
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="scheduleDate">Data *</label>
-                                    <input type="date" id="scheduleDate" class="form-control" 
-                                           value="${tomorrow.toISOString().split('T')[0]}" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="scheduleTime">Ora *</label>
-                                    <input type="time" id="scheduleTime" class="form-control" 
-                                           value="09:00" required>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="templateSelect">Template Messaggio *</label>
-                                <select id="templateSelect" class="form-control" required>
-                                    <option value="">Seleziona template...</option>
-                                    <option value="pasti" ${templateType === 'pasti' ? 'selected' : ''}>🍽️ Reminder Ordine Pasti</option>
-                                    <option value="motivazionale" ${templateType === 'motivazionale' ? 'selected' : ''}>💪 Messaggio Motivazionale</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-section">
-                                <h4>🔄 Ricorrenza</h4>
-                                <div class="form-group">
-                                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                                        <input type="checkbox" id="isRecurring">
-                                        <span>Ripeti automaticamente</span>
-                                    </label>
-                                </div>
-                                
-                                <div id="recurringOptions" style="display: none;">
-                                    <div class="form-group">
-                                        <label for="frequency">Frequenza</label>
-                                        <select id="frequency" class="form-control">
-                                            <option value="daily">Giornaliero</option>
-                                            <option value="weekly" selected>Settimanale</option>
-                                            <option value="monthly">Mensile</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>👥 Destinatari</label>
-                                <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; margin-top: 0.5rem;">
-                                    ${clientsData.length > 0 ? `
-                                        <p style="margin-bottom: 0.5rem;"><strong>${clientsData.length} clienti selezionati:</strong></p>
-                                        <div style="max-height: 150px; overflow-y: auto;">
-                                            ${clientsData.map(c => `
-                                                <div style="padding: 0.25rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                                    ${c.nome} ${c.cognome} - ${c.telefono}
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                    ` : `
-                                        <p style="opacity: 0.7; margin: 0;">I destinatari verranno filtrati automaticamente in base al template selezionato.</p>
-                                    `}
-                                </div>
-                            </div>
-                            
-                        </div>
-                        <div class="modal-footer">
-                            <button class="btn btn-secondary" onclick="closeModal()">
-                                <i class="fas fa-times"></i> Annulla
-                            </button>
-                            <button class="btn btn-primary" onclick="saveScheduledMessage()">
-                                <i class="fas fa-clock"></i> Programma Invio
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('modal-container').innerHTML = modalHtml;
-            
-            // Setup recurring options toggle
-            document.getElementById('isRecurring').addEventListener('change', function() {
-                document.getElementById('recurringOptions').style.display = 
-                    this.checked ? 'block' : 'none';
-            });
-        }
-        
-        function saveScheduledMessage() {
-            const name = document.getElementById('scheduleName').value.trim();
-            const date = document.getElementById('scheduleDate').value;
-            const time = document.getElementById('scheduleTime').value;
-            const templateType = document.getElementById('templateSelect').value;
-            const isRecurring = document.getElementById('isRecurring').checked;
-            const frequency = document.getElementById('frequency').value;
-            
-            if (!name || !date || !time || !templateType) {
-                showToast('Compila tutti i campi obbligatori', 'error');
-                return;
-            }
-            
-            const scheduledTime = new Date(`${date}T${time}`);
-            if (scheduledTime <= new Date()) {
-                showToast('La data/ora deve essere nel futuro', 'error');
-                return;
-            }
-            
-            // Get recipients based on template
-            const recipients = selectedClients.length > 0 
-                ? selectedClients.map(id => {
-                    const client = marketingClienti.find(c => c.id === id);
-                    return client && client.templates[templateType] ? {
-                        id: client.id,
-                        nome: client.nome,
-                        cognome: client.cognome,
-                        telefono: client.telefono
-                    } : null;
-                }).filter(c => c)
-                : marketingClienti.filter(c => c.templates[templateType]).map(c => ({
-                    id: c.id,
-                    nome: c.nome,
-                    cognome: c.cognome,
-                    telefono: c.telefono
-                }));
-            
-            if (recipients.length === 0) {
-                showToast(`Nessun cliente con template ${templateType} disponibile`, 'warning');
-                return;
-            }
-            
-            const newScheduledMessage = {
-                id: Date.now(),
-                name: name,
-                templateType: templateType,
-                scheduledTime: scheduledTime,
-                isRecurring: isRecurring,
-                frequency: isRecurring ? frequency : null,
-                recipients: recipients,
-                status: 'scheduled',
-                createdAt: new Date(),
-                executedAt: null,
-                completedAt: null,
-                sentCount: 0,
-                totalCount: recipients.length,
-                error: null
-            };
-            
-            scheduledMessages.push(newScheduledMessage);
-            saveData();
-            
-            showToast(`⏰ Invio programmato: ${name} per ${scheduledTime.toLocaleString('it-IT')}`, 'success', 6000);
-            closeModal();
-            
-            // Clear selection if we were scheduling for selected clients
-            if (selectedClients.length > 0) {
-                clearSelection();
-            }
-            
-            // Update UI
-            updateAutomationBadge();
-            if (currentPage === 'automazione') {
-                showPage('automazione');
-            }
-        }
-        
-        function deleteScheduledMessage(messageId) {
-            const messageIndex = scheduledMessages.findIndex(m => m.id === messageId);
-            if (messageIndex === -1) return;
-            
-            const message = scheduledMessages[messageIndex];
-            
-            if (confirm(`Sei sicuro di voler eliminare "${message.name}"?`)) {
-                scheduledMessages.splice(messageIndex, 1);
-                saveData();
-                
-                showToast('🗑️ Programmazione eliminata', 'info');
-                updateAutomationBadge();
-                
-                if (currentPage === 'automazione') {
-                    showPage('automazione');
-                }
-            }
-        }
-        
-        // Alert System for New Expired Memberships
-        function checkForNewExpired() {
-            if (tesseratiData.length === 0) return;
-            
-            const currentExpired = tesseratiData.filter(t => t.status === 'expired' && t.manualStatus !== 'messagesent' && t.manualStatus !== 'renewed');
-            const newExpired = currentExpired.filter(t => !seenExpiredIds.includes(t.id));
-            
-            if (newExpired.length > 0) {
-                showExpiredAlert(newExpired);
-                updateNotificationBadge(newExpired.length);
-            }
-        }
-        
-        function showExpiredAlert(expiredList) {
-            const alertHtml = `
-                <div class="alert-overlay" id="expiredAlert">
-                    <div class="alert-popup">
-                        <div class="alert-icon">🚨</div>
-                        <h2 style="margin-bottom: 1rem;">Nuovi Tesseramenti Scaduti!</h2>
-                        <p style="margin-bottom: 1.5rem;">Rilevati <strong>${expiredList.length}</strong> tesserati con scadenza recente che necessitano attenzione.</p>
-                        
-                        <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin: 1rem 0; max-height: 200px; overflow-y: auto;">
-                            ${expiredList.map(t => `
-                                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                    <span><strong>${t.nome} ${t.cognome}</strong></span>
-                                    <span style="opacity: 0.8;">${t.dataScadenza ? t.dataScadenza.toLocaleDateString('it-IT') : 'N/A'}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                        
-                        <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem;">
-                            <button class="btn btn-primary" onclick="goToScadenze()">
-                                <i class="fas fa-eye"></i> Visualizza Scadenze
-                            </button>
-                            <button class="btn btn-secondary" onclick="dismissAlert()">
-                                <i class="fas fa-times"></i> Chiudi
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('modal-container').innerHTML = alertHtml;
-        }
-        
-        function goToScadenze() {
-            dismissAlert();
-            showPage('scadenze');
-        }
-        
-        function dismissAlert() {
-            document.getElementById('modal-container').innerHTML = '';
-        }
-        
-        function updateNotificationBadge(count) {
-            const badge = document.getElementById('scadenzeBadge');
-            if (count > 0) {
-                badge.textContent = count;
-                badge.style.display = 'flex';
-            } else {
-                badge.style.display = 'none';
-            }
-        }
-        
-        function markExpiredAsSeen(tesseratoId) {
-            if (!seenExpiredIds.includes(tesseratoId)) {
-                seenExpiredIds.push(tesseratoId);
-                saveData();
-            }
-        }
-        
-        // Login System
-        async function performLogin() {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            
-            if (email === 'admin@tribu.com' && password === 'tribu2025') {
-                showToast('Login effettuato con successo! 🎉', 'success');
-                
-                setTimeout(() => {
-                    currentUser = {
-                        name: 'Tribù Admin',
-                        email: 'admin@tribu.com',
-                        role: 'admin'
-                    };
-                    
-                    document.getElementById('loading-screen').classList.add('hidden');
-                    document.getElementById('auth-container').classList.add('hidden');
-                    document.getElementById('main-app').classList.remove('hidden');
-                    
-                    showPage('dashboard');
-                    
-                    // Initialize scheduler and check for expired memberships
-                    setTimeout(() => {
-                        initializeScheduler();
-                        checkForNewExpired();
-                    }, 1000);
-                }, 1500);
-            } else {
-                showToast('Credenziali non valide', 'error');
-            }
-        }
-        
-        // CSV Processing Functions
-        function calculateExpiryDate(dataRilascio) {
-            if (!dataRilascio) return null;
-            
-            const [day, month, year] = dataRilascio.split('/');
-            const releaseDate = new Date(year, month - 1, day);
-            const expiryDate = new Date(releaseDate);
-            expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-            
-            return expiryDate;
-        }
-        
-        function getExpiryStatus(expiryDate, manualStatus) {
-            if (manualStatus === 'renewed') return 'renewed';
-            if (manualStatus === 'messagesent') return 'messagesent';
-            
-            if (!expiryDate) return 'unknown';
-            
-            const today = new Date();
-            const daysDiff = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
-            
-            if (daysDiff < 0) return 'expired';
-            if (daysDiff <= 30) return 'expiring';
-            return 'active';
-        }
-        
-        function processCSVData(data) {
-            return data.map((record, index) => {
-                const expiryDate = calculateExpiryDate(record['DATA DI RILASCIO']);
-                const manualStatus = null;
-                const status = getExpiryStatus(expiryDate, manualStatus);
-                
-                return {
-                    id: Date.now() + index,
-                    nome: record.NOME,
-                    cognome: record.COGNOME,
-                    telefono: record.TELEFONO ? '+39' + record.TELEFONO : null,
-                    email: record['E-MAIL'] || null,
-                    dataRilascio: record['DATA DI RILASCIO'],
-                    dataScadenza: expiryDate,
-                    numeroTessera: record['NUMERO TESSERA'],
-                    disciplina: record.DISCIPLINE,
-                    qualifica: record.QUALIFICA,
-                    tesseramento: record.TESSERAMENTO,
-                    status: status,
-                    manualStatus: manualStatus,
-                    daysTillExpiry: expiryDate ? Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24)) : null,
-                    isNew: false
-                };
-            });
-        }
-        
-        function handleCSVUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            showToast('Caricamento CSV in corso...', 'info');
-            
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                delimiter: ';',
-                complete: function(results) {
-                    if (results.errors.length > 0) {
-                        showToast('Errore nel parsing del CSV', 'error');
-                        console.error('CSV parsing errors:', results.errors);
-                        return;
-                    }
-                    
-                    tesseratiData = processCSVData(results.data);
-                    filteredData = [...tesseratiData];
-                    
-                    showToast(`✅ Caricati ${tesseratiData.length} tesserati`, 'success');
-                    
-                    // Update next tessera number
-                    const maxTessera = Math.max(...tesseratiData.map(t => parseInt(t.numeroTessera) || 0));
-                    nextTesseraNumber = maxTessera + 1;
-                    
-                    saveData();
-                    
-                    // Update current page if needed
-                    if (currentPage === 'tesserati' || currentPage === 'scadenze') {
-                        showPage(currentPage);
-                    }
-                    
-                    updateDashboardStats();
-                    setTimeout(checkForNewExpired, 500);
-                }
-            });
-        }
-        
-        // Status Management Functions
-        function changeStatus(tesseratoId, newStatus) {
-            const tesserato = tesseratiData.find(t => t.id === tesseratoId);
-            if (!tesserato) return;
-            
-            if (newStatus === 'renewed') {
-                const today = new Date();
-                const newExpiryDate = new Date(today);
-                newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-                
-                tesserato.dataScadenza = newExpiryDate;
-                tesserato.dataRilascio = today.toLocaleDateString('it-IT');
-                tesserato.daysTillExpiry = 365;
-                tesserato.manualStatus = 'renewed';
-                tesserato.status = 'renewed';
-                
-                showToast(`✅ ${tesserato.nome} ${tesserato.cognome} rinnovato fino al ${newExpiryDate.toLocaleDateString('it-IT')}`, 'success');
-                markExpiredAsSeen(tesseratoId);
-                
-            } else if (newStatus === 'messagesent') {
-                tesserato.manualStatus = 'messagesent';
-                tesserato.status = 'messagesent';
-                
-                showToast(`📱 Messaggio inviato a ${tesserato.nome} ${tesserato.cognome}`, 'info');
-                markExpiredAsSeen(tesseratoId);
-            }
-            
-            saveData();
-            updateDataTable();
-            updateDashboardStats();
-            updateNotificationBadge(getNewExpiredCount());
-        }
-        
-        function getNewExpiredCount() {
-            const currentExpired = tesseratiData.filter(t => t.status === 'expired' && t.manualStatus !== 'messagesent' && t.manualStatus !== 'renewed');
-            return currentExpired.filter(t => !seenExpiredIds.includes(t.id)).length;
-        }
-        
-        // Template Management
-        function showTemplateEditor(templateType) {
-            const templateNames = {
-                'scadenze': 'Tesseramento Scaduto',
-                'pasti': 'Reminder Ordine Pasti',
-                'motivazionale': 'Messaggio Motivazionale'
-            };
-            
-            const modalHtml = `
-                <div class="modal-overlay" onclick="closeModal(event)">
-                    <div class="modal" onclick="event.stopPropagation()">
-                        <div class="modal-header">
-                            <h3 class="modal-title">✏️ Modifica Template: ${templateNames[templateType]}</h3>
-                        </div>
-                        <div class="modal-body">
-                            <div class="form-group">
-                                <label>Messaggio Template</label>
-                                <textarea id="templateEditor" class="template-editor" rows="8">${templates[templateType]}</textarea>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Variabili disponibili:</label>
-                                <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 0.5rem;">
-                                    <strong>{nome}</strong> - Nome del cliente<br>
-                                    <strong>{cognome}</strong> - Cognome del cliente<br>
-                                    <strong>{dataScadenza}</strong> - Data scadenza tesseramento<br>
-                                    <strong>{giornoSettimana}</strong> - Giorno della settimana corrente
-                                </p>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Preview:</label>
-                                <div id="templatePreview" class="template-preview">
-                                    <!-- Preview will be updated here -->
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button class="btn btn-secondary" onclick="closeModal()">
-                                <i class="fas fa-times"></i> Annulla
-                            </button>
-                            <button class="btn btn-primary" onclick="saveTemplate('${templateType}')">
-                                <i class="fas fa-save"></i> Salva Template
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('modal-container').innerHTML = modalHtml;
-            
-            // Setup preview update
-            const editor = document.getElementById('templateEditor');
-            const preview = document.getElementById('templatePreview');
-            
-            function updatePreview() {
-                let previewText = editor.value;
-                previewText = previewText
-                    .replace(/{nome}/g, '<strong>Mario</strong>')
-                    .replace(/{cognome}/g, '<strong>Rossi</strong>')
-                    .replace(/{dataScadenza}/g, '<strong>15/02/2025</strong>')
-                    .replace(/{giornoSettimana}/g, '<strong>Lunedì</strong>');
-                
-                preview.innerHTML = previewText.replace(/\n/g, '<br>');
-            }
-            
-            editor.addEventListener('input', updatePreview);
-            updatePreview();
-        }
-        
-        function saveTemplate(templateType) {
-            const newTemplate = document.getElementById('templateEditor').value.trim();
-            if (!newTemplate) {
-                showToast('Il template non può essere vuoto', 'error');
-                return;
-            }
-            
-            templates[templateType] = newTemplate;
-            saveData();
-            
-            showToast('✅ Template salvato con successo!', 'success');
-            closeModal();
-            
-            // Refresh current page if it's whatsapp
-            if (currentPage === 'whatsapp') {
-                showPage('whatsapp');
-            }
-        }
-        
-        // Marketing Clients Management
-        function showAddMarketingClientModal() {
-            const modalHtml = `
-                <div class="modal-overlay" onclick="closeModal(event)">
-                    <div class="modal" onclick="event.stopPropagation()">
-                        <div class="modal-header">
-                            <h3 class="modal-title">👤 Nuovo Cliente Marketing</h3>
-                        </div>
-                        <div class="modal-body">
-                            <form id="addMarketingClientForm">
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="marketingNome">Nome *</label>
-                                        <input type="text" id="marketingNome" class="form-control" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="marketingCognome">Cognome *</label>
-                                        <input type="text" id="marketingCognome" class="form-control" required>
-                                    </div>
-                                </div>
-                                
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="marketingTelefono">Telefono *</label>
-                                        <input type="tel" id="marketingTelefono" class="form-control" placeholder="347XXXXXXX" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="marketingEmail">Email</label>
-                                        <input type="email" id="marketingEmail" class="form-control">
-                                    </div>
-                                </div>
-                                
-                                <div class="form-section">
-                                    <h4>📱 Template WhatsApp</h4>
-                                    <p style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 1rem;">Seleziona quali template utilizzare per questo cliente:</p>
-                                    
-                                    <div class="form-group">
-                                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                                            <input type="checkbox" id="templatePasti" checked>
-                                            <span>🍽️ Reminder Ordine Pasti (Lunedì mattina)</span>
-                                        </label>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                                            <input type="checkbox" id="templateMotivazionale">
-                                            <span>💪 Messaggi Motivazionali</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="marketingNote">Note</label>
-                                    <textarea id="marketingNote" class="form-control" rows="3" placeholder="Note aggiuntive sul cliente..."></textarea>
-                                </div>
-                            </form>
-                        </div>
-                        <div class="modal-footer">
-                            <button class="btn btn-secondary" onclick="closeModal()">
-                                <i class="fas fa-times"></i> Annulla
-                            </button>
-                            <button class="btn btn-primary" onclick="saveMarketingClient()">
-                                <i class="fas fa-save"></i> Salva Cliente
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('modal-container').innerHTML = modalHtml;
-        }
-        
-        function saveMarketingClient() {
-            const nome = document.getElementById('marketingNome').value.trim();
-            const cognome = document.getElementById('marketingCognome').value.trim();
-            const telefono = document.getElementById('marketingTelefono').value.trim();
-            
-            if (!nome || !cognome || !telefono) {
-                showToast('Compila tutti i campi obbligatori', 'error');
-                return;
-            }
-            
-            const newClient = {
-                id: Date.now(),
-                nome: nome.toUpperCase(),
-                cognome: cognome.toUpperCase(),
-                telefono: '+39' + telefono.replace(/[^0-9]/g, ''),
-                email: document.getElementById('marketingEmail').value.trim() || null,
-                note: document.getElementById('marketingNote').value.trim() || null,
-                templates: {
-                    pasti: document.getElementById('templatePasti').checked,
-                    motivazionale: document.getElementById('templateMotivazionale').checked
-                },
-                createdAt: new Date(),
-                lastMessage: null
-            };
-            
-            marketingClienti.push(newClient);
-            saveData();
-            
-            showToast(`✅ Cliente ${nome} ${cognome} aggiunto con successo!`, 'success');
-            closeModal();
-            
-            if (currentPage === 'marketing') {
-                showPage('marketing');
-            }
-        }
-        
-        function sendMarketingMessage(clienteId, templateType) {
-            const cliente = marketingClienti.find(c => c.id === clienteId);
-            if (!cliente) return;
-            
-            let message = templates[templateType];
-            message = message
-                .replace(/{nome}/g, cliente.nome)
-                .replace(/{cognome}/g, cliente.cognome)
-                .replace(/{giornoSettimana}/g, new Date().toLocaleDateString('it-IT', { weekday: 'long' }));
-            
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappUrl = `https://wa.me/${cliente.telefono.replace('+', '')}?text=${encodedMessage}`;
-            
-            window.open(whatsappUrl, '_blank');
-            
-            // Update last message
-            cliente.lastMessage = {
-                type: templateType,
-                sentAt: new Date(),
-                message: message
-            };
-            
-            saveData();
-            showToast(`📱 Messaggio ${templateType} inviato a ${cliente.nome} ${cliente.cognome}!`, 'success');
-        }
-        
-        // Add New Tesserato Functions
-        function showAddTesseratoModal() {
-            const modalHtml = `
-                <div class="modal-overlay" onclick="closeModal(event)">
-                    <div class="modal" onclick="event.stopPropagation()">
-                        <div class="modal-header">
-                            <h3 class="modal-title">➕ Nuovo Tesserato CSEN</h3>
-                        </div>
-                        <div class="modal-body">
-                            <form id="addTesseratoForm">
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="newNome">Nome *</label>
-                                        <input type="text" id="newNome" class="form-control" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="newCognome">Cognome *</label>
-                                        <input type="text" id="newCognome" class="form-control" required>
-                                    </div>
-                                </div>
-                                
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="newTelefono">Telefono</label>
-                                        <input type="tel" id="newTelefono" class="form-control" placeholder="347XXXXXXX">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="newEmail">Email</label>
-                                        <input type="email" id="newEmail" class="form-control">
-                                    </div>
-                                </div>
-                                
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="newDataRilascio">Data Rilascio *</label>
-                                        <input type="date" id="newDataRilascio" class="form-control" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="newNumeroTessera">Numero Tessera</label>
-                                        <input type="number" id="newNumeroTessera" class="form-control" value="${nextTesseraNumber}">
-                                    </div>
-                                </div>
-                                
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="newDisciplina">Disciplina</label>
-                                        <select id="newDisciplina" class="form-control">
-                                            <option value="BI001">BI001 - Fitness</option>
-                                            <option value="BI002">BI002 - Personal Training</option>
-                                            <option value="BI003">BI003 - Pilates</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="newQualifica">Qualifica</label>
-                                        <select id="newQualifica" class="form-control">
-                                            <option value="Atleta Praticante">Atleta Praticante</option>
-                                            <option value="Istruttore">Istruttore</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="newTesseramento">Tipo Tesseramento</label>
-                                    <select id="newTesseramento" class="form-control">
-                                        <option value="Base">Base</option>
-                                        <option value="Premium">Premium</option>
-                                    </select>
-                                </div>
-                            </form>
-                        </div>
-                        <div class="modal-footer">
-                            <button class="btn btn-secondary" onclick="closeModal()">
-                                <i class="fas fa-times"></i> Annulla
-                            </button>
-                            <button class="btn btn-primary" onclick="saveNewTesserato()">
-                                <i class="fas fa-save"></i> Salva Tesserato
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('modal-container').innerHTML = modalHtml;
-            
-            // Set today as default date
-            document.getElementById('newDataRilascio').value = new Date().toISOString().split('T')[0];
-        }
-        
-        function saveNewTesserato() {
-            const nome = document.getElementById('newNome').value.trim();
-            const cognome = document.getElementById('newCognome').value.trim();
-            const dataRilascio = document.getElementById('newDataRilascio').value;
-            
-            if (!nome || !cognome || !dataRilascio) {
-                showToast('Compila tutti i campi obbligatori', 'error');
-                return;
-            }
-            
-            const telefono = document.getElementById('newTelefono').value.trim();
-            const expiryDate = calculateExpiryDate(dataRilascio.split('-').reverse().join('/'));
-            const newTesserato = {
-                id: Date.now(),
-                nome: nome.toUpperCase(),
-                cognome: cognome.toUpperCase(),
-                telefono: telefono ? '+39' + telefono.replace(/[^0-9]/g, '') : null,
-                email: document.getElementById('newEmail').value.trim() || null,
-                dataRilascio: dataRilascio.split('-').reverse().join('/'),
-                dataScadenza: expiryDate,
-                numeroTessera: parseInt(document.getElementById('newNumeroTessera').value),
-                disciplina: document.getElementById('newDisciplina').value,
-                qualifica: document.getElementById('newQualifica').value,
-                tesseramento: document.getElementById('newTesseramento').value,
-                status: getExpiryStatus(expiryDate, null),
-                manualStatus: null,
-                daysTillExpiry: expiryDate ? Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24)) : null,
-                isNew: true
-            };
-            
-            tesseratiData.push(newTesserato);
-            nextTesseraNumber = Math.max(nextTesseraNumber, newTesserato.numeroTessera) + 1;
-            
-            saveData();
-            showToast(`✅ Tesserato ${nome} ${cognome} aggiunto con successo!`, 'success');
-            closeModal();
-            
-            updateDataTable();
-            updateDashboardStats();
-            
-            if (currentPage === 'tesserati') {
-                showPage(currentPage);
-            }
-        }
-        
-        function closeModal(event) {
-            if (event && event.target !== event.currentTarget) return;
-            document.getElementById('modal-container').innerHTML = '';
-        }
-        
-        // Navigation System
-        function showPage(pageName) {
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            document.querySelector(`[onclick="showPage('${pageName}')"]`).classList.add('active');
-            
-            const content = getPageContent(pageName);
-            document.getElementById('page-content').innerHTML = content;
-            
-            currentPage = pageName;
-            initializePage(pageName);
-        }
-        
-        function initializePage(pageName) {
-            if (pageName === 'import') {
-                const fileInput = document.getElementById('csvFileInput');
-                if (fileInput) {
-                    fileInput.addEventListener('change', handleCSVUpload);
-                }
-            } else if (pageName === 'tesserati' || pageName === 'scadenze') {
-                currentSection = 'tesserati';
-                setTimeout(() => {
-                    setupFilters();
-                    initializeDataView();
-                }, 100);
-            } else if (pageName === 'marketing') {
-                currentSection = 'marketing';
-                setTimeout(() => {
-                    setupMarketingFilters();
-                    updateMarketingTable();
-                }, 100);
-            }
-        }
-        
-        function setupFilters() {
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const filter = e.target.dataset.filter;
-                    setFilter(filter);
-                });
-            });
-            
-            const searchInput = document.getElementById('searchInput');
-            if (searchInput) {
-                searchInput.addEventListener('input', (e) => {
-                    searchData(e.target.value);
-                });
-            }
-        }
-        
-        function setupMarketingFilters() {
-            const searchInput = document.getElementById('marketingSearch');
-            if (searchInput) {
-                searchInput.addEventListener('input', (e) => {
-                    updateMarketingTable(e.target.value);
-                });
-            }
-        }
-        
-        function setFilter(filter) {
-            currentFilter = filter;
-            
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.dataset.filter === filter) {
-                    btn.classList.add('active');
-                }
-            });
-            
-            applyFilters();
-        }
-        
-        function searchData(searchTerm) {
-            applyFilters(searchTerm);
-        }
-        
-        function applyFilters(searchTerm = '') {
-            let filtered = [...tesseratiData];
-            
-            if (currentFilter !== 'all') {
-                filtered = filtered.filter(item => item.status === currentFilter);
-            }
-            
-            if (searchTerm) {
-                const term = searchTerm.toLowerCase();
-                filtered = filtered.filter(item => 
-                    item.nome.toLowerCase().includes(term) ||
-                    item.cognome.toLowerCase().includes(term) ||
-                    (item.telefono && item.telefono.includes(term))
-                );
-            }
-            
-            filteredData = filtered;
-            updateDataTable();
-        }
-        
-        function updateDataTable() {
-            const tableBody = document.getElementById('dataTableBody');
-            if (!tableBody) return;
-            
-            if (filteredData.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 2rem; opacity: 0.7;">
-                            ${tesseratiData.length === 0 ? 'Nessun dato caricato' : 'Nessun risultato trovato'}
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            tableBody.innerHTML = filteredData.map(tesserat => {
-                const isNewExpired = tesserat.status === 'expired' && !seenExpiredIds.includes(tesserat.id) && tesserat.manualStatus !== 'messagesent' && tesserat.manualStatus !== 'renewed';
-                const rowClass = isNewExpired ? 'blink-row' : '';
-                
-                return `
-                    <tr class="${rowClass}">
-                        <td><strong>${tesserat.nome} ${tesserat.cognome}</strong></td>
-                        <td>${tesserat.telefono || 'N/A'}</td>
-                        <td>${tesserat.dataScadenza ? tesserat.dataScadenza.toLocaleDateString('it-IT') : 'N/A'}</td>
-                        <td>
-                            <span class="status-badge status-${tesserat.status}">
-                                ${getStatusText(tesserat.status)}
-                            </span>
-                        </td>
-                        <td>${tesserat.daysTillExpiry !== null ? 
-                            (tesserat.daysTillExpiry < 0 ? `${Math.abs(tesserat.daysTillExpiry)} giorni fa` : `${tesserat.daysTillExpiry} giorni`) : 'N/A'}</td>
-                        <td>
-                            <div class="action-buttons">
-                                ${tesserat.telefono && (tesserat.status === 'expired' || tesserat.status === 'expiring') ? 
-                                    `<button class="whatsapp-btn" onclick="sendWhatsAppMessage('${tesserat.telefono}', '${tesserat.nome}', '${tesserat.cognome}', ${tesserat.id})">
-                                        <i class="fab fa-whatsapp"></i> WhatsApp
-                                    </button>` : ''
-                                }
-                                ${tesserat.status === 'expired' || tesserat.status === 'expiring' || tesserat.status === 'messagesent' ? 
-                                    `<button class="btn btn-success btn-sm" onclick="changeStatus(${tesserat.id}, 'renewed')">
-                                        <i class="fas fa-check"></i> Rinnovato
-                                    </button>` : ''
-                                }
-                                ${tesserat.status === 'expired' || tesserat.status === 'expiring' ? 
-                                    `<button class="btn btn-primary btn-sm" onclick="changeStatus(${tesserat.id}, 'messagesent')">
-                                        <i class="fas fa-paper-plane"></i> Inviato
-                                    </button>` : ''
-                                }
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-        
-        function updateMarketingTable(searchTerm = '') {
-            const tableBody = document.getElementById('marketingTableBody');
-            if (!tableBody) return;
-            
-            let filtered = [...marketingClienti];
-            
-            if (searchTerm) {
-                const term = searchTerm.toLowerCase();
-                filtered = filtered.filter(cliente => 
-                    cliente.nome.toLowerCase().includes(term) ||
-                    cliente.cognome.toLowerCase().includes(term) ||
-                    (cliente.telefono && cliente.telefono.includes(term))
-                );
-            }
-            
-            if (filtered.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 2rem; opacity: 0.7;">
-                            ${marketingClienti.length === 0 ? 'Nessun cliente inserito' : 'Nessun risultato trovato'}
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            tableBody.innerHTML = filtered.map(cliente => `
-                <tr>
-                    <td>
-                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                            <input type="checkbox" class="client-checkbox" data-client-id="${cliente.id}" onchange="updateSelectedClients()">
-                            <strong>${cliente.nome} ${cliente.cognome}</strong>
-                        </label>
-                    </td>
-                    <td>${cliente.telefono}</td>
-                    <td>
-                        <div class="template-selector">
-                            ${cliente.templates.pasti ? '<span class="template-badge template-pasti">Pasti</span>' : ''}
-                            ${cliente.templates.motivazionale ? '<span class="template-badge template-motivazionale">Motivaz.</span>' : ''}
-                            ${!cliente.templates.pasti && !cliente.templates.motivazionale ? '<span style="opacity: 0.5;">Nessuno</span>' : ''}
-                        </div>
-                    </td>
-                    <td>${cliente.lastMessage ? new Date(cliente.lastMessage.sentAt).toLocaleDateString('it-IT') : 'Mai'}</td>
-                    <td>
-                        <div class="action-buttons">
-                            ${cliente.templates.pasti ? 
-                                `<button class="btn btn-warning btn-sm" onclick="sendMarketingMessage(${cliente.id}, 'pasti')">
-                                    <i class="fas fa-utensils"></i> Pasti
-                                </button>` : ''
-                            }
-                            ${cliente.templates.motivazionale ? 
-                                `<button class="btn btn-success btn-sm" onclick="sendMarketingMessage(${cliente.id}, 'motivazionale')">
-                                    <i class="fas fa-fire"></i> Motivaz.
-                                </button>` : ''
-                            }
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
-            
-            updateBulkActionButtons();
-        }
-        
-        function updateSelectedClients() {
-            const checkboxes = document.querySelectorAll('.client-checkbox:checked');
-            selectedClients = Array.from(checkboxes).map(cb => parseInt(cb.dataset.clientId));
-            updateBulkActionButtons();
-        }
-        
-        function selectAllClients(templateType) {
-            const checkboxes = document.querySelectorAll('.client-checkbox');
-            checkboxes.forEach(checkbox => {
-                const clientId = parseInt(checkbox.dataset.clientId);
-                const client = marketingClienti.find(c => c.id === clientId);
-                
-                if (templateType === 'all' || (client && client.templates[templateType])) {
-                    checkbox.checked = true;
-                } else {
-                    checkbox.checked = false;
-                }
-            });
-            
-            updateSelectedClients();
-        }
-        
-        function clearSelection() {
-            const checkboxes = document.querySelectorAll('.client-checkbox');
-            checkboxes.forEach(checkbox => checkbox.checked = false);
-            selectedClients = [];
-            updateBulkActionButtons();
-        }
-        
-        function updateBulkActionButtons() {
-            const bulkActions = document.getElementById('bulkActions');
-            if (!bulkActions) return;
-            
-            if (selectedClients.length === 0) {
-                bulkActions.innerHTML = `
-                    <div style="opacity: 0.6; font-size: 0.9rem;">
-                        <i class="fas fa-info-circle"></i> Seleziona clienti per azioni di gruppo
-                    </div>
-                `;
-                return;
-            }
-            
-            const selectedClientsData = selectedClients.map(id => marketingClienti.find(c => c.id === id));
-            const pastiClients = selectedClientsData.filter(c => c && c.templates.pasti).length;
-            const motivazioneClients = selectedClientsData.filter(c => c && c.templates.motivazionale).length;
-            
-            bulkActions.innerHTML = `
-                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                    <div style="font-weight: 600; color: #64ffda;">
-                        <i class="fas fa-users"></i> ${selectedClients.length} clienti selezionati
-                    </div>
-                    
-                    ${pastiClients > 0 ? `
-                        <button class="btn btn-warning" onclick="showBulkMessageModal('pasti')" ${isBulkSending ? 'disabled' : ''}>
-                            <i class="fas fa-utensils"></i> Invio Massivo Pasti (${pastiClients})
-                        </button>
-                    ` : ''}
-                    
-                    ${motivazioneClients > 0 ? `
-                        <button class="btn btn-success" onclick="showBulkMessageModal('motivazionale')" ${isBulkSending ? 'disabled' : ''}>
-                            <i class="fas fa-fire"></i> Invio Massivo Motivazionale (${motivazioneClients})
-                        </button>
-                    ` : ''}
-                    
-                    <button class="btn btn-secondary" onclick="showScheduleModal(selectedClients)" ${selectedClients.length === 0 ? 'disabled' : ''}>
-                        <i class="fas fa-clock"></i> Programma Invio
-                    </button>
-                    
-                    <button class="btn btn-secondary btn-sm" onclick="clearSelection()">
-                        <i class="fas fa-times"></i> Deseleziona
-                    </button>
-                </div>
-            `;
-        }
-        
-        function showBulkMessageModal(templateType) {
-            const selectedClientsData = selectedClients
-                .map(id => marketingClienti.find(c => c.id === id))
-                .filter(c => c && c.templates[templateType]);
-            
-            if (selectedClientsData.length === 0) {
-                showToast('Nessun cliente con template ' + templateType + ' selezionato', 'warning');
-                return;
-            }
-            
-            const templateNames = {
-                'pasti': '🍽️ Reminder Ordine Pasti',
-                'motivazionale': '💪 Messaggio Motivazionale'
-            };
-            
-            const sampleMessage = templates[templateType]
-                .replace(/{nome}/g, 'Mario')
-                .replace(/{cognome}/g, 'Rossi')
-                .replace(/{giornoSettimana}/g, new Date().toLocaleDateString('it-IT', { weekday: 'long' }));
-            
-            const modalHtml = `
-                <div class="modal-overlay" onclick="closeModal(event)">
-                    <div class="modal" onclick="event.stopPropagation()">
-                        <div class="modal-header">
-                            <h3 class="modal-title">📤 Invio Massivo: ${templateNames[templateType]}</h3>
-                        </div>
-                        <div class="modal-body">
-                            <div class="form-group">
-                                <label>📋 Destinatari (${selectedClientsData.length} clienti):</label>
-                                <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; max-height: 150px; overflow-y: auto; margin-bottom: 1rem;">
-                                    ${selectedClientsData.map(c => `
-                                        <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                            <span><strong>${c.nome} ${c.cognome}</strong></span>
-                                            <span style="opacity: 0.7;">${c.telefono}</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>💬 Anteprima Messaggio:</label>
-                                <div class="template-preview">
-                                    ${sampleMessage.replace(/\n/g, '<br>')}
-                                </div>
-                                <p style="font-size: 0.8rem; opacity: 0.8; margin-top: 0.5rem;">
-                                    <em>Il nome di ogni cliente verrà personalizzato automaticamente</em>
-                                </p>
-                            </div>
-                            
-                            <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                                <h4 style="color: #3b82f6; margin-bottom: 0.5rem;">ℹ️ Come Funziona l'Invio</h4>
-                                <ul style="font-size: 0.9rem; line-height: 1.6; margin: 0;">
-                                    <li>Si aprirà una nuova scheda WhatsApp Web per ogni cliente</li>
-                                    <li>Pausa di 3 secondi tra ogni invio per evitare blocchi</li>
-                                    <li>Puoi interrompere l'invio in qualsiasi momento</li>
-                                    <li>I messaggi inviati verranno tracciati automaticamente</li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button class="btn btn-secondary" onclick="closeModal()">
-                                <i class="fas fa-times"></i> Annulla
-                            </button>
-                            <button class="btn btn-warning" onclick="showScheduleModal(selectedClients, '${templateType}')">
-                                <i class="fas fa-clock"></i> Programma Invio
-                            </button>
-                            <button class="btn btn-primary" onclick="startBulkSending('${templateType}')">
-                                <i class="fas fa-paper-plane"></i> Invio Immediato
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('modal-container').innerHTML = modalHtml;
-        }
-        
-        async function startBulkSending(templateType) {
-            const selectedClientsData = selectedClients
-                .map(id => marketingClienti.find(c => c.id === id))
-                .filter(c => c && c.templates[templateType]);
-            
-            if (selectedClientsData.length === 0) return;
-            
-            isBulkSending = true;
-            let sentCount = 0;
-            let failedCount = 0;
-            
-            // Show progress modal
-            const progressModalHtml = `
-                <div class="modal-overlay">
-                    <div class="modal" onclick="event.stopPropagation()">
-                        <div class="modal-header">
-                            <h3 class="modal-title">📤 Invio in Corso...</h3>
-                        </div>
-                        <div class="modal-body">
-                            <div class="form-group">
-                                <label>Progresso:</label>
-                                <div style="background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; margin-bottom: 1rem;">
-                                    <div id="progressBar" style="background: #64ffda; height: 20px; width: 0%; transition: width 0.3s ease;"></div>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
-                                    <span id="progressText">Preparazione...</span>
-                                    <span id="progressCount">0 / ${selectedClientsData.length}</span>
-                                </div>
-                            </div>
-                            
-                            <div id="sendingStatus" style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; max-height: 200px; overflow-y: auto;">
-                                <div style="opacity: 0.7;">Preparazione invio...</div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button class="btn btn-danger" onclick="stopBulkSending()" id="stopButton">
-                                <i class="fas fa-stop"></i> Interrompi Invio
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('modal-container').innerHTML = progressModalHtml;
-            
-            const progressBar = document.getElementById('progressBar');
-            const progressText = document.getElementById('progressText');
-            const progressCount = document.getElementById('progressCount');
-            const sendingStatus = document.getElementById('sendingStatus');
-            
-            // Start sending
-            for (let i = 0; i < selectedClientsData.length && isBulkSending; i++) {
-                const cliente = selectedClientsData[i];
-                
-                try {
-                    // Update progress
-                    const progress = ((i + 1) / selectedClientsData.length) * 100;
-                    progressBar.style.width = progress + '%';
-                    progressText.textContent = `Invio a ${cliente.nome} ${cliente.cognome}...`;
-                    progressCount.textContent = `${i + 1} / ${selectedClientsData.length}`;
-                    
-                    // Add status
-                    sendingStatus.innerHTML += `
-                        <div style="padding: 0.25rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                            <span style="color: #64ffda;">→</span> Invio a <strong>${cliente.nome} ${cliente.cognome}</strong>...
-                        </div>
-                    `;
-                    sendingStatus.scrollTop = sendingStatus.scrollHeight;
-                    
-                    // Send message
-                    await sendBulkMarketingMessage(cliente.id, templateType);
-                    
-                    sentCount++;
-                    
-                    // Update status
-                    const lastStatus = sendingStatus.lastElementChild;
-                    lastStatus.innerHTML = `
-                        <span style="color: #10b981;">✓</span> Inviato a <strong>${cliente.nome} ${cliente.cognome}</strong>
-                    `;
-                    
-                    // Wait 3 seconds before next send (except for last one)
-                    if (i < selectedClientsData.length - 1 && isBulkSending) {
-                        progressText.textContent = 'Attesa 3 secondi...';
-                        await new Promise(resolve => setTimeout(resolve, 3000));
-                    }
-                    
-                } catch (error) {
-                    failedCount++;
-                    
-                    // Update status with error
-                    const lastStatus = sendingStatus.lastElementChild;
-                    lastStatus.innerHTML = `
-                        <span style="color: #ef4444;">✗</span> Errore per <strong>${cliente.nome} ${cliente.cognome}</strong>
-                    `;
-                }
-            }
-            
-            // Complete
-            progressText.textContent = isBulkSending ? 'Invio completato!' : 'Invio interrotto';
-            document.getElementById('stopButton').innerHTML = '<i class="fas fa-check"></i> Chiudi';
-            
-            // Show summary
-            sendingStatus.innerHTML += `
-                <div style="margin-top: 1rem; padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border-left: 4px solid #10b981;">
-                    <h4 style="color: #10b981; margin-bottom: 0.5rem;">📊 Riepilogo Invio</h4>
-                    <div>✅ <strong>Inviati:</strong> ${sentCount}</div>
-                    ${failedCount > 0 ? `<div>❌ <strong>Falliti:</strong> ${failedCount}</div>` : ''}
-                    <div>📱 <strong>Totale:</strong> ${selectedClientsData.length}</div>
-                </div>
-            `;
-            
-            isBulkSending = false;
-            clearSelection();
-            updateBulkActionButtons();
-            
-            showToast(`📤 Invio massivo completato! ${sentCount} messaggi inviati`, 'success', 6000);
-        }
-        
-        async function sendBulkMarketingMessage(clienteId, templateType) {
-            const cliente = marketingClienti.find(c => c.id === clienteId);
-            if (!cliente) throw new Error('Cliente non trovato');
-            
-            let message = templates[templateType];
-            message = message
-                .replace(/{nome}/g, cliente.nome)
-                .replace(/{cognome}/g, cliente.cognome)
-                .replace(/{giornoSettimana}/g, new Date().toLocaleDateString('it-IT', { weekday: 'long' }));
-            
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappUrl = `https://wa.me/${cliente.telefono.replace('+', '')}?text=${encodedMessage}`;
-            
-            // Open WhatsApp
-            window.open(whatsappUrl, '_blank');
-            
-            // Update last message
-            cliente.lastMessage = {
-                type: templateType,
-                sentAt: new Date(),
-                message: message
-            };
-            
-            saveData();
-            
-            return true;
-        }
-        
-        function stopBulkSending() {
-            if (isBulkSending) {
-                isBulkSending = false;
-                showToast('⏹️ Invio massivo interrotto', 'info');
-            } else {
-                closeModal();
-            }
-        }
-        
+        // Helper functions (simplified)
         function getStatusText(status) {
             switch (status) {
                 case 'expired': return '🔴 Scaduto';
@@ -2938,375 +1226,56 @@
                 case 'scheduled': return '⏰ Programmato';
                 case 'completed': return '✅ Completato';
                 case 'failed': return '❌ Fallito';
-                case 'overdue': return '🚨 In Ritardo';
                 default: return '❓ Sconosciuto';
             }
         }
         
-        function sendWhatsAppMessage(telefono, nome, cognome, tesseratoId) {
-            let message = templates.scadenze;
-            message = message
-                .replace(/{nome}/g, nome)
-                .replace(/{cognome}/g, cognome);
-            
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappUrl = `https://wa.me/${telefono.replace('+', '')}?text=${encodedMessage}`;
-            
-            window.open(whatsappUrl, '_blank');
-            changeStatus(tesseratoId, 'messagesent');
-        }
-        
-        function updateDashboardStats() {
-            const stats = {
-                total: tesseratiData.length,
-                expired: tesseratiData.filter(t => t.status === 'expired').length,
-                expiring: tesseratiData.filter(t => t.status === 'expiring').length,
-                active: tesseratiData.filter(t => t.status === 'active').length,
-                messagesent: tesseratiData.filter(t => t.status === 'messagesent').length,
-                renewed: tesseratiData.filter(t => t.status === 'renewed').length,
-                marketingClients: marketingClienti.length,
-                scheduledMessages: scheduledMessages.filter(m => m.status === 'scheduled').length,
-                completedMessages: scheduledMessages.filter(m => m.status === 'completed').length
-            };
-            
-            // Update stat values in dashboard
-            const totalStat = document.querySelector('[data-stat="total"]');
-            const expiredStat = document.querySelector('[data-stat="expired"]');
-            const expiringStat = document.querySelector('[data-stat="expiring"]');
-            const activeStat = document.querySelector('[data-stat="active"]');
-            const messageStat = document.querySelector('[data-stat="messagesent"]');
-            const renewedStat = document.querySelector('[data-stat="renewed"]');
-            const marketingStat = document.querySelector('[data-stat="marketing"]');
-            const scheduledStat = document.querySelector('[data-stat="scheduled"]');
-            const completedStat = document.querySelector('[data-stat="completed"]');
-            
-            if (totalStat) totalStat.textContent = stats.total;
-            if (expiredStat) expiredStat.textContent = stats.expired;
-            if (expiringStat) expiringStat.textContent = stats.expiring;
-            if (activeStat) activeStat.textContent = stats.active;
-            if (messageStat) messageStat.textContent = stats.messagesent;
-            if (renewedStat) renewedStat.textContent = stats.renewed;
-            if (marketingStat) marketingStat.textContent = stats.marketingClients;
-            if (scheduledStat) scheduledStat.textContent = stats.scheduledMessages;
-            if (completedStat) completedStat.textContent = stats.completedMessages;
-        }
-        
-        // Page Content Generators
-        function getPageContent(pageName) {
-            switch (pageName) {
-                case 'dashboard':
-                    return getDashboardContent();
-                case 'tesserati':
-                    return getTesseratiContent();
-                case 'scadenze':
-                    return getScadenzeContent();
-                case 'marketing':
-                    return getMarketingContent();
-                case 'automazione':
-                    return getAutomazioneContent();
-                case 'whatsapp':
-                    return getWhatsAppContent();
-                case 'import':
-                    return getImportContent();
-                default:
-                    return getNotFoundContent(pageName);
+        function setupMarketingFilters() { /* TODO */ }
+        function updateMarketingTable() { /* TODO */ }
+        function handleCSVUpload() { /* TODO */ }
+        function showAddMarketingClientModal() { /* TODO */ }
+        function showAddTesseratoModal() { /* TODO */ }
+        function showTemplateEditor() { /* TODO */ }
+        function showScheduleModal() { /* TODO */ }
+        function selectAllClients() { /* TODO */ }
+        function deleteScheduledMessage() { /* TODO */ }
+        function requestNotificationPermission() { 
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        showToast('📱 Notifiche browser attivate!', 'success');
+                    }
+                });
             }
         }
-        
-        function getDashboardContent() {
-            const stats = {
-                total: tesseratiData.length,
-                expired: tesseratiData.filter(t => t.status === 'expired').length,
-                expiring: tesseratiData.filter(t => t.status === 'expiring').length,
-                active: tesseratiData.filter(t => t.status === 'active').length,
-                messagesent: tesseratiData.filter(t => t.status === 'messagesent').length,
-                renewed: tesseratiData.filter(t => t.status === 'renewed').length,
-                marketingClients: marketingClienti.length,
-                scheduledMessages: scheduledMessages.filter(m => m.status === 'scheduled').length,
-                completedMessages: scheduledMessages.filter(m => m.status === 'completed').length
-            };
-            
-            return `
-                <div class="page-header">
-                    <div>
-                        <h1 class="page-title">
-                            <i class="fas fa-tachometer-alt"></i> Dashboard
-                        </h1>
-                        <p class="page-subtitle">Sistema completo di marketing automation - Tribù Personal Training</p>
-                    </div>
-                </div>
-
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-id-card" style="color: #64ffda;"></i>
-                        </div>
-                        <div class="stat-value" data-stat="total">${stats.total}</div>
-                        <div class="stat-label">Tesserati CSEN</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-times-circle" style="color: #ef4444;"></i>
-                        </div>
-                        <div class="stat-value" data-stat="expired">${stats.expired}</div>
-                        <div class="stat-label">Scaduti</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
-                        </div>
-                        <div class="stat-value" data-stat="expiring">${stats.expiring}</div>
-                        <div class="stat-label">In Scadenza</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-bullhorn" style="color: #8b5cf6;"></i>
-                        </div>
-                        <div class="stat-value" data-stat="marketing">${stats.marketingClients}</div>
-                        <div class="stat-label">Clienti Marketing</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-robot" style="color: #06b6d4;"></i>
-                        </div>
-                        <div class="stat-value" data-stat="scheduled">${stats.scheduledMessages}</div>
-                        <div class="stat-label">Invii Programmati</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-paper-plane" style="color: #10b981;"></i>
-                        </div>
-                        <div class="stat-value" data-stat="completed">${stats.completedMessages}</div>
-                        <div class="stat-label">Automatici Completati</div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <h3>🎯 ReminderTribù - Sistema Completo con Automazione</h3>
-                    <p style="margin-bottom: 2rem;">Piattaforma integrata per gestione tesseramenti CSEN e marketing automation WhatsApp con programmazione automatica.</p>
-                    
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 2rem;">
-                        <div style="background: rgba(100, 255, 218, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #64ffda;">
-                            <h4 style="color: #64ffda; margin-bottom: 1rem;">📋 Sezione Tesserati CSEN</h4>
-                            <ul style="line-height: 1.8; margin-bottom: 1rem;">
-                                <li>Import automatico CSV</li>
-                                <li>Monitoraggio scadenze</li>
-                                <li>Alert automatici</li>
-                                <li>Gestione stati e rinnovi</li>
-                            </ul>
-                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                <button class="btn btn-primary btn-sm" onclick="showPage('tesserati')">
-                                    <i class="fas fa-id-card"></i> Tesserati
-                                </button>
-                                <button class="btn btn-secondary btn-sm" onclick="showPage('scadenze')">
-                                    <i class="fas fa-exclamation-triangle"></i> Scadenze
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div style="background: rgba(139, 92, 246, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #8b5cf6;">
-                            <h4 style="color: #8b5cf6; margin-bottom: 1rem;">📱 Sezione Marketing</h4>
-                            <ul style="line-height: 1.8; margin-bottom: 1rem;">
-                                <li>Clienti personalizzati</li>
-                                <li>Template ordini pasti</li>
-                                <li>Messaggi motivazionali</li>
-                                <li>Invii massivi</li>
-                            </ul>
-                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                <button class="btn btn-primary btn-sm" onclick="showPage('marketing')">
-                                    <i class="fas fa-bullhorn"></i> Marketing
-                                </button>
-                                <button class="btn btn-secondary btn-sm" onclick="showAddMarketingClientModal()">
-                                    <i class="fas fa-user-plus"></i> Nuovo Cliente
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div style="background: rgba(6, 182, 212, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #06b6d4;">
-                            <h4 style="color: #06b6d4; margin-bottom: 1rem;">🤖 Automazione Avanzata</h4>
-                            <ul style="line-height: 1.8; margin-bottom: 1rem;">
-                                <li>Programmazione invii automatici</li>
-                                <li>Ricorrenze personalizzabili</li>
-                                <li>Notifiche browser</li>
-                                <li>Monitoraggio esecuzioni</li>
-                            </ul>
-                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                <button class="btn btn-primary btn-sm" onclick="showPage('automazione')">
-                                    <i class="fas fa-robot"></i> Automazione
-                                </button>
-                                <button class="btn btn-secondary btn-sm" onclick="showScheduleModal()">
-                                    <i class="fas fa-clock"></i> Programma Invio
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
+        function initializeScheduler() { 
+            // Start scheduler
+            if (schedulerInterval) clearInterval(schedulerInterval);
+            schedulerInterval = setInterval(checkScheduledMessages, 60000);
+            console.log('Scheduler initialized');
+        }
+        function checkScheduledMessages() { 
+            // Check for scheduled messages to execute
+            console.log('Checking scheduled messages...');
+        }
+        function checkForNewExpired() { 
+            // Check for new expired memberships
+            console.log('Checking for new expired memberships...');
         }
         
-        function getAutomazioneContent() {
-            const scheduledCount = scheduledMessages.filter(m => m.status === 'scheduled').length;
-            const completedCount = scheduledMessages.filter(m => m.status === 'completed').length;
-            const failedCount = scheduledMessages.filter(m => m.status === 'failed').length;
-            const overdueCount = scheduledMessages.filter(m => 
-                m.status === 'scheduled' && new Date(m.scheduledTime) < new Date()
-            ).length;
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing app...');
             
-            return `
-                <div class="page-header">
-                    <div>
-                        <h1 class="page-title"><i class="fas fa-robot"></i> Automazione Temporale</h1>
-                        <p class="page-subtitle">Gestione invii programmati e ricorrenti</p>
-                    </div>
-                    <div class="page-actions">
-                        <button class="btn btn-primary" onclick="showScheduleModal()">
-                            <i class="fas fa-clock"></i> Programma Nuovo Invio
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 2rem;">
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-clock" style="color: #06b6d4;"></i>
-                        </div>
-                        <div class="stat-value" data-stat="scheduled">${scheduledCount}</div>
-                        <div class="stat-label">Programmati</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-sync-alt" style="color: #8b5cf6;"></i>
-                        </div>
-                        <div class="stat-value">${scheduledMessages.filter(m => m.isRecurring).length}</div>
-                        <div class="stat-label">Ricorrenti</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-check-circle" style="color: #10b981;"></i>
-                        </div>
-                        <div class="stat-value" data-stat="completed">${completedCount}</div>
-                        <div class="stat-label">Completati</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i>
-                        </div>
-                        <div class="stat-value">${overdueCount}</div>
-                        <div class="stat-label">In Ritardo</div>
-                    </div>
-                </div>
-                
-                ${scheduledMessages.length === 0 ? `
-                    <div class="card">
-                        <h3>⏰ Nessun Invio Programmato</h3>
-                        <p style="margin-bottom: 2rem;">Inizia a programmare invii automatici per i tuoi clienti marketing.</p>
-                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                            <button class="btn btn-primary" onclick="showScheduleModal()">
-                                <i class="fas fa-clock"></i> Programma Primo Invio
-                            </button>
-                            <button class="btn btn-secondary" onclick="showPage('marketing')">
-                                <i class="fas fa-bullhorn"></i> Vai ai Clienti
-                            </button>
-                        </div>
-                    </div>
-                ` : `
-                    <div class="card">
-                        <h3>📋 Invii Programmati</h3>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Nome</th>
-                                        <th>Template</th>
-                                        <th>Data/Ora</th>
-                                        <th>Destinatari</th>
-                                        <th>Stato</th>
-                                        <th>Azioni</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${scheduledMessages
-                                        .sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime))
-                                        .map(message => {
-                                        const isOverdue = message.status === 'scheduled' && new Date(message.scheduledTime) < new Date();
-                                        const statusClass = isOverdue ? 'overdue' : message.status;
-                                        const scheduledTime = new Date(message.scheduledTime);
-                                        
-                                        return `
-                                            <tr>
-                                                <td>
-                                                    <strong>${message.name}</strong>
-                                                    ${message.isRecurring ? '<br><small style="opacity: 0.7;">🔄 Ricorrente</small>' : ''}
-                                                </td>
-                                                <td>
-                                                    <span class="template-badge template-${message.templateType}">
-                                                        ${message.templateType === 'pasti' ? '🍽️ Pasti' : '💪 Motivaz.'}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    ${scheduledTime.toLocaleString('it-IT')}
-                                                    ${message.isRecurring ? `<br><small style="opacity: 0.7;">${message.frequency}</small>` : ''}
-                                                </td>
-                                                <td>${message.totalCount}</td>
-                                                <td>
-                                                    <span class="status-badge status-${statusClass}">
-                                                        ${getStatusText(isOverdue ? 'overdue' : message.status)}
-                                                    </span>
-                                                    ${message.status === 'completed' && message.sentCount ? 
-                                                        `<br><small style="opacity: 0.7;">${message.sentCount}/${message.totalCount} inviati</small>` : ''
-                                                    }
-                                                </td>
-                                                <td>
-                                                    <div class="action-buttons">
-                                                        ${message.status === 'scheduled' ? `
-                                                            <button class="btn btn-danger btn-sm" onclick="deleteScheduledMessage(${message.id})" title="Elimina">
-                                                                <i class="fas fa-trash"></i>
-                                                            </button>
-                                                        ` : ''}
-                                                        ${message.status === 'completed' && message.completedAt ? `
-                                                            <small style="opacity: 0.7;">
-                                                                ${new Date(message.completedAt).toLocaleString('it-IT')}
-                                                            </small>
-                                                        ` : ''}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        `;
-                                    }).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                `}
-                
-                <div class="card automation-card">
-                    <div class="automation-status status-active">🤖 Attivo</div>
-                    <h3>⚡ Sistema di Automazione Avanzata</h3>
-                    <p style="margin-bottom: 1.5rem;">Il sistema controlla ogni minuto gli invii programmati ed esegue automaticamente i messaggi all'orario stabilito.</p>
-                    
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
-                        <div style="background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 8px; border-left: 3px solid #10b981;">
-                            <h4 style="color: #10b981; margin-bottom: 0.5rem;">✅ Funzionalità Attive</h4>
-                            <ul style="font-size: 0.9rem; line-height: 1.6; margin: 0;">
-                                <li>Controllo automatico ogni minuto</li>
-                                <li>Esecuzione precisa all'orario programmato</li>
-                                <li>Notifiche browser per ogni invio</li>
-                                <li>Ricorrenze automatiche infinite</li>
-                                <li>Gestione errori e recupero</li>
-                            </ul>
-                        </div>
-                        
-                        <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px; border-left: 3px solid #3b82f6;">
-                            <h4 style="color: #3b82f6; margin-bottom: 0.5rem;">🔔 Notifiche Browser</h4>
-                            <p style="font-size: 0.9rem; line-height: 1.6; margin: 0;">
-                                Ricevi notifiche push quando inizia e completa ogni invio automatico. 
-                                ${Notification.permission === 'granted' ? 
-                                    '<strong style="color: #10b981;">✅ Attivate</strong>' : 
-                                    '<button class="btn btn-secondary btn-sm" style="margin-top: 0.5rem;" onclick="requestNotificationPermission()">Attiva Notifiche</button>'
-                                }
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
+            // Load data
+            loadData();
+            
+            // Hide loading after 2 seconds and show auth
+            setTimeout(() => {
+                document.getElementById('loading-screen').classList.add('hidden');
+                document.getElementById('auth-container').classList.remove('hidden');
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
