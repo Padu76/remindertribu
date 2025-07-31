@@ -608,6 +608,9 @@
                 console.log('🔄 Inizializzazione Google Calendar API...');
                 console.log('🔐 API Key caricata da Netlify config:', GOOGLE_CONFIG.apiKey ? '✅ Presente' : '❌ Mancante');
                 
+                // 🔧 FIX: Controllo caricamento Google API con retry
+                await waitForGoogleAPI();
+                
                 await new Promise((resolve, reject) => {
                     gapi.load('client:auth2', {
                         callback: resolve,
@@ -641,9 +644,29 @@
                 console.error('❌ Errore inizializzazione Google API:', error);
                 if (!GOOGLE_CONFIG.apiKey) {
                     showToast('❌ Google API Key non configurata in Netlify', 'error');
+                } else if (error.message && error.message.includes('gapi')) {
+                    showToast('❌ Errore caricamento Google API - Riprova tra poco', 'error');
                 } else {
                     showToast('❌ Errore connessione Google Calendar', 'error');
                 }
+            }
+        }
+        
+        // 🔧 FIX: Funzione per aspettare il caricamento di Google API
+        async function waitForGoogleAPI(maxAttempts = 10, delay = 500) {
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                if (typeof gapi !== 'undefined' && gapi && gapi.load) {
+                    console.log(`✅ Google API caricata al tentativo ${attempt}`);
+                    return true;
+                }
+                
+                console.log(`⏳ Tentativo ${attempt}/${maxAttempts} - Aspetto Google API...`);
+                
+                if (attempt === maxAttempts) {
+                    throw new Error('Google API non caricata dopo ' + maxAttempts + ' tentativi');
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, delay));
             }
         }
         
@@ -1494,9 +1517,10 @@
             }, 2000);
             
             // Initialize Google Calendar API if available and configured
-            if (typeof gapi !== 'undefined' && GOOGLE_CONFIG.apiKey) {
-                setTimeout(initializeGoogleAPI, 2000);
-            } else if (!GOOGLE_CONFIG.apiKey) {
+            if (GOOGLE_CONFIG.apiKey) {
+                console.log('🔄 Avvio inizializzazione Google Calendar API...');
+                setTimeout(initializeGoogleAPI, 3000); // Aspetta 3 secondi per essere sicuro
+            } else {
                 console.log('⚠️ Google Calendar API non inizializzata: config.js mancante');
             }
         });
