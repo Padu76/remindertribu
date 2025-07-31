@@ -16,7 +16,222 @@
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             color: white;
             min-height: 100vh;
+                        </div>
+                    </div>
+                </div>
+            `;
         }
+        
+        function getCalendarioContent() {
+            const today = new Date();
+            const upcomingEvents = calendarEvents.filter(event => new Date(event.start) > today).slice(0, 10);
+            const todayEvents = calendarEvents.filter(event => {
+                const eventDate = new Date(event.start);
+                return eventDate.toDateString() === today.toDateString();
+            });
+            
+            const pendingReminders = appointmentReminders.filter(r => r.status === 'pending').length;
+            
+            return `
+                <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h1><i class="fas fa-calendar-alt"></i> Google Calendar</h1>
+                        <p style="opacity: 0.8;">Gestione appuntamenti e reminder automatici</p>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        ${!isGoogleSignedIn ? `
+                            <button class="btn btn-primary" onclick="signInGoogle()">
+                                <i class="fab fa-google"></i> Connetti Google Calendar
+                            </button>
+                        ` : `
+                            <button class="btn btn-success" onclick="loadCalendarEvents()">
+                                <i class="fas fa-sync-alt"></i> Aggiorna Calendar
+                            </button>
+                        `}
+                        <button class="btn btn-secondary" onclick="showTemplateEditor('reminder_appuntamento')">
+                            <i class="fas fa-edit"></i> Template Reminder
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 2rem;">
+                    <div class="stat-card">
+                        <i class="fas fa-calendar-check" style="font-size: 2rem; color: #10b981; margin-bottom: 1rem;"></i>
+                        <div class="stat-value">${calendarEvents.length}</div>
+                        <div>Appuntamenti Totali</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-clock" style="font-size: 2rem; color: #f59e0b; margin-bottom: 1rem;"></i>
+                        <div class="stat-value">${todayEvents.length}</div>
+                        <div>Oggi</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-arrow-up" style="font-size: 2rem; color: #06b6d4; margin-bottom: 1rem;"></i>
+                        <div class="stat-value">${upcomingEvents.length}</div>
+                        <div>Prossimi</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-bell" style="font-size: 2rem; color: #8b5cf6; margin-bottom: 1rem;"></i>
+                        <div class="stat-value">${pendingReminders}</div>
+                        <div>Reminder Attivi</div>
+                    </div>
+                </div>
+                
+                ${!isGoogleSignedIn ? `
+                    <div class="card">
+                        <h3>🔗 Connetti Google Calendar</h3>
+                        <p style="margin-bottom: 2rem;">Collega il tuo Google Calendar per automatizzare i reminder degli appuntamenti.</p>
+                        <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #3b82f6; margin-bottom: 2rem;">
+                            <h4 style="color: #3b82f6; margin-bottom: 0.5rem;">✨ Funzionalità Automatiche</h4>
+                            <ul style="font-size: 0.9rem; line-height: 1.6; margin: 0;">
+                                <li><strong>Reminder Pre-Allenamento:</strong> "Domani hai appuntamento alle 15:00"</li>
+                                <li><strong>Follow-up Post-Allenamento:</strong> "Come è andato l'allenamento di ieri?"</li>
+                                <li><strong>Sync Automatico:</strong> Aggiornamento continuo appuntamenti</li>
+                                <li><strong>Template Personalizzabili:</strong> Messaggi specifici per tipo allenamento</li>
+                            </ul>
+                        </div>
+                        <button class="btn btn-primary" onclick="signInGoogle()">
+                            <i class="fab fa-google"></i> Autorizza Accesso Google Calendar
+                        </button>
+                    </div>
+                ` : `
+                    <!-- Today's Events -->
+                    ${todayEvents.length > 0 ? `
+                        <div class="card">
+                            <h3>📅 Appuntamenti di Oggi</h3>
+                            <div style="display: grid; gap: 1rem; margin-top: 1rem;">
+                                ${todayEvents.map(event => `
+                                    <div style="background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #10b981;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div>
+                                                <strong>${event.title}</strong>
+                                                <div style="font-size: 0.9rem; opacity: 0.8; margin-top: 0.25rem;">
+                                                    <i class="fas fa-clock"></i> ${new Date(event.start).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                                    ${event.clientName ? `• <i class="fas fa-user"></i> ${event.clientName}` : ''}
+                                                </div>
+                                            </div>
+                                            <div style="display: flex; gap: 0.5rem;">
+                                                <button class="btn btn-primary btn-sm" onclick="sendAppointmentReminder('${event.id}', 'immediate')">
+                                                    <i class="fas fa-paper-plane"></i> Invia Reminder
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Upcoming Events -->
+                    <div class="card">
+                        <h3>🔮 Prossimi Appuntamenti</h3>
+                        ${upcomingEvents.length === 0 ? `
+                            <p style="opacity: 0.7; text-align: center; padding: 2rem;">
+                                Nessun appuntamento programmato nei prossimi giorni.
+                            </p>
+                        ` : `
+                            <div style="overflow-x: auto; margin-top: 2rem;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Data/Ora</th>
+                                            <th>Cliente</th>
+                                            <th>Tipo</th>
+                                            <th>Stato Reminder</th>
+                                            <th>Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${upcomingEvents.map(event => {
+                                            const eventDate = new Date(event.start);
+                                            const hasReminder = appointmentReminders.some(r => r.eventId === event.id && r.type === 'reminder');
+                                            const reminderStatus = hasReminder ? 'Programmato' : 'Non programmato';
+                                            const reminderClass = hasReminder ? 'status-scheduled' : 'status-expired';
+                                            
+                                            return `
+                                                <tr>
+                                                    <td>
+                                                        <strong>${eventDate.toLocaleDateString('it-IT')}</strong><br>
+                                                        <span style="opacity: 0.8;">${eventDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    </td>
+                                                    <td><strong>${event.clientName}</strong></td>
+                                                    <td>
+                                                        <span class="template-badge template-${event.type === 'personal_training' ? 'motivazionale' : 'pasti'}">
+                                                            ${event.type === 'personal_training' ? '👤 PT' : '🏋️ Training'}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="status-badge ${reminderClass}">
+                                                            ${reminderStatus}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="action-buttons">
+                                                            <button class="btn btn-primary btn-sm" onclick="sendAppointmentReminder('${event.id}', 'immediate')">
+                                                                <i class="fas fa-paper-plane"></i> Invia
+                                                            </button>
+                                                            <button class="btn btn-secondary btn-sm" onclick="scheduleAppointmentReminder('${event.id}')">
+                                                                <i class="fas fa-clock"></i> Programma
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `}
+                    </div>
+                    
+                    <!-- Reminder Automatici Attivi -->
+                    ${appointmentReminders.length > 0 ? `
+                        <div class="card">
+                            <h3>🔔 Reminder Automatici Programmati</h3>
+                            <div style="overflow-x: auto; margin-top: 2rem;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Cliente</th>
+                                            <th>Tipo</th>
+                                            <th>Appuntamento</th>
+                                            <th>Invio Reminder</th>
+                                            <th>Stato</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${appointmentReminders.map(reminder => `
+                                            <tr>
+                                                <td><strong>${reminder.clientName}</strong></td>
+                                                <td>
+                                                    <span class="template-badge template-${reminder.type === 'reminder' ? 'pasti' : 'motivazionale'}">
+                                                        ${reminder.type === 'reminder' ? '⏰ Pre-Allenamento' : '📝 Follow-up'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    ${new Date(reminder.eventDate).toLocaleDateString('it-IT')} 
+                                                    ${new Date(reminder.eventDate).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                                </td>
+                                                <td>
+                                                    ${reminder.type === 'reminder' ? 
+                                                        new Date(reminder.reminderDate).toLocaleDateString('it-IT') :
+                                                        new Date(reminder.followupDate).toLocaleDateString('it-IT')
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <span class="status-badge status-${reminder.status === 'pending' ? 'scheduled' : 'completed'}">
+                                                        ${reminder.status === 'pending' ? '⏰ Programmato' : '✅ Inviato'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ` : ''}
+                `}
+            `;
         
         .loading-screen {
             position: fixed;
@@ -463,6 +678,11 @@
                             <i class="fas fa-bullhorn"></i>
                             <span>Marketing</span>
                         </div>
+                        <div class="nav-item" onclick="showPage('calendario')">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>Calendario</span>
+                            <span class="notification-badge" id="calendarBadge" style="display: none;"></span>
+                        </div>
                         <div class="nav-item" onclick="showPage('automazione')">
                             <i class="fas fa-robot"></i>
                             <span>Automazione</span>
@@ -476,8 +696,6 @@
                             <i class="fas fa-upload"></i>
                             <span>Import CSV</span>
                         </div>
-                    </nav>
-                </aside>
                 
                 <main class="content-area">
                     <div id="page-content">
@@ -491,15 +709,29 @@
     <div id="toast-container"></div>
     <div id="modal-container"></div>
 
+    <script src="https://apis.google.com/js/api.js"></script>
     <script>
+        // Google Calendar Configuration
+        const GOOGLE_CONFIG = {
+            apiKey: 'AIzaSyAtSWsa-3yGbII-KFfO1JGiKoWIueYNsP8',
+            clientId: '787245178207-mit1jv9v4rech43d4hl6rrs3ffuaaq0a.apps.googleusercontent.com',
+            calendarId: 'tribupersonalstudio@gmail.com',
+            discoveryDoc: 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest',
+            scopes: 'https://www.googleapis.com/auth/calendar.readonly'
+        };
+        
         // Global variables
         let tesseratiData = [];
         let marketingClienti = [];
         let scheduledMessages = [];
+        let calendarEvents = [];
+        let appointmentReminders = [];
         let templates = {
             "scadenze": "Ciao {nome}! Il tuo tesseramento presso Tribù Personal Training è scaduto. Per rinnovarlo e continuare ad allenarti con noi, contattaci al più presto! 💪",
             "pasti": "Ciao {nome}! 🍽️ È lunedì mattina, non dimenticare di ordinare i pasti per questa settimana! Ricorda che una buona alimentazione è fondamentale per raggiungere i tuoi obiettivi. 💪",
-            "motivazionale": "Ciao {nome}! 💪 Ricorda che ogni allenamento ti avvicina ai tuoi obiettivi. Non mollare, sei più forte di quanto pensi! Oggi è il giorno perfetto per dare il massimo! 🔥"
+            "motivazionale": "Ciao {nome}! 💪 Ricorda che ogni allenamento ti avvicina ai tuoi obiettivi. Non mollare, sei più forte di quanto pensi! Oggi è il giorno perfetto per dare il massimo! 🔥",
+            "reminder_appuntamento": "Ciao {nome}! 📅 Ti ricordo che domani {data} alle {ora} hai l'appuntamento per {tipo_allenamento}. Ti aspetto in palestra! 💪",
+            "followup_appuntamento": "Ciao {nome}! 🏋️‍♀️ Come è andato l'allenamento di ieri? Spero tu abbia dato il massimo! Ricorda di idratarti bene e riposare. A presto! 💪"
         };
         
         let currentPage = 'dashboard';
@@ -509,6 +741,9 @@
         let seenExpiredIds = [];
         let nextTesseraNumber = 999999;
         let schedulerInterval = null;
+        let gapi = null;
+        let isGoogleApiLoaded = false;
+        let isGoogleSignedIn = false;
         
         // Load data from localStorage
         function loadData() {
@@ -516,6 +751,8 @@
                 tesseratiData = JSON.parse(localStorage.getItem('tesseratiData') || '[]');
                 marketingClienti = JSON.parse(localStorage.getItem('marketingClienti') || '[]');
                 scheduledMessages = JSON.parse(localStorage.getItem('scheduledMessages') || '[]');
+                calendarEvents = JSON.parse(localStorage.getItem('calendarEvents') || '[]');
+                appointmentReminders = JSON.parse(localStorage.getItem('appointmentReminders') || '[]');
                 templates = JSON.parse(localStorage.getItem('templates') || JSON.stringify(templates));
                 seenExpiredIds = JSON.parse(localStorage.getItem('seenExpiredIds') || '[]');
                 
@@ -538,6 +775,15 @@
                     }
                 });
                 
+                calendarEvents.forEach(e => {
+                    if (e.start && typeof e.start === 'string') {
+                        e.start = new Date(e.start);
+                    }
+                    if (e.end && typeof e.end === 'string') {
+                        e.end = new Date(e.end);
+                    }
+                });
+                
                 console.log('Data loaded successfully');
             } catch (error) {
                 console.error('Error loading data:', error);
@@ -550,6 +796,8 @@
                 localStorage.setItem('tesseratiData', JSON.stringify(tesseratiData));
                 localStorage.setItem('marketingClienti', JSON.stringify(marketingClienti));
                 localStorage.setItem('scheduledMessages', JSON.stringify(scheduledMessages));
+                localStorage.setItem('calendarEvents', JSON.stringify(calendarEvents));
+                localStorage.setItem('appointmentReminders', JSON.stringify(appointmentReminders));
                 localStorage.setItem('templates', JSON.stringify(templates));
                 localStorage.setItem('seenExpiredIds', JSON.stringify(seenExpiredIds));
             } catch (error) {
@@ -557,7 +805,247 @@
             }
         }
         
-        // Toast system
+        // Google Calendar API Functions
+        async function initializeGoogleAPI() {
+            try {
+                console.log('🔄 Inizializzazione Google Calendar API...');
+                
+                await new Promise((resolve, reject) => {
+                    gapi.load('client:auth2', {
+                        callback: resolve,
+                        onerror: reject
+                    });
+                });
+                
+                await gapi.client.init({
+                    apiKey: GOOGLE_CONFIG.apiKey,
+                    clientId: GOOGLE_CONFIG.clientId,
+                    discoveryDocs: [GOOGLE_CONFIG.discoveryDoc],
+                    scope: GOOGLE_CONFIG.scopes
+                });
+                
+                isGoogleApiLoaded = true;
+                console.log('✅ Google Calendar API inizializzata');
+                showToast('📅 Google Calendar collegato!', 'success');
+                
+                // Check if user is already signed in
+                const authInstance = gapi.auth2.getAuthInstance();
+                isGoogleSignedIn = authInstance.isSignedIn.get();
+                
+                if (isGoogleSignedIn) {
+                    console.log('✅ Utente già autenticato');
+                    await loadCalendarEvents();
+                }
+                
+                updateCalendarBadge();
+                
+            } catch (error) {
+                console.error('❌ Errore inizializzazione Google API:', error);
+                showToast('❌ Errore connessione Google Calendar', 'error');
+            }
+        }
+        
+        async function signInGoogle() {
+            if (!isGoogleApiLoaded) {
+                showToast('Google API non ancora caricata', 'warning');
+                return;
+            }
+            
+            try {
+                const authInstance = gapi.auth2.getAuthInstance();
+                await authInstance.signIn();
+                isGoogleSignedIn = true;
+                
+                console.log('✅ Accesso Google effettuato');
+                showToast('✅ Accesso Google Calendar riuscito!', 'success');
+                
+                await loadCalendarEvents();
+                
+                if (currentPage === 'calendario') {
+                    showPage('calendario');
+                }
+                
+            } catch (error) {
+                console.error('❌ Errore accesso Google:', error);
+                showToast('❌ Errore accesso Google Calendar', 'error');
+            }
+        }
+        
+        async function loadCalendarEvents() {
+            if (!isGoogleApiLoaded || !isGoogleSignedIn) {
+                console.log('⚠️ Google API non pronta o utente non autenticato');
+                return;
+            }
+            
+            try {
+                console.log('📅 Caricamento eventi calendario...');
+                
+                const now = new Date();
+                const timeMin = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 giorni fa
+                const timeMax = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 giorni nel futuro
+                
+                const response = await gapi.client.calendar.events.list({
+                    calendarId: GOOGLE_CONFIG.calendarId,
+                    timeMin: timeMin.toISOString(),
+                    timeMax: timeMax.toISOString(),
+                    singleEvents: true,
+                    orderBy: 'startTime',
+                    maxResults: 50
+                });
+                
+                const events = response.result.items || [];
+                
+                // Process and store events
+                calendarEvents = events.map(event => ({
+                    id: event.id,
+                    title: event.summary || 'Evento senza titolo',
+                    description: event.description || '',
+                    start: new Date(event.start.dateTime || event.start.date),
+                    end: new Date(event.end.dateTime || event.end.date),
+                    location: event.location || '',
+                    attendees: event.attendees || [],
+                    isAllDay: !event.start.dateTime,
+                    clientName: extractClientName(event.summary || ''),
+                    type: categorizeEvent(event.summary || '')
+                }));
+                
+                saveData();
+                
+                console.log(`✅ Caricati ${calendarEvents.length} eventi calendario`);
+                showToast(`📅 Caricati ${calendarEvents.length} appuntamenti`, 'success');
+                
+                // Generate automatic reminders for upcoming appointments
+                generateAppointmentReminders();
+                updateCalendarBadge();
+                
+            } catch (error) {
+                console.error('❌ Errore caricamento calendario:', error);
+                showToast('❌ Errore caricamento appuntamenti', 'error');
+            }
+        }
+        
+        function extractClientName(title) {
+            // Try to extract client name from event title
+            // Common patterns: "Allenamento con Mario", "Personal Training - Mario Rossi", "Mario Rossi", etc.
+            const patterns = [
+                /(?:allenamento|training|pt|personal)\s+(?:con\s+)?([a-z\s]+)/i,
+                /([a-z]+\s+[a-z]+)/i,
+                /([a-z]+)/i
+            ];
+            
+            for (const pattern of patterns) {
+                const match = title.match(pattern);
+                if (match && match[1]) {
+                    return match[1].trim().toUpperCase();
+                }
+            }
+            
+            return title.split(' ')[0].toUpperCase();
+        }
+        
+        function categorizeEvent(title) {
+            const lowerTitle = title.toLowerCase();
+            
+            if (lowerTitle.includes('personal') || lowerTitle.includes('pt')) {
+                return 'personal_training';
+            } else if (lowerTitle.includes('gruppo') || lowerTitle.includes('group')) {
+                return 'allenamento_gruppo';
+            } else if (lowerTitle.includes('consulenza') || lowerTitle.includes('valutazione')) {
+                return 'consulenza';
+            } else if (lowerTitle.includes('allenamento') || lowerTitle.includes('training')) {
+                return 'allenamento';
+            }
+            
+            return 'altro';
+        }
+        
+        function generateAppointmentReminders() {
+            const now = new Date();
+            const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            
+            // Clear existing reminders
+            appointmentReminders = [];
+            
+            calendarEvents.forEach(event => {
+                const eventDate = new Date(event.start);
+                
+                // Generate reminder for tomorrow's appointments
+                if (eventDate.toDateString() === tomorrow.toDateString()) {
+                    appointmentReminders.push({
+                        id: `reminder_${event.id}`,
+                        type: 'reminder',
+                        eventId: event.id,
+                        clientName: event.clientName,
+                        eventTitle: event.title,
+                        eventDate: eventDate,
+                        reminderDate: new Date(eventDate.getTime() - 24 * 60 * 60 * 1000), // 24h before
+                        status: 'pending',
+                        message: generateReminderMessage(event, 'reminder')
+                    });
+                }
+                
+                // Generate follow-up for yesterday's appointments
+                if (eventDate.toDateString() === yesterday.toDateString()) {
+                    appointmentReminders.push({
+                        id: `followup_${event.id}`,
+                        type: 'followup',
+                        eventId: event.id,
+                        clientName: event.clientName,
+                        eventTitle: event.title,
+                        eventDate: eventDate,
+                        followupDate: new Date(eventDate.getTime() + 24 * 60 * 60 * 1000), // 24h after
+                        status: 'pending',
+                        message: generateReminderMessage(event, 'followup')
+                    });
+                }
+            });
+            
+            saveData();
+            console.log(`✅ Generati ${appointmentReminders.length} reminder automatici`);
+        }
+        
+        function generateReminderMessage(event, type) {
+            const templateKey = type === 'reminder' ? 'reminder_appuntamento' : 'followup_appuntamento';
+            let message = templates[templateKey];
+            
+            const eventDate = new Date(event.start);
+            const typeMapping = {
+                'personal_training': 'Personal Training',
+                'allenamento_gruppo': 'Allenamento di Gruppo',
+                'consulenza': 'Consulenza',
+                'allenamento': 'Allenamento',
+                'altro': event.title
+            };
+            
+            message = message
+                .replace(/{nome}/g, event.clientName)
+                .replace(/{data}/g, eventDate.toLocaleDateString('it-IT'))
+                .replace(/{ora}/g, eventDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }))
+                .replace(/{tipo_allenamento}/g, typeMapping[event.type] || event.title);
+            
+            return message;
+        }
+        
+        function updateCalendarBadge() {
+            const badge = document.getElementById('calendarBadge');
+            if (!badge) return;
+            
+            const upcomingCount = calendarEvents.filter(event => {
+                const eventDate = new Date(event.start);
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                return eventDate.toDateString() === tomorrow.toDateString();
+            }).length;
+            
+            if (upcomingCount > 0) {
+                badge.textContent = upcomingCount;
+                badge.style.display = 'flex';
+                badge.style.background = '#06b6d4';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
         function showToast(message, type = 'info', duration = 4000) {
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
@@ -634,6 +1122,8 @@
                     return getScadenzeContent();
                 case 'marketing':
                     return getMarketingContent();
+                case 'calendario':
+                    return getCalendarioContent();
                 case 'automazione':
                     return getAutomazioneContent();
                 case 'whatsapp':
@@ -652,7 +1142,13 @@
                 expiring: tesseratiData.filter(t => t.status === 'expiring').length,
                 marketing: marketingClienti.length,
                 scheduled: scheduledMessages.filter(m => m.status === 'scheduled').length,
-                completed: scheduledMessages.filter(m => m.status === 'completed').length
+                completed: scheduledMessages.filter(m => m.status === 'completed').length,
+                appointments: calendarEvents.length,
+                upcomingAppointments: calendarEvents.filter(e => {
+                    const eventDate = new Date(e.start);
+                    const today = new Date();
+                    return eventDate > today && eventDate.getTime() - today.getTime() < 7 * 24 * 60 * 60 * 1000;
+                }).length
             };
             
             return `
@@ -688,9 +1184,14 @@
                         <div>Invii Programmati</div>
                     </div>
                     <div class="stat-card">
-                        <i class="fas fa-check-circle" style="font-size: 2rem; color: #10b981; margin-bottom: 1rem;"></i>
-                        <div class="stat-value">${stats.completed}</div>
-                        <div>Completati</div>
+                        <i class="fas fa-calendar-alt" style="font-size: 2rem; color: #06b6d4; margin-bottom: 1rem;"></i>
+                        <div class="stat-value">${stats.appointments}</div>
+                        <div>Appuntamenti</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-clock" style="font-size: 2rem; color: #f59e0b; margin-bottom: 1rem;"></i>
+                        <div class="stat-value">${stats.upcomingAppointments}</div>
+                        <div>Prossimi 7gg</div>
                     </div>
                 </div>
 
@@ -736,6 +1237,24 @@
                         </div>
                         
                         <div style="background: rgba(6, 182, 212, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #06b6d4;">
+                            <h4 style="color: #06b6d4; margin-bottom: 1rem;">📅 Google Calendar</h4>
+                            <ul style="line-height: 1.8; margin-bottom: 1rem;">
+                                <li>Sync automatico appuntamenti</li>
+                                <li>Reminder pre-allenamento</li>
+                                <li>Follow-up post-allenamento</li>
+                                <li>Vista calendario integrata</li>
+                            </ul>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button class="btn btn-primary btn-sm" onclick="showPage('calendario')">
+                                    <i class="fas fa-calendar-alt"></i> Calendario
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="showTemplateEditor('reminder_appuntamento')">
+                                    <i class="fas fa-bell"></i> Template Reminder
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div style="background: rgba(6, 182, 212, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #06b6d4;">
                             <h4 style="color: #06b6d4; margin-bottom: 1rem;">🤖 Automazione</h4>
                             <ul style="line-height: 1.8; margin-bottom: 1rem;">
                                 <li>Programmazione invii automatici</li>
@@ -752,9 +1271,6 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
-                </div>
-            `;
         }
         
         function getTesseratiContent() {
@@ -1487,6 +2003,14 @@
         }
         
         // Stub functions (basic implementations)
+        function sendAppointmentReminder() { 
+            showToast('Funzione reminder appuntamenti in sviluppo', 'info');
+        }
+        
+        function scheduleAppointmentReminder() { 
+            showToast('Funzione programmazione reminder in sviluppo', 'info');
+        }
+        
         function handleCSVUpload() { 
             showToast('Funzione CSV in sviluppo', 'info');
         }
@@ -1859,6 +2383,12 @@
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded, initializing app...');
+            
+            // Initialize scheduler and check for expired memberships
+            setTimeout(() => {
+                initializeScheduler();
+                checkForNewExpired();
+            }, 1000);
             
             // Load data
             loadData();
