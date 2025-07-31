@@ -499,7 +499,8 @@
     <div id="toast-container"></div>
     <div id="modal-container"></div>
 
-    <script src="https://apis.google.com/js/api.js"></script>
+    <!-- 🔧 FIX: Rimuovo script statico, ora carico dinamicamente -->
+    <!-- <script src="https://apis.google.com/js/api.js"></script> -->
     <script>
         // 🔐 SECURE: Google Calendar Configuration da Netlify Config
         const GOOGLE_CONFIG = {
@@ -595,6 +596,48 @@
             }
         }
         
+        // 🔧 FIX: Funzione per caricare dinamicamente Google API
+        function loadGoogleAPIScript() {
+            return new Promise((resolve, reject) => {
+                // Controlla se è già caricato
+                if (typeof gapi !== 'undefined' && gapi && gapi.load) {
+                    console.log('✅ Google API già presente');
+                    resolve();
+                    return;
+                }
+                
+                console.log('📥 Caricamento dinamico Google API...');
+                
+                // Crea script tag dinamicamente
+                const script = document.createElement('script');
+                script.src = 'https://apis.google.com/js/api.js';
+                script.async = true;
+                script.defer = true;
+                
+                script.onload = () => {
+                    console.log('✅ Script Google API caricato');
+                    // Aspetta che gapi sia effettivamente disponibile
+                    const checkGapi = () => {
+                        if (typeof gapi !== 'undefined' && gapi && gapi.load) {
+                            console.log('✅ Google API completamente pronto');
+                            resolve();
+                        } else {
+                            setTimeout(checkGapi, 100);
+                        }
+                    };
+                    checkGapi();
+                };
+                
+                script.onerror = (error) => {
+                    console.error('❌ Errore caricamento Google API script');
+                    reject(new Error('Impossibile caricare Google API script'));
+                };
+                
+                // Aggiungi al head
+                document.head.appendChild(script);
+            });
+        }
+        
         // 🔐 SECURE: Google Calendar API Functions con Netlify Config
         async function initializeGoogleAPI() {
             try {
@@ -608,8 +651,8 @@
                 console.log('🔄 Inizializzazione Google Calendar API...');
                 console.log('🔐 API Key caricata da Netlify config:', GOOGLE_CONFIG.apiKey ? '✅ Presente' : '❌ Mancante');
                 
-                // 🔧 FIX: Controllo caricamento Google API con retry
-                await waitForGoogleAPI();
+                // 🔧 FIX: Carica dinamicamente Google API se necessario
+                await loadGoogleAPIScript();
                 
                 await new Promise((resolve, reject) => {
                     gapi.load('client:auth2', {
@@ -642,31 +685,13 @@
                 
             } catch (error) {
                 console.error('❌ Errore inizializzazione Google API:', error);
-                if (!GOOGLE_CONFIG.apiKey) {
+                if (error.message && error.message.includes('caricare Google API script')) {
+                    showToast('❌ Impossibile caricare Google API - Controlla la connessione', 'error');
+                } else if (!GOOGLE_CONFIG.apiKey) {
                     showToast('❌ Google API Key non configurata in Netlify', 'error');
-                } else if (error.message && error.message.includes('gapi')) {
-                    showToast('❌ Errore caricamento Google API - Riprova tra poco', 'error');
                 } else {
                     showToast('❌ Errore connessione Google Calendar', 'error');
                 }
-            }
-        }
-        
-        // 🔧 FIX: Funzione per aspettare il caricamento di Google API
-        async function waitForGoogleAPI(maxAttempts = 10, delay = 500) {
-            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-                if (typeof gapi !== 'undefined' && gapi && gapi.load) {
-                    console.log(`✅ Google API caricata al tentativo ${attempt}`);
-                    return true;
-                }
-                
-                console.log(`⏳ Tentativo ${attempt}/${maxAttempts} - Aspetto Google API...`);
-                
-                if (attempt === maxAttempts) {
-                    throw new Error('Google API non caricata dopo ' + maxAttempts + ' tentativi');
-                }
-                
-                await new Promise(resolve => setTimeout(resolve, delay));
             }
         }
         
