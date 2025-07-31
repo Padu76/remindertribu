@@ -1633,8 +1633,8 @@
                                         <i class="fab fa-whatsapp"></i> WhatsApp
                                     </button>` : ''
                                 }
-                                ${tesserat.status === 'expired' || tesserat.status === 'expiring' ? 
-                                    `                                    <button class="btn btn-success btn-sm" onclick="changeStatus(${tesserat.id}, 'renewed')">
+                                ${tesserat.status === 'expired' || tesserat.status === 'expiring' || tesserat.status === 'messagesent' ? 
+                                    `<button class="btn btn-success btn-sm" onclick="changeStatus(${tesserat.id}, 'renewed')">
                                         <i class="fas fa-check"></i> Rinnovato
                                     </button>` : ''
                                 }
@@ -2606,4 +2606,3 @@
     </script>
 </body>
 </html>
-                                    
