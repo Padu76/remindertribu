@@ -1230,14 +1230,307 @@
             }
         }
         
-        function setupMarketingFilters() { /* TODO */ }
-        function updateMarketingTable() { /* TODO */ }
-        function handleCSVUpload() { /* TODO */ }
-        function showAddMarketingClientModal() { /* TODO */ }
-        function showAddTesseratoModal() { /* TODO */ }
-        function showTemplateEditor() { /* TODO */ }
-        function showScheduleModal() { /* TODO */ }
-        function selectAllClients() { /* TODO */ }
+        // Setup functions (implemented)
+        function setupFilters() {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const filter = e.target.dataset.filter;
+                    setFilter(filter);
+                });
+            });
+            
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    searchData(e.target.value);
+                });
+            }
+        }
+        
+        function initializeDataView() {
+            if (currentPage === 'scadenze') {
+                filteredData = tesseratiData.filter(t => t.status === 'expired' || t.status === 'expiring');
+                currentFilter = 'expiring';
+            } else {
+                filteredData = [...tesseratiData];
+                currentFilter = 'all';
+            }
+            
+            setTimeout(() => {
+                updateDataTable();
+                if (document.querySelector('.filter-btn')) {
+                    setFilter(currentFilter);
+                }
+            }, 100);
+        }
+        
+        function setupMarketingFilters() {
+            const searchInput = document.getElementById('marketingSearch');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    updateMarketingTable(e.target.value);
+                });
+            }
+        }
+        
+        function updateMarketingTable(searchTerm = '') {
+            const tableBody = document.getElementById('marketingTableBody');
+            if (!tableBody) return;
+            
+            let filtered = [...marketingClienti];
+            
+            if (searchTerm) {
+                const term = searchTerm.toLowerCase();
+                filtered = filtered.filter(cliente => 
+                    cliente.nome.toLowerCase().includes(term) ||
+                    cliente.cognome.toLowerCase().includes(term) ||
+                    (cliente.telefono && cliente.telefono.includes(term))
+                );
+            }
+            
+            if (filtered.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 2rem; opacity: 0.7;">
+                            ${marketingClienti.length === 0 ? 'Nessun cliente inserito' : 'Nessun risultato trovato'}
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tableBody.innerHTML = filtered.map(cliente => `
+                <tr>
+                    <td>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" class="client-checkbox" data-client-id="${cliente.id}" onchange="updateSelectedClients()">
+                            <strong>${cliente.nome} ${cliente.cognome}</strong>
+                        </label>
+                    </td>
+                    <td>${cliente.telefono}</td>
+                    <td>
+                        <div style="display: flex; gap: 0.5rem;">
+                            ${cliente.templates && cliente.templates.pasti ? '<span class="template-badge template-pasti">Pasti</span>' : ''}
+                            ${cliente.templates && cliente.templates.motivazionale ? '<span class="template-badge template-motivazionale">Motivaz.</span>' : ''}
+                            ${(!cliente.templates || (!cliente.templates.pasti && !cliente.templates.motivazionale)) ? '<span style="opacity: 0.5;">Nessuno</span>' : ''}
+                        </div>
+                    </td>
+                    <td>${cliente.lastMessage ? new Date(cliente.lastMessage.sentAt).toLocaleDateString('it-IT') : 'Mai'}</td>
+                    <td>
+                        <div class="action-buttons">
+                            ${cliente.templates && cliente.templates.pasti ? 
+                                `<button class="btn btn-warning btn-sm" onclick="sendMarketingMessage(${cliente.id}, 'pasti')">
+                                    <i class="fas fa-utensils"></i> Pasti
+                                </button>` : ''
+                            }
+                            ${cliente.templates && cliente.templates.motivazionale ? 
+                                `<button class="btn btn-success btn-sm" onclick="sendMarketingMessage(${cliente.id}, 'motivazionale')">
+                                    <i class="fas fa-fire"></i> Motivaz.
+                                </button>` : ''
+                            }
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+            
+            updateBulkActionButtons();
+        }
+        
+        function setFilter(filter) {
+            currentFilter = filter;
+            
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.filter === filter) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            applyFilters();
+        }
+        
+        function searchData(searchTerm) {
+            applyFilters(searchTerm);
+        }
+        
+        function applyFilters(searchTerm = '') {
+            let filtered = [...tesseratiData];
+            
+            if (currentFilter !== 'all') {
+                filtered = filtered.filter(item => item.status === currentFilter);
+            }
+            
+            if (searchTerm) {
+                const term = searchTerm.toLowerCase();
+                filtered = filtered.filter(item => 
+                    item.nome.toLowerCase().includes(term) ||
+                    item.cognome.toLowerCase().includes(term) ||
+                    (item.telefono && item.telefono.includes(term))
+                );
+            }
+            
+            filteredData = filtered;
+            updateDataTable();
+        }
+        
+        function updateDataTable() {
+            const tableBody = document.getElementById('dataTableBody');
+            if (!tableBody) return;
+            
+            if (filteredData.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 2rem; opacity: 0.7;">
+                            ${tesseratiData.length === 0 ? 'Nessun dato caricato' : 'Nessun risultato trovato'}
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tableBody.innerHTML = filteredData.map(tesserat => {
+                const isNewExpired = tesserat.status === 'expired' && !seenExpiredIds.includes(tesserat.id);
+                const rowClass = isNewExpired ? 'blink-row' : '';
+                
+                return `
+                    <tr class="${rowClass}">
+                        <td><strong>${tesserat.nome} ${tesserat.cognome}</strong></td>
+                        <td>${tesserat.telefono || 'N/A'}</td>
+                        <td>${tesserat.dataScadenza ? tesserat.dataScadenza.toLocaleDateString('it-IT') : 'N/A'}</td>
+                        <td>
+                            <span class="status-badge status-${tesserat.status}">
+                                ${getStatusText(tesserat.status)}
+                            </span>
+                        </td>
+                        <td>${tesserat.daysTillExpiry !== null ? 
+                            (tesserat.daysTillExpiry < 0 ? `${Math.abs(tesserat.daysTillExpiry)} giorni fa` : `${tesserat.daysTillExpiry} giorni`) : 'N/A'}</td>
+                        <td>
+                            <div class="action-buttons">
+                                ${tesserat.telefono && (tesserat.status === 'expired' || tesserat.status === 'expiring') ? 
+                                    `<button class="whatsapp-btn" onclick="sendWhatsAppMessage('${tesserat.telefono}', '${tesserat.nome}', '${tesserat.cognome}', ${tesserat.id})">
+                                        <i class="fab fa-whatsapp"></i> WhatsApp
+                                    </button>` : ''
+                                }
+                                ${tesserat.status === 'expired' || tesserat.status === 'expiring' || tesserat.status === 'messagesent' ? 
+                                    `<button class="btn btn-success btn-sm" onclick="changeStatus(${tesserat.id}, 'renewed')">
+                                        <i class="fas fa-check"></i> Rinnovato
+                                    </button>` : ''
+                                }
+                                ${tesserat.status === 'expired' || tesserat.status === 'expiring' ? 
+                                    `<button class="btn btn-primary btn-sm" onclick="changeStatus(${tesserat.id}, 'messagesent')">
+                                        <i class="fas fa-paper-plane"></i> Inviato
+                                    </button>` : ''
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function updateSelectedClients() {
+            const checkboxes = document.querySelectorAll('.client-checkbox:checked');
+            selectedClients = Array.from(checkboxes).map(cb => parseInt(cb.dataset.clientId));
+            updateBulkActionButtons();
+        }
+        
+        function updateBulkActionButtons() {
+            const bulkActions = document.getElementById('bulkActions');
+            if (!bulkActions) return;
+            
+            if (selectedClients.length === 0) {
+                bulkActions.innerHTML = `
+                    <div style="opacity: 0.6; font-size: 0.9rem;">
+                        <i class="fas fa-info-circle"></i> Seleziona clienti per azioni di gruppo
+                    </div>
+                `;
+                return;
+            }
+            
+            const selectedClientsData = selectedClients.map(id => marketingClienti.find(c => c.id === id));
+            const pastiClients = selectedClientsData.filter(c => c && c.templates && c.templates.pasti).length;
+            const motivazioneClients = selectedClientsData.filter(c => c && c.templates && c.templates.motivazionale).length;
+            
+            bulkActions.innerHTML = `
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <div style="font-weight: 600; color: #64ffda;">
+                        <i class="fas fa-users"></i> ${selectedClients.length} clienti selezionati
+                    </div>
+                    
+                    ${pastiClients > 0 ? `
+                        <button class="btn btn-warning" onclick="showBulkMessageModal('pasti')">
+                            <i class="fas fa-utensils"></i> Invio Massivo Pasti (${pastiClients})
+                        </button>
+                    ` : ''}
+                    
+                    ${motivazioneClients > 0 ? `
+                        <button class="btn btn-success" onclick="showBulkMessageModal('motivazionale')">
+                            <i class="fas fa-fire"></i> Invio Massivo Motivazionale (${motivazioneClients})
+                        </button>
+                    ` : ''}
+                    
+                    <button class="btn btn-secondary" onclick="showScheduleModal(selectedClients)">
+                        <i class="fas fa-clock"></i> Programma Invio
+                    </button>
+                    
+                    <button class="btn btn-secondary btn-sm" onclick="clearSelection()">
+                        <i class="fas fa-times"></i> Deseleziona
+                    </button>
+                </div>
+            `;
+        }
+        
+        // Stub functions (basic implementations)
+        function handleCSVUpload() { 
+            showToast('Funzione CSV in sviluppo', 'info');
+        }
+        
+        function showAddMarketingClientModal() { 
+            showToast('Funzione in sviluppo', 'info');
+        }
+        
+        function showAddTesseratoModal() { 
+            showToast('Funzione in sviluppo', 'info');
+        }
+        
+        function showTemplateEditor() { 
+            showToast('Funzione in sviluppo', 'info');
+        }
+        
+        function showScheduleModal() { 
+            showToast('Funzione in sviluppo', 'info');
+        }
+        
+        function showBulkMessageModal() { 
+            showToast('Funzione in sviluppo', 'info');
+        }
+        
+        function selectAllClients() { 
+            showToast('Funzione in sviluppo', 'info');
+        }
+        
+        function clearSelection() {
+            selectedClients = [];
+            const checkboxes = document.querySelectorAll('.client-checkbox');
+            checkboxes.forEach(checkbox => checkbox.checked = false);
+            updateBulkActionButtons();
+        }
+        
+        function deleteScheduledMessage() { 
+            showToast('Funzione in sviluppo', 'info');
+        }
+        
+        function sendMarketingMessage() { 
+            showToast('Funzione in sviluppo', 'info');
+        }
+        
+        function sendWhatsAppMessage() { 
+            showToast('Funzione in sviluppo', 'info');
+        }
+        
+        function changeStatus() { 
+            showToast('Funzione in sviluppo', 'info');
+        }
         function deleteScheduledMessage() { /* TODO */ }
         function requestNotificationPermission() { 
             if ('Notification' in window && Notification.permission === 'default') {
