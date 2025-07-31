@@ -1328,6 +1328,9 @@
                                     <i class="fas fa-fire"></i> Motivaz.
                                 </button>` : ''
                             }
+                            <button class="btn btn-danger btn-sm" onclick="deleteMarketingClient(${cliente.id})" title="Elimina cliente">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -1421,6 +1424,9 @@
                                         <i class="fas fa-paper-plane"></i> Inviato
                                     </button>` : ''
                                 }
+                                <button class="btn btn-danger btn-sm" onclick="deleteTesserato(${tesserat.id})" title="Elimina tesserato">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -1493,8 +1499,136 @@
             showToast('Funzione in sviluppo', 'info');
         }
         
-        function showTemplateEditor() { 
-            showToast('Funzione in sviluppo', 'info');
+        function showTemplateEditor(templateType) { 
+            const templateNames = {
+                'scadenze': 'Tesseramento Scaduto',
+                'pasti': 'Reminder Ordine Pasti',
+                'motivazionale': 'Messaggio Motivazionale'
+            };
+            
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal(event)">
+                    <div class="modal" onclick="event.stopPropagation()">
+                        <div class="modal-header">
+                            <h3 class="modal-title">✏️ Modifica Template: ${templateNames[templateType]}</h3>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label>Messaggio Template</label>
+                                <textarea id="templateEditor" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; padding: 1rem; color: white; font-family: monospace; resize: vertical; min-height: 120px;" rows="8">${templates[templateType]}</textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Variabili disponibili:</label>
+                                <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 0.5rem;">
+                                    <strong>{nome}</strong> - Nome del cliente<br>
+                                    <strong>{cognome}</strong> - Cognome del cliente<br>
+                                    <strong>{dataScadenza}</strong> - Data scadenza tesseramento<br>
+                                    <strong>{giornoSettimana}</strong> - Giorno della settimana corrente
+                                </p>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Preview:</label>
+                                <div id="templatePreview" style="background: rgba(37, 211, 102, 0.1); border: 1px solid #25d366; border-radius: 8px; padding: 1rem; margin-top: 1rem; font-family: monospace; line-height: 1.6;">
+                                    <!-- Preview will be updated here -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeModal()">
+                                <i class="fas fa-times"></i> Annulla
+                            </button>
+                            <button class="btn btn-primary" onclick="saveTemplate('${templateType}')">
+                                <i class="fas fa-save"></i> Salva Template
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modal-container').innerHTML = modalHtml;
+            
+            // Setup preview update
+            const editor = document.getElementById('templateEditor');
+            const preview = document.getElementById('templatePreview');
+            
+            function updatePreview() {
+                let previewText = editor.value;
+                previewText = previewText
+                    .replace(/{nome}/g, '<strong>Mario</strong>')
+                    .replace(/{cognome}/g, '<strong>Rossi</strong>')
+                    .replace(/{dataScadenza}/g, '<strong>15/02/2025</strong>')
+                    .replace(/{giornoSettimana}/g, '<strong>Lunedì</strong>');
+                
+                preview.innerHTML = previewText.replace(/\n/g, '<br>');
+            }
+            
+            editor.addEventListener('input', updatePreview);
+            updatePreview();
+        }
+        
+        function saveTemplate(templateType) {
+            const newTemplate = document.getElementById('templateEditor').value.trim();
+            if (!newTemplate) {
+                showToast('Il template non può essere vuoto', 'error');
+                return;
+            }
+            
+            templates[templateType] = newTemplate;
+            saveData();
+            
+            showToast('✅ Template salvato con successo!', 'success');
+            closeModal();
+            
+            // Refresh current page if it's whatsapp
+            if (currentPage === 'whatsapp') {
+                showPage('whatsapp');
+            }
+        }
+        
+        function closeModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('modal-container').innerHTML = '';
+        }
+        
+        // Delete functions
+        function deleteTesserato(tesseratoId) {
+            const tesserato = tesseratiData.find(t => t.id === tesseratoId);
+            if (!tesserato) return;
+            
+            if (confirm(`Sei sicuro di voler eliminare ${tesserato.nome} ${tesserato.cognome}?`)) {
+                const index = tesseratiData.findIndex(t => t.id === tesseratoId);
+                if (index !== -1) {
+                    tesseratiData.splice(index, 1);
+                    saveData();
+                    showToast(`🗑️ ${tesserato.nome} ${tesserato.cognome} eliminato`, 'info');
+                    
+                    // Refresh current page
+                    if (currentPage === 'tesserati' || currentPage === 'scadenze') {
+                        showPage(currentPage);
+                    }
+                }
+            }
+        }
+        
+        function deleteMarketingClient(clienteId) {
+            const cliente = marketingClienti.find(c => c.id === clienteId);
+            if (!cliente) return;
+            
+            if (confirm(`Sei sicuro di voler eliminare ${cliente.nome} ${cliente.cognome}?`)) {
+                const index = marketingClienti.findIndex(c => c.id === clienteId);
+                if (index !== -1) {
+                    marketingClienti.splice(index, 1);
+                    saveData();
+                    showToast(`🗑️ ${cliente.nome} ${cliente.cognome} eliminato`, 'info');
+                    
+                    // Refresh current page
+                    if (currentPage === 'marketing') {
+                        showPage(currentPage);
+                    }
+                }
+            }
         }
         
         function showScheduleModal() { 
@@ -1542,14 +1676,180 @@
             }
         }
         function initializeScheduler() { 
-            // Start scheduler
+            // Request notification permission
+            setTimeout(() => {
+                if ('Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            showToast('📱 Notifiche browser attivate!', 'success');
+                        }
+                    });
+                }
+            }, 3000);
+            
+            // Start scheduler - check every minute
             if (schedulerInterval) clearInterval(schedulerInterval);
             schedulerInterval = setInterval(checkScheduledMessages, 60000);
-            console.log('Scheduler initialized');
+            
+            // Process existing scheduled messages
+            processScheduledMessages();
+            updateAutomationBadge();
+            
+            console.log('✅ Scheduler attivo - controllo ogni minuto');
+            showToast('🤖 Sistema di automazione attivato!', 'success');
         }
+        
         function checkScheduledMessages() { 
-            // Check for scheduled messages to execute
-            console.log('Checking scheduled messages...');
+            console.log('🔍 Controllo messaggi programmati...');
+            
+            const now = new Date();
+            const messagesToExecute = scheduledMessages.filter(msg => 
+                msg.status === 'scheduled' && new Date(msg.scheduledTime) <= now
+            );
+            
+            if (messagesToExecute.length > 0) {
+                console.log(`📤 Trovati ${messagesToExecute.length} messaggi da eseguire`);
+                
+                messagesToExecute.forEach(message => {
+                    executeScheduledMessage(message);
+                });
+                
+                // Update UI if on automation page
+                if (currentPage === 'automazione') {
+                    setTimeout(() => showPage('automazione'), 1000);
+                }
+                
+                updateAutomationBadge();
+            }
+        }
+        
+        function processScheduledMessages() {
+            const now = new Date();
+            
+            scheduledMessages.forEach(message => {
+                // Convert string dates back to Date objects
+                if (typeof message.scheduledTime === 'string') {
+                    message.scheduledTime = new Date(message.scheduledTime);
+                }
+                
+                // Handle recurring messages that need rescheduling
+                if (message.isRecurring && message.status === 'completed' && message.nextExecution) {
+                    const nextTime = new Date(message.nextExecution);
+                    if (nextTime <= now) {
+                        scheduleNextRecurrence(message);
+                    }
+                }
+            });
+            
+            saveData();
+        }
+        
+        function executeScheduledMessage(message) {
+            try {
+                message.status = 'executing';
+                message.executedAt = new Date();
+                saveData();
+                
+                console.log(`🚀 Esecuzione: ${message.name}`);
+                
+                // Show browser notification
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('🚀 Invio Automatico Avviato', {
+                        body: `Avvio invio: ${message.name}`,
+                        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📤</text></svg>'
+                    });
+                }
+                
+                showToast(`🚀 Invio automatico avviato: ${message.name}`, 'info', 6000);
+                
+                // Simulate message sending (in real implementation, this would be the actual bulk sending)
+                setTimeout(() => {
+                    // Mark as completed
+                    message.status = 'completed';
+                    message.completedAt = new Date();
+                    message.sentCount = message.recipients ? message.recipients.length : 0;
+                    
+                    // Schedule next recurrence if recurring
+                    if (message.isRecurring) {
+                        scheduleNextRecurrence(message);
+                    }
+                    
+                    saveData();
+                    
+                    // Show completion notification
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        new Notification('✅ Invio Automatico Completato', {
+                            body: `Completato: ${message.name} - ${message.sentCount} messaggi`,
+                            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">✅</text></svg>'
+                        });
+                    }
+                    
+                    showToast(`✅ Invio automatico completato: ${message.name} (${message.sentCount} messaggi)`, 'success', 6000);
+                    
+                    updateAutomationBadge();
+                    
+                }, 5000); // Simulate 5 second execution
+                
+            } catch (error) {
+                message.status = 'failed';
+                message.error = error.message;
+                saveData();
+                
+                showToast(`❌ Errore invio automatico: ${message.name}`, 'error');
+                console.error('Scheduled message execution failed:', error);
+            }
+        }
+        
+        function scheduleNextRecurrence(message) {
+            const currentTime = new Date(message.scheduledTime);
+            let nextTime = new Date(currentTime);
+            
+            switch (message.frequency) {
+                case 'daily':
+                    nextTime.setDate(nextTime.getDate() + 1);
+                    break;
+                case 'weekly':
+                    nextTime.setDate(nextTime.getDate() + 7);
+                    break;
+                case 'monthly':
+                    nextTime.setMonth(nextTime.getMonth() + 1);
+                    break;
+            }
+            
+            // Create new scheduled message for next recurrence
+            const newMessage = {
+                ...message,
+                id: Date.now() + Math.random(),
+                scheduledTime: nextTime,
+                status: 'scheduled',
+                executedAt: null,
+                completedAt: null,
+                sentCount: 0,
+                error: null
+            };
+            
+            scheduledMessages.push(newMessage);
+            saveData();
+            
+            console.log(`🔄 Prossima ricorrenza programmata: ${nextTime.toLocaleString('it-IT')}`);
+        }
+        
+        function updateAutomationBadge() {
+            const badge = document.getElementById('automationBadge');
+            if (!badge) return;
+            
+            const activeCount = scheduledMessages.filter(m => m.status === 'scheduled').length;
+            const overdueCount = scheduledMessages.filter(m => 
+                m.status === 'scheduled' && new Date(m.scheduledTime) < new Date()
+            ).length;
+            
+            if (activeCount > 0) {
+                badge.textContent = activeCount;
+                badge.style.display = 'flex';
+                badge.style.background = overdueCount > 0 ? '#dc2626' : '#06b6d4';
+            } else {
+                badge.style.display = 'none';
+            }
         }
         function checkForNewExpired() { 
             // Check for new expired memberships
