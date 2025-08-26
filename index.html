@@ -59,7 +59,7 @@
                     <input type="password" id="loginPassword" class="form-control" value="tribu2025" autocomplete="current-password">
                 </div>
                 
-                <button class="btn btn-primary btn-login" onclick="AppAuth.performLogin()">
+                <button class="btn btn-primary btn-login" onclick="window.AppAuth?.performLogin() || console.error('Auth not ready')">
                     <i class="fas fa-sign-in-alt"></i> Accedi
                 </button>
             </div>
@@ -136,25 +136,11 @@
     <!-- Configuration -->
     <script src="config.js"></script>
     
-    <!-- Core Modules -->
+    <!-- Core Modules (Only existing ones) -->
+    <script src="assets/js/components/toast.js"></script>
+    <script src="assets/js/modules/auth.js"></script>
     <script src="assets/js/config/firebase.js"></script>
     <script src="assets/js/modules/storage.js"></script>
-    <script src="assets/js/modules/auth.js"></script>
-    
-    <!-- Component Modules -->
-    <script src="assets/js/components/toast.js"></script>
-    <script src="assets/js/components/modal.js"></script>
-    <script src="assets/js/components/table.js"></script>
-    
-    <!-- Feature Modules -->
-    <script src="assets/js/modules/contacts.js"></script>
-    <script src="assets/js/modules/reminders.js"></script>
-    <script src="assets/js/modules/whatsapp.js"></script>
-    <script src="assets/js/modules/analytics.js"></script>
-    
-    <!-- Utilities -->
-    <script src="assets/js/utils/helpers.js"></script>
-    <script src="assets/js/utils/validation.js"></script>
     
     <!-- Main Application -->
     <script src="assets/js/app.js"></script>
@@ -164,14 +150,50 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded, initializing TribuReminder...');
             
-            // Initialize app after short delay for all modules to load
+            // Initialize modules in correct order
             setTimeout(() => {
-                if (window.TribuApp) {
-                    window.TribuApp.init();
-                } else {
-                    console.error('TribuApp not found - check module loading');
+                try {
+                    // Initialize toast first
+                    if (window.Toast_Instance) {
+                        window.Toast_Instance.init();
+                        window.AppToast = window.Toast_Instance;
+                        console.log('Toast initialized');
+                    }
+                    
+                    // Initialize auth
+                    if (window.Auth_Instance) {
+                        window.AppAuth = window.Auth_Instance;
+                        window.Auth_Instance.init();
+                        console.log('Auth initialized');
+                    }
+                    
+                    // Initialize main app
+                    if (window.App_Instance) {
+                        window.TribuApp = window.App_Instance;
+                        window.App_Instance.init();
+                        console.log('TribuApp initialized');
+                    } else {
+                        console.error('App_Instance not found');
+                        console.log('Available window objects:', Object.keys(window).filter(k => k.includes('Instance') || k.includes('App')));
+                        
+                        // Show error message to user
+                        document.body.innerHTML = `
+                            <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #1a1a2e; color: white; text-align: center;">
+                                <div>
+                                    <h1>Errore Caricamento Moduli</h1>
+                                    <p>Il file app.js non si è caricato correttamente.</p>
+                                    <p>Controlla che il file esista in: assets/js/app.js</p>
+                                    <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #64ffda; color: #1a1a2e; border: none; border-radius: 4px;">
+                                        Ricarica Pagina
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    console.error('Initialization error:', error);
                 }
-            }, 500);
+            }, 1000);
         });
     </script>
 </body>
