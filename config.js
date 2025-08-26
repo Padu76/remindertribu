@@ -1,6 +1,4 @@
 // TribuReminder Configuration
-// Updated with real Firebase and Google credentials
-
 window.AppConfig = {
     // Application Settings
     app: {
@@ -12,15 +10,15 @@ window.AppConfig = {
     // Google Services Configuration
     google: {
         enabled: true,
-        apiKey: process.env.GOOGLE_API_KEY || window.ENV?.GOOGLE_API_KEY || "YOUR_GOOGLE_API_KEY",
-        clientId: process.env.GOOGLE_CLIENT_ID || window.ENV?.GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID", 
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET || window.ENV?.GOOGLE_CLIENT_SECRET || "YOUR_GOOGLE_CLIENT_SECRET",
+        apiKey: process.env.GOOGLE_API_KEY || window.ENV?.GOOGLE_API_KEY || "",
+        clientId: process.env.GOOGLE_CLIENT_ID || window.ENV?.GOOGLE_CLIENT_ID || "", 
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET || window.ENV?.GOOGLE_CLIENT_SECRET || "",
         calendarId: process.env.GOOGLE_CALENDAR_ID || window.ENV?.GOOGLE_CALENDAR_ID || "tribupersonalstudio@gmail.com",
         scopes: "https://www.googleapis.com/auth/calendar.readonly",
         discoveryDoc: "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"
     },
     
-    // Firebase Configuration - Use Environment Variables
+    // Firebase Configuration
     firebase: {
         enabled: true,
         config: {
@@ -42,7 +40,7 @@ window.AppConfig = {
     
     // Storage Configuration
     storage: {
-        primary: "firebase", // firebase | localStorage
+        primary: "firebase",
         fallback: "localStorage",
         keys: {
             user: "tribu_user",
@@ -70,7 +68,7 @@ window.AppConfig = {
     // Authentication Configuration
     auth: {
         enabled: true,
-        type: "simple", // simple | firebase | oauth
+        type: "simple",
         credentials: {
             email: "admin@tribu.com",
             password: "tribu2025"
@@ -92,3 +90,62 @@ window.AppConfig = {
         theme: "dark",
         language: "it",
         dateFormat: "DD/MM/YYYY",
+        timeFormat: "HH:mm",
+        itemsPerPage: 20
+    },
+    
+    // Status Configuration for CSEN Members
+    memberStatus: {
+        active: {
+            label: "Attivo",
+            color: "#10b981",
+            daysThreshold: 30
+        },
+        expiring: {
+            label: "In Scadenza", 
+            color: "#f59e0b",
+            daysThreshold: 0
+        },
+        expired: {
+            label: "Scaduto",
+            color: "#ef4444",
+            daysThreshold: -999
+        },
+        messagesent: {
+            label: "Messaggio Inviato",
+            color: "#3b82f6",
+            daysThreshold: null
+        },
+        renewed: {
+            label: "Rinnovato",
+            color: "#8b5cf6",
+            daysThreshold: null
+        }
+    },
+    
+    // Demo Data Settings
+    demo: {
+        enabled: false,
+        sampleData: {
+            generateContacts: false,
+            generateReminders: false,
+            generateAnalytics: false
+        }
+    },
+    
+    // Debug Settings
+    debug: {
+        enabled: false,
+        logLevel: "info",
+        showConsoleMessages: true
+    }
+};
+
+// Make config globally available
+window.CONFIG = window.AppConfig;
+
+// Log initialization
+console.log('TribuReminder Configuration Loaded');
+console.log('Firebase Project:', window.AppConfig.firebase.config.projectId || 'Not configured');
+console.log('Google Calendar:', window.AppConfig.google.calendarId);
+console.log('Environment:', window.AppConfig.app.environment);
