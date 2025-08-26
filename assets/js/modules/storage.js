@@ -1,454 +1,444 @@
 /**
- * Storage Module - Conflict Free Version
- * Handles all data persistence, user profiles, contacts, reminders, and stats
+ * Storage Module - Firebase/LocalStorage Hybrid
+ * Primary: Firebase Firestore for members, reminders
+ * Fallback: LocalStorage for offline functionality
  */
 
-// Use unique namespace to avoid conflicts
-window.RemindProStorage = class {
+window.TribuStorage = class {
     constructor() {
+        this.firebase = null;
         this.isInitialized = false;
-        this.demoDataGenerated = false;
+        this.useFirebase = false;
     }
     
     async init() {
         try {
-            console.log('💾 Initializing RemindProStorage module...');
+            console.log('💾 Initializing TribuStorage module...');
             
-            // Generate demo data if in demo mode and not already generated
-            if (window.AppConfig?.demo?.enabled && window.AppConfig.demo.sampleData.generateContacts) {
-                this.generateDemoDataIfNeeded();
+            // Try to initialize Firebase first
+            if (window.Firebase_Instance) {
+                const firebaseReady = await window.Firebase_Instance.init();
+                if (firebaseReady) {
+                    this.firebase = window.Firebase_Instance;
+                    this.useFirebase = true;
+                    console.log('✅ Firebase storage enabled');
+                } else {
+                    console.warn('⚠️ Firebase failed, falling back to localStorage');
+                    this.useFirebase = false;
+                }
+            } else {
+                console.warn('⚠️ Firebase not available, using localStorage only');
+                this.useFirebase = false;
             }
             
             this.isInitialized = true;
-            console.log('✅ RemindProStorage module initialized');
-        } catch (error) {
-            console.error('❌ RemindProStorage module initialization failed:', error);
-        }
-    }
-    
-    // User Management
-    setCurrentUser(userData) {
-        try {
-            const storageKey = window.AppConfig?.storage?.keys?.user || 'remindpro_user';
-            localStorage.setItem(storageKey, JSON.stringify(userData));
-            console.log('👤 User data saved');
-        } catch (error) {
-            console.error('Failed to save user data:', error);
-        }
-    }
-    
-    getCurrentUser() {
-        try {
-            const storageKey = window.AppConfig?.storage?.keys?.user || 'remindpro_user';
-            const userData = localStorage.getItem(storageKey);
-            return userData ? JSON.parse(userData) : null;
-        } catch (error) {
-            console.error('Failed to load user data:', error);
-            return null;
-        }
-    }
-    
-    clearCurrentUser() {
-        const keys = window.AppConfig?.storage?.keys || {};
-        localStorage.removeItem(keys.user || 'remindpro_user');
-        localStorage.removeItem(keys.profile || 'remindpro_profile');
-    }
-    
-    // Profile Management
-    async setUserProfile(profileData) {
-        try {
-            const profile = {
-                ...profileData,
-                updatedAt: new Date().toISOString()
-            };
-            const storageKey = window.AppConfig?.storage?.keys?.profile || 'remindpro_profile';
-            localStorage.setItem(storageKey, JSON.stringify(profile));
-            console.log('📋 Profile saved');
-            return profile;
-        } catch (error) {
-            console.error('Failed to save profile:', error);
-            throw error;
-        }
-    }
-    
-    getUserProfile() {
-        try {
-            const storageKey = window.AppConfig?.storage?.keys?.profile || 'remindpro_profile';
-            const profile = localStorage.getItem(storageKey);
-            return profile ? JSON.parse(profile) : null;
-        } catch (error) {
-            console.error('Failed to load profile:', error);
-            return null;
-        }
-    }
-    
-    // Contacts Management
-    async addContact(contactData) {
-        try {
-            const contacts = this.getContacts();
+            console.log('✅ TribuStorage module initialized');
             
-            // Generate ID
-            const contact = {
-                id: this.generateId(),
-                name: contactData.name,
-                phone: this.normalizePhone(contactData.phone),
-                email: contactData.email || '',
-                tags: Array.isArray(contactData.tags) ? contactData.tags : [],
-                status: 'active',
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
+            return true;
             
-            contacts.push(contact);
-            const storageKey = window.AppConfig?.storage?.keys?.contacts || 'remindpro_contacts';
-            localStorage.setItem(storageKey, JSON.stringify(contacts));
-            
-            console.log('👥 Contact added:', contact.name);
-            return contact;
         } catch (error) {
-            console.error('Failed to add contact:', error);
-            throw error;
+            console.error('❌ TribuStorage initialization failed:', error);
+            this.useFirebase = false;
+            return false;
         }
     }
     
-    getContacts() {
+    // CSEN Members Management
+    async getMembers() {
         try {
-            const storageKey = window.AppConfig?.storage?.keys?.contacts || 'remindpro_contacts';
-            const contacts = localStorage.getItem(storageKey);
-            return contacts ? JSON.parse(contacts) : [];
+            if (this.useFirebase && this.firebase?.isReady()) {
+                // Get from Firebase
+                return await this.firebase.getMembers();
+            } else {
+                // Fallback to localStorage
+                return this.getMembersFromLocalStorage();
+            }
         } catch (error) {
-            console.error('Failed to load contacts:', error);
+            console.error('❌ Error getting members:', error);
+            // Fallback to localStorage on error
+            return this.getMembersFromLocalStorage();
+        }
+    }
+    
+    getMembersFromLocalStorage() {
+        try {
+            const stored = localStorage.getItem('tribu_tesserati');
+            const members = stored ? JSON.parse(stored) : [];
+            
+            // Process dates and calculate status
+            return members.map(member => ({
+                ...member,
+                dataScadenza: member.dataScadenza ? new Date(member.dataScadenza) : null,
+                status: this.calculateMemberStatus(member.dataScadenza),
+                daysTillExpiry: this.calculateDaysToExpiry(member.dataScadenza)
+            }));
+        } catch (error) {
+            console.error('❌ Error loading members from localStorage:', error);
             return [];
         }
     }
     
-    async updateContact(contactId, updateData) {
+    async updateMemberStatus(memberId, newStatus) {
         try {
-            const contacts = this.getContacts();
-            const contactIndex = contacts.findIndex(c => c.id === contactId);
-            
-            if (contactIndex === -1) {
-                throw new Error('Contact not found');
+            if (this.useFirebase && this.firebase?.isReady()) {
+                // Update in Firebase
+                await this.firebase.updateMemberStatus(memberId, newStatus);
             }
             
-            contacts[contactIndex] = {
-                ...contacts[contactIndex],
-                ...updateData,
-                updatedAt: new Date().toISOString()
+            // Also update localStorage for consistency
+            const members = this.getMembersFromLocalStorage();
+            const memberIndex = members.findIndex(m => m.id === memberId || m.firebaseId === memberId);
+            
+            if (memberIndex !== -1) {
+                members[memberIndex].status = newStatus;
+                members[memberIndex].updatedAt = new Date().toISOString();
+                localStorage.setItem('tribu_tesserati', JSON.stringify(members));
+            }
+            
+            console.log(`✅ Member ${memberId} status updated to: ${newStatus}`);
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Error updating member status:', error);
+            throw error;
+        }
+    }
+    
+    async addMember(memberData) {
+        try {
+            let newMember;
+            
+            if (this.useFirebase && this.firebase?.isReady()) {
+                // Add to Firebase
+                newMember = await this.firebase.addMember(memberData);
+            } else {
+                // Add to localStorage
+                newMember = {
+                    id: this.generateId(),
+                    ...memberData,
+                    createdAt: new Date().toISOString(),
+                    status: 'active'
+                };
+                
+                const members = this.getMembersFromLocalStorage();
+                members.push(newMember);
+                localStorage.setItem('tribu_tesserati', JSON.stringify(members));
+            }
+            
+            console.log('✅ New member added:', newMember.nome, newMember.cognome);
+            return newMember;
+            
+        } catch (error) {
+            console.error('❌ Error adding member:', error);
+            throw error;
+        }
+    }
+    
+    async deleteMember(memberId) {
+        try {
+            // Remove from localStorage
+            const members = this.getMembersFromLocalStorage();
+            const filteredMembers = members.filter(m => m.id !== memberId && m.firebaseId !== memberId);
+            localStorage.setItem('tribu_tesserati', JSON.stringify(filteredMembers));
+            
+            // TODO: Add Firebase deletion when needed
+            // if (this.useFirebase && this.firebase?.isReady()) {
+            //     await this.firebase.deleteMember(memberId);
+            // }
+            
+            console.log('🗑️ Member deleted');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Error deleting member:', error);
+            throw error;
+        }
+    }
+    
+    // CSV Import Management
+    async importMembersFromCSV(csvData) {
+        try {
+            console.log(`📊 Starting import of ${csvData.length} members...`);
+            
+            let importedCount = 0;
+            
+            if (this.useFirebase && this.firebase?.isReady()) {
+                // Import to Firebase
+                importedCount = await this.firebase.importMembersFromCSV(csvData);
+            }
+            
+            // Also save to localStorage for offline access
+            const processedMembers = csvData.map(row => ({
+                id: this.generateId(),
+                associazione: row.ASSOCIAZIONE || "tribu personal training asd",
+                cognome: row.COGNOME?.toUpperCase() || "",
+                nome: row.NOME?.toUpperCase() || "",
+                telefono: row.TELEFONO || "",
+                whatsapp: row.TELEFONO || "",
+                email: row['E-MAIL'] || "",
+                numeroTessera: row['NUMERO TESSERA'] || "",
+                dataScadenza: this.parseCSVDate(row['DATA DI RILASCIO']),
+                status: 'active',
+                importedAt: new Date().toISOString()
+            }));
+            
+            localStorage.setItem('tribu_tesserati', JSON.stringify(processedMembers));
+            
+            console.log(`✅ CSV import completed: ${importedCount} members`);
+            return importedCount;
+            
+        } catch (error) {
+            console.error('❌ CSV import failed:', error);
+            throw error;
+        }
+    }
+    
+    // Marketing Clients Management
+    async getMarketingClients() {
+        try {
+            if (this.useFirebase && this.firebase?.isReady()) {
+                return await this.firebase.getMarketingClients();
+            } else {
+                const stored = localStorage.getItem('tribu_marketing');
+                return stored ? JSON.parse(stored) : [];
+            }
+        } catch (error) {
+            console.error('❌ Error getting marketing clients:', error);
+            return [];
+        }
+    }
+    
+    async addMarketingClient(clientData) {
+        try {
+            const client = {
+                id: this.generateId(),
+                ...clientData,
+                createdAt: new Date().toISOString()
             };
             
-            const storageKey = window.AppConfig?.storage?.keys?.contacts || 'remindpro_contacts';
-            localStorage.setItem(storageKey, JSON.stringify(contacts));
-            return contacts[contactIndex];
+            const clients = await this.getMarketingClients();
+            clients.push(client);
+            localStorage.setItem('tribu_marketing', JSON.stringify(clients));
+            
+            console.log('✅ Marketing client added:', client.nome);
+            return client;
+            
         } catch (error) {
-            console.error('Failed to update contact:', error);
+            console.error('❌ Error adding marketing client:', error);
             throw error;
         }
     }
     
-    async deleteContact(contactId) {
+    async deleteMarketingClient(clientId) {
         try {
-            const contacts = this.getContacts();
-            const filteredContacts = contacts.filter(c => c.id !== contactId);
-            const storageKey = window.AppConfig?.storage?.keys?.contacts || 'remindpro_contacts';
-            localStorage.setItem(storageKey, JSON.stringify(filteredContacts));
-            console.log('🗑️ Contact deleted');
+            const clients = await this.getMarketingClients();
+            const filtered = clients.filter(c => c.id !== clientId);
+            localStorage.setItem('tribu_marketing', JSON.stringify(filtered));
+            
+            console.log('🗑️ Marketing client deleted');
+            return true;
+            
         } catch (error) {
-            console.error('Failed to delete contact:', error);
+            console.error('❌ Error deleting marketing client:', error);
             throw error;
         }
-    }
-    
-    normalizePhone(phone) {
-        // Remove all non-numeric characters except +
-        let normalized = phone.replace(/[^\d+]/g, '');
-        
-        // Ensure it starts with + if it doesn't have country code
-        if (!normalized.startsWith('+')) {
-            normalized = '+39' + normalized; // Default to Italy
-        }
-        
-        return normalized;
     }
     
     // Reminders Management
-    async addReminder(reminderData) {
+    async getReminders() {
         try {
-            const reminders = this.getReminders();
-            
-            const reminder = {
-                id: this.generateId(),
-                name: reminderData.name,
-                type: reminderData.type || 'once',
-                date: reminderData.date,
-                time: reminderData.time,
-                message: reminderData.message,
-                target: reminderData.target || 'all',
-                recurring: reminderData.recurring || null,
-                status: 'active',
-                totalSent: 0,
-                lastSent: null,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-            
-            reminders.push(reminder);
-            const storageKey = window.AppConfig?.storage?.keys?.reminders || 'remindpro_reminders';
-            localStorage.setItem(storageKey, JSON.stringify(reminders));
-            
-            console.log('⏰ Reminder added:', reminder.name);
-            return reminder;
+            if (this.useFirebase && this.firebase?.isReady()) {
+                return await this.firebase.getReminders();
+            } else {
+                const stored = localStorage.getItem('tribu_reminders');
+                return stored ? JSON.parse(stored) : [];
+            }
         } catch (error) {
-            console.error('Failed to add reminder:', error);
-            throw error;
-        }
-    }
-    
-    getReminders() {
-        try {
-            const storageKey = window.AppConfig?.storage?.keys?.reminders || 'remindpro_reminders';
-            const reminders = localStorage.getItem(storageKey);
-            return reminders ? JSON.parse(reminders) : [];
-        } catch (error) {
-            console.error('Failed to load reminders:', error);
+            console.error('❌ Error getting reminders:', error);
             return [];
         }
     }
     
-    async updateReminder(reminderId, updateData) {
+    async addReminder(reminderData) {
         try {
-            const reminders = this.getReminders();
-            const reminderIndex = reminders.findIndex(r => r.id === reminderId);
+            let newReminder;
             
-            if (reminderIndex === -1) {
-                throw new Error('Reminder not found');
+            if (this.useFirebase && this.firebase?.isReady()) {
+                newReminder = await this.firebase.addReminder(reminderData);
+            } else {
+                newReminder = {
+                    id: this.generateId(),
+                    ...reminderData,
+                    createdAt: new Date().toISOString(),
+                    status: 'scheduled'
+                };
+                
+                const reminders = await this.getReminders();
+                reminders.push(newReminder);
+                localStorage.setItem('tribu_reminders', JSON.stringify(reminders));
             }
             
-            reminders[reminderIndex] = {
-                ...reminders[reminderIndex],
-                ...updateData,
-                updatedAt: new Date().toISOString()
-            };
+            console.log('✅ Reminder added:', newReminder.name);
+            return newReminder;
             
-            const storageKey = window.AppConfig?.storage?.keys?.reminders || 'remindpro_reminders';
-            localStorage.setItem(storageKey, JSON.stringify(reminders));
-            return reminders[reminderIndex];
         } catch (error) {
-            console.error('Failed to update reminder:', error);
+            console.error('❌ Error adding reminder:', error);
             throw error;
         }
     }
     
-    async deleteReminder(reminderId) {
+    // Templates Management
+    getTemplates() {
         try {
-            const reminders = this.getReminders();
-            const filteredReminders = reminders.filter(r => r.id !== reminderId);
-            const storageKey = window.AppConfig?.storage?.keys?.reminders || 'remindpro_reminders';
-            localStorage.setItem(storageKey, JSON.stringify(filteredReminders));
-            console.log('🗑️ Reminder deleted');
+            const stored = localStorage.getItem('tribu_templates');
+            return stored ? JSON.parse(stored) : window.AppConfig?.whatsapp?.templates || {};
         } catch (error) {
-            console.error('Failed to delete reminder:', error);
-            throw error;
+            console.error('❌ Error getting templates:', error);
+            return window.AppConfig?.whatsapp?.templates || {};
         }
     }
     
-    // Statistics Management
-    async updateStats(newStats) {
+    saveTemplate(templateKey, templateContent) {
         try {
-            const currentStats = this.getUserStats() || {};
+            const templates = this.getTemplates();
+            templates[templateKey] = templateContent;
+            localStorage.setItem('tribu_templates', JSON.stringify(templates));
+            
+            console.log('✅ Template saved:', templateKey);
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Error saving template:', error);
+            return false;
+        }
+    }
+    
+    // Calendar Events (Google Calendar integration)
+    saveCalendarEvents(events) {
+        try {
+            localStorage.setItem('tribu_calendar_events', JSON.stringify(events));
+            console.log(`📅 Saved ${events.length} calendar events`);
+        } catch (error) {
+            console.error('❌ Error saving calendar events:', error);
+        }
+    }
+    
+    getCalendarEvents() {
+        try {
+            const stored = localStorage.getItem('tribu_calendar_events');
+            return stored ? JSON.parse(stored) : [];
+        } catch (error) {
+            console.error('❌ Error getting calendar events:', error);
+            return [];
+        }
+    }
+    
+    // Statistics and Analytics
+    updateStats(statsData) {
+        try {
+            const currentStats = this.getStats();
             const updatedStats = {
                 ...currentStats,
-                ...newStats,
+                ...statsData,
                 lastUpdated: new Date().toISOString()
             };
             
-            const storageKey = window.AppConfig?.storage?.keys?.stats || 'remindpro_stats';
-            localStorage.setItem(storageKey, JSON.stringify(updatedStats));
+            localStorage.setItem('tribu_stats', JSON.stringify(updatedStats));
             return updatedStats;
         } catch (error) {
-            console.error('Failed to update stats:', error);
-            throw error;
+            console.error('❌ Error updating stats:', error);
+            return null;
         }
     }
     
-    getUserStats() {
+    getStats() {
         try {
-            const storageKey = window.AppConfig?.storage?.keys?.stats || 'remindpro_stats';
-            const stats = localStorage.getItem(storageKey);
-            return stats ? JSON.parse(stats) : {
+            const stored = localStorage.getItem('tribu_stats');
+            return stored ? JSON.parse(stored) : {
+                totalMembers: 0,
+                expiredMembers: 0,
                 messagesSent: 0,
-                contactsAdded: 0,
                 remindersCreated: 0,
-                lastLogin: new Date().toISOString()
+                lastUpdated: new Date().toISOString()
             };
         } catch (error) {
-            console.error('Failed to load stats:', error);
+            console.error('❌ Error getting stats:', error);
             return {};
         }
     }
     
-    // Demo Data Generation
-    generateDemoDataIfNeeded() {
-        if (this.demoDataGenerated) return;
-        
-        try {
-            // Check if data already exists
-            const existingContacts = this.getContacts();
-            const existingReminders = this.getReminders();
-            
-            if (existingContacts.length === 0 && window.AppConfig?.demo?.sampleData?.generateContacts) {
-                this.generateDemoContacts();
-            }
-            
-            if (existingReminders.length === 0 && window.AppConfig?.demo?.sampleData?.generateReminders) {
-                this.generateDemoReminders();
-            }
-            
-            this.demoDataGenerated = true;
-            console.log('📝 Demo data generated');
-        } catch (error) {
-            console.error('Failed to generate demo data:', error);
-        }
-    }
-    
-    generateDemoContacts() {
-        const demoContacts = [
-            {
-                name: 'Mario Rossi',
-                phone: '+39 347 123 4567',
-                email: 'mario.rossi@email.com',
-                tags: ['cliente', 'vip']
-            },
-            {
-                name: 'Giulia Bianchi',
-                phone: '+39 338 987 6543',
-                email: 'giulia.bianchi@email.com',
-                tags: ['prospect', 'milano']
-            },
-            {
-                name: 'Luca Verdi',
-                phone: '+39 333 555 7777',
-                email: 'luca.verdi@email.com',
-                tags: ['cliente', 'roma']
-            },
-            {
-                name: 'Anna Ferrari',
-                phone: '+39 320 111 2222',
-                email: 'anna.ferrari@email.com',
-                tags: ['vip', 'fidelizzato']
-            }
-        ];
-        
-        demoContacts.forEach(contactData => {
-            this.addContact(contactData);
-        });
-    }
-    
-    generateDemoReminders() {
-        const demoReminders = [
-            {
-                name: 'Reminder Ordine Settimanale',
-                type: 'recurring',
-                date: this.getTomorrowDate(),
-                time: '10:00',
-                message: '🥗 Ciao {nome}! È giovedì, ricordati di ordinare i pasti per la settimana da FreshMeals! 👨‍🍳',
-                target: 'all',
-                recurring: 'weekly'
-            },
-            {
-                name: 'Follow-up Clienti VIP',
-                type: 'recurring',
-                date: this.getTomorrowDate(),
-                time: '15:00',
-                message: '⭐ Ciao {nome}! Come va? Abbiamo novità interessanti per i nostri clienti VIP. Ti va di sentirci? 😊',
-                target: 'segment',
-                recurring: 'monthly'
-            }
-        ];
-        
-        demoReminders.forEach(reminderData => {
-            this.addReminder(reminderData);
-        });
-    }
-    
     // Helper Methods
-    generateId() {
-        return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    calculateMemberStatus(dataScadenza) {
+        if (!dataScadenza) return 'active';
+        
+        const today = new Date();
+        const expiryDate = new Date(dataScadenza);
+        const daysDiff = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+        
+        if (daysDiff < 0) return 'expired';
+        if (daysDiff <= 30) return 'expiring';
+        return 'active';
     }
     
-    getTomorrowDate() {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        return tomorrow.toISOString().split('T')[0];
+    calculateDaysToExpiry(dataScadenza) {
+        if (!dataScadenza) return null;
+        
+        const today = new Date();
+        const expiryDate = new Date(dataScadenza);
+        return Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+    }
+    
+    parseCSVDate(dateString) {
+        if (!dateString) return null;
+        
+        // Handle DD/MM/YYYY format from CSV
+        const match = dateString.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        if (match) {
+            const year = match[3];
+            const nextYear = parseInt(year) + 1; // Add 1 year for expiry
+            return new Date(`${nextYear}-${match[2]}-${match[1]}T00:00:00.000Z`);
+        }
+        
+        return null;
+    }
+    
+    generateId() {
+        return 'tribu_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
     
     // Data Export/Import
-    exportAllData() {
+    async exportAllData() {
         try {
             const data = {
-                contacts: this.getContacts(),
-                reminders: this.getReminders(),
-                profile: this.getUserProfile(),
-                stats: this.getUserStats(),
+                members: await this.getMembers(),
+                marketingClients: await this.getMarketingClients(),
+                reminders: await this.getReminders(),
+                templates: this.getTemplates(),
+                stats: this.getStats(),
+                calendarEvents: this.getCalendarEvents(),
                 exportDate: new Date().toISOString(),
-                version: window.AppConfig?.app?.version || '1.0.0'
+                version: window.AppConfig?.app?.version || '2.0.0'
             };
             
             return JSON.stringify(data, null, 2);
         } catch (error) {
-            console.error('Failed to export data:', error);
+            console.error('❌ Error exporting data:', error);
             throw error;
         }
     }
     
-    async importAllData(jsonData) {
-        try {
-            const data = JSON.parse(jsonData);
-            const keys = window.AppConfig?.storage?.keys || {};
-            
-            if (data.contacts) {
-                localStorage.setItem(keys.contacts || 'remindpro_contacts', JSON.stringify(data.contacts));
-            }
-            
-            if (data.reminders) {
-                localStorage.setItem(keys.reminders || 'remindpro_reminders', JSON.stringify(data.reminders));
-            }
-            
-            if (data.profile) {
-                localStorage.setItem(keys.profile || 'remindpro_profile', JSON.stringify(data.profile));
-            }
-            
-            if (data.stats) {
-                localStorage.setItem(keys.stats || 'remindpro_stats', JSON.stringify(data.stats));
-            }
-            
-            console.log('📥 Data imported successfully');
-            return true;
-        } catch (error) {
-            console.error('Failed to import data:', error);
-            throw error;
-        }
+    // Status Methods
+    getConnectionStatus() {
+        return {
+            firebase: this.useFirebase && this.firebase?.isReady(),
+            localStorage: typeof Storage !== 'undefined'
+        };
     }
     
-    // Clear All Data
-    clearAllData() {
-        try {
-            const keys = window.AppConfig?.storage?.keys || {
-                user: 'remindpro_user',
-                profile: 'remindpro_profile',
-                reminders: 'remindpro_reminders',
-                contacts: 'remindpro_contacts',
-                settings: 'remindpro_settings',
-                stats: 'remindpro_stats'
-            };
-            
-            Object.values(keys).forEach(key => {
-                localStorage.removeItem(key);
-            });
-            console.log('🗑️ All data cleared');
-        } catch (error) {
-            console.error('Failed to clear data:', error);
-            throw error;
-        }
+    isReady() {
+        return this.isInitialized;
     }
 };
+
+// Initialize Storage instance
+window.Storage_Instance = new window.TribuStorage();
