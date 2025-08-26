@@ -10,10 +10,10 @@ window.AppConfig = {
     // Google Services Configuration
     google: {
         enabled: true,
-        apiKey: process.env.GOOGLE_API_KEY || window.ENV?.GOOGLE_API_KEY || "",
-        clientId: process.env.GOOGLE_CLIENT_ID || window.ENV?.GOOGLE_CLIENT_ID || "", 
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET || window.ENV?.GOOGLE_CLIENT_SECRET || "",
-        calendarId: process.env.GOOGLE_CALENDAR_ID || window.ENV?.GOOGLE_CALENDAR_ID || "tribupersonalstudio@gmail.com",
+        apiKey: window.ENV?.GOOGLE_API_KEY || "",
+        clientId: window.ENV?.GOOGLE_CLIENT_ID || "", 
+        clientSecret: window.ENV?.GOOGLE_CLIENT_SECRET || "",
+        calendarId: window.ENV?.GOOGLE_CALENDAR_ID || "tribupersonalstudio@gmail.com",
         scopes: "https://www.googleapis.com/auth/calendar.readonly",
         discoveryDoc: "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"
     },
@@ -22,13 +22,13 @@ window.AppConfig = {
     firebase: {
         enabled: true,
         config: {
-            apiKey: process.env.FIREBASE_API_KEY || window.ENV?.FIREBASE_API_KEY || "",
-            authDomain: process.env.FIREBASE_AUTH_DOMAIN || window.ENV?.FIREBASE_AUTH_DOMAIN || "",
-            projectId: process.env.FIREBASE_PROJECT_ID || window.ENV?.FIREBASE_PROJECT_ID || "",
-            storageBucket: process.env.FIREBASE_STORAGE_BUCKET || window.ENV?.FIREBASE_STORAGE_BUCKET || "",
-            messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || window.ENV?.FIREBASE_MESSAGING_SENDER_ID || "",
-            appId: process.env.FIREBASE_APP_ID || window.ENV?.FIREBASE_APP_ID || "",
-            measurementId: process.env.FIREBASE_MEASUREMENT_ID || window.ENV?.FIREBASE_MEASUREMENT_ID || ""
+            apiKey: window.ENV?.FIREBASE_API_KEY || "",
+            authDomain: window.ENV?.FIREBASE_AUTH_DOMAIN || "",
+            projectId: window.ENV?.FIREBASE_PROJECT_ID || "",
+            storageBucket: window.ENV?.FIREBASE_STORAGE_BUCKET || "",
+            messagingSenderId: window.ENV?.FIREBASE_MESSAGING_SENDER_ID || "",
+            appId: window.ENV?.FIREBASE_APP_ID || "",
+            measurementId: window.ENV?.FIREBASE_MEASUREMENT_ID || ""
         },
         collections: {
             members: "members",
