@@ -1003,7 +1003,279 @@ window.TribuApp = class {
             script.src = 'https://apis.google.com/js/api.js';
             script.onload = resolve;
             script.onerror = reject;
-            document.head.appendChild(script);
+            document.getElementById('scheduleModal').remove();
+            this.toast?.success('✅ Messaggio programmato con successo');
+            
+        } catch (error) {
+            console.error('Error scheduling message:', error);
+            this.toast?.error('❌ Errore programmazione messaggio');
+        }
+    }
+    
+    showTemplateEditor() {
+        const modalHtml = `
+            <div class="modal-overlay" id="templateEditorModal" onclick="this.remove()">
+                <div class="modal-content large" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-edit"></i> Editor Template WhatsApp</h3>
+                        <button class="modal-close" onclick="document.getElementById('templateEditorModal').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="template-tabs">
+                            <button class="tab-btn active" data-template="scadenza">Scadenze</button>
+                            <button class="tab-btn" data-template="pasti">Pasti</button>
+                            <button class="tab-btn" data-template="motivazionali">Motivazionali</button>
+                        </div>
+                        
+                        <div class="template-editor">
+                            <div class="template-variables">
+                                <h4>Variabili Disponibili</h4>
+                                <div class="variables-list">
+                                    <span class="variable" onclick="window.TribuApp.insertVariable('{nome}')">{nome}</span>
+                                    <span class="variable" onclick="window.TribuApp.insertVariable('{cognome}')">{cognome}</span>
+                                    <span class="variable" onclick="window.TribuApp.insertVariable('{giorni}')">{giorni}</span>
+                                    <span class="variable" onclick="window.TribuApp.insertVariable('{data_scadenza}')">{data_scadenza}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="template-content">
+                                <label>Template Messaggio</label>
+                                <textarea id="templateTextarea" class="form-control template-textarea" rows="8"></textarea>
+                                <div class="template-preview">
+                                    <h5>Anteprima</h5>
+                                    <div id="templatePreview" class="preview-content"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('templateEditorModal').remove()">Annulla</button>
+                        <button type="button" class="btn btn-primary" onclick="window.TribuApp.saveTemplate()">Salva Template</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Setup tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                this.loadTemplate(e.target.dataset.template);
+            });
+        });
+        
+        // Setup textarea monitoring for preview
+        const textarea = document.getElementById('templateTextarea');
+        textarea.addEventListener('input', () => {
+            this.updateTemplatePreview();
+        });
+        
+        // Load initial template
+        this.loadTemplate('scadenza');
+    }
+    
+    loadTemplate(templateType) {
+        const textarea = document.getElementById('templateTextarea');
+        const defaultTemplates = {
+            scadenza: `Ciao {nome}! 
+Il tuo tesseramento presso Tribù Personal Training scadrà tra {giorni} giorni ({data_scadenza}). 
+Per rinnovarlo e continuare il tuo percorso di allenamento, contattaci al più presto!`,
+            pasti: `Ciao {nome}! 
+Ecco alcuni consigli per una sana alimentazione:
+- Inizia la giornata con una colazione proteica
+- Non saltare mai i pasti
+- Bevi almeno 2 litri d'acqua al giorno
+Continua così, sei sulla strada giusta!`,
+            motivazionali: `Ciao {nome}! 
+Ricorda: ogni piccolo passo conta nel tuo percorso di crescita.
+La costanza è la chiave del successo!
+Il team di Tribù Personal Training crede in te. 💪`
+        };
+        
+        const currentTemplate = this.templates[templateType] || defaultTemplates[templateType];
+        textarea.value = currentTemplate;
+        this.updateTemplatePreview();
+    }
+    
+    insertVariable(variable) {
+        const textarea = document.getElementById('templateTextarea');
+        const cursorPos = textarea.selectionStart;
+        const textBefore = textarea.value.substring(0, cursorPos);
+        const textAfter = textarea.value.substring(textarea.selectionEnd);
+        
+        textarea.value = textBefore + variable + textAfter;
+        textarea.focus();
+        textarea.setSelectionRange(cursorPos + variable.length, cursorPos + variable.length);
+        
+        this.updateTemplatePreview();
+    }
+    
+    updateTemplatePreview() {
+        const textarea = document.getElementById('templateTextarea');
+        const preview = document.getElementById('templatePreview');
+        
+        // Replace variables with example values
+        let previewText = textarea.value
+            .replace(/\{nome\}/g, 'Mario')
+            .replace(/\{cognome\}/g, 'Rossi')
+            .replace(/\{giorni\}/g, '15')
+            .replace(/\{data_scadenza\}/g, '31/12/2024');
+        
+        preview.innerHTML = previewText.replace(/\n/g, '<br>');
+    }
+    
+    saveTemplate() {
+        const activeTab = document.querySelector('.tab-btn.active');
+        const templateType = activeTab.dataset.template;
+        const templateText = document.getElementById('templateTextarea').value;
+        
+        this.templates[templateType] = templateText;
+        this.storage.saveTemplate(templateType, templateText);
+        
+        document.getElementById('templateEditorModal').remove();
+        this.toast?.success('✅ Template salvato con successo');
+    }
+    
+    editTemplate(templateType) {
+        this.showTemplateEditor();
+        // Wait for modal to be created, then switch to correct tab
+        setTimeout(() => {
+            const targetTab = document.querySelector(`[data-template="${templateType}"]`);
+            if (targetTab) {
+                targetTab.click();
+            }
+        }, 100);
+    }
+    
+    // Additional helper methods
+    async sendMarketingMessage(clientId) {
+        const client = this.marketingClienti.find(c => c.id === clientId);
+        if (!client) return;
+        
+        this.toast?.info(`📱 Apertura WhatsApp per ${client.nome} ${client.cognome}`);
+        
+        const message = encodeURIComponent(`Ciao ${client.nome}! Messaggio di marketing personalizzato da Tribù Personal Training.`);
+        const whatsappUrl = `https://api.whatsapp.com/send?phone=${client.telefono}&text=${message}`;
+        window.open(whatsappUrl, '_blank');
+    }
+    
+    async editMarketingClient(clientId) {
+        this.toast?.info('🔧 Funzione modifica cliente in sviluppo');
+    }
+    
+    async pauseScheduledMessage(messageId) {
+        try {
+            await this.storage.updateScheduledMessageStatus(messageId, 'paused');
+            
+            const message = this.scheduledMessages.find(m => m.id === messageId);
+            if (message) {
+                message.status = 'paused';
+            }
+            
+            this.renderScheduledMessages();
+            this.toast?.success('⏸️ Messaggio messo in pausa');
+            
+        } catch (error) {
+            console.error('Error pausing message:', error);
+            this.toast?.error('❌ Errore pausa messaggio');
+        }
+    }
+    
+    async cancelScheduledMessage(messageId) {
+        if (!confirm('Sei sicuro di voler annullare questo messaggio programmato?')) {
+            return;
+        }
+        
+        try {
+            await this.storage.deleteScheduledMessage(messageId);
+            
+            const index = this.scheduledMessages.findIndex(m => m.id === messageId);
+            if (index > -1) {
+                this.scheduledMessages.splice(index, 1);
+            }
+            
+            this.renderScheduledMessages();
+            this.toast?.success('❌ Messaggio annullato');
+            
+        } catch (error) {
+            console.error('Error cancelling message:', error);
+            this.toast?.error('❌ Errore annullamento messaggio');
+        }
+    }
+    
+    async viewScheduledMessage(messageId) {
+        const message = this.scheduledMessages.find(m => m.id === messageId);
+        if (!message) return;
+        
+        const modalHtml = `
+            <div class="modal-overlay" id="viewMessageModal" onclick="this.remove()">
+                <div class="modal-content" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-eye"></i> Dettagli Messaggio</h3>
+                        <button class="modal-close" onclick="document.getElementById('viewMessageModal').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="message-details">
+                            <h4>${message.title || 'Messaggio Programmato'}</h4>
+                            <p><strong>Stato:</strong> ${this.getMessageStatusText(message.status)}</p>
+                            <p><strong>Programmato per:</strong> ${new Date(message.scheduledAt).toLocaleString('it-IT')}</p>
+                            <p><strong>Ricorrenza:</strong> ${message.recurrence || 'Nessuna'}</p>
+                            <p><strong>Destinatari:</strong> ${message.recipients?.join(', ') || 'Nessuno'}</p>
+                            <p><strong>Template:</strong> ${message.template}</p>
+                            ${message.customMessage ? `<div class="custom-message"><strong>Messaggio:</strong><br>${message.customMessage}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('viewMessageModal').remove()">Chiudi</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+    
+    showMainApp() {
+        const loadingScreen = document.getElementById('loading-screen');
+        const authContainer = document.getElementById('auth-container');
+        const mainApp = document.getElementById('main-app');
+        
+        if (loadingScreen) loadingScreen.classList.add('hidden');
+        if (authContainer) authContainer.classList.add('hidden');
+        if (mainApp) mainApp.classList.remove('hidden');
+    }
+    
+    showLoginScreen() {
+        const loadingScreen = document.getElementById('loading-screen');
+        const authContainer = document.getElementById('auth-container');
+        const mainApp = document.getElementById('main-app');
+        
+        if (loadingScreen) loadingScreen.classList.add('hidden');
+        if (mainApp) mainApp.classList.add('hidden');
+        if (authContainer) authContainer.classList.remove('hidden');
+    }
+    
+    handleInitError(error) {
+        document.body.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #1a1a2e; color: white; text-align: center; font-family: Arial, sans-serif;">
+                <div>
+                    <h1>❌ Errore Inizializzazione</h1>
+                    <p>Si è verificato un errore durante l'avvio dell'applicazione.</p>
+                    <p style="margin-top: 1rem; opacity: 0.7;">Ricarica la pagina per riprovare.</p>
+                    <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #64ffda; color: #1a1a2e; border: none; border-radius: 4px; cursor: pointer;">
+                        Ricarica Pagina
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+};
+
+// Initialize global app instance
+window.App_Instance = new window.TribuApp();head.appendChild(script);
         });
     }
     
@@ -1321,279 +1593,7 @@ window.TribuApp = class {
                 this.showPage('tesserati');
             }
             
-            document.getElementById('scheduleModal').remove();
-            this.toast?.success('✅ Messaggio programmato con successo');
-            
-        } catch (error) {
-            console.error('Error scheduling message:', error);
-            this.toast?.error('❌ Errore programmazione messaggio');
-        }
-    }
-    
-    showTemplateEditor() {
-        const modalHtml = `
-            <div class="modal-overlay" id="templateEditorModal" onclick="this.remove()">
-                <div class="modal-content large" onclick="event.stopPropagation()">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-edit"></i> Editor Template WhatsApp</h3>
-                        <button class="modal-close" onclick="document.getElementById('templateEditorModal').remove()">×</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="template-tabs">
-                            <button class="tab-btn active" data-template="scadenza">Scadenze</button>
-                            <button class="tab-btn" data-template="pasti">Pasti</button>
-                            <button class="tab-btn" data-template="motivazionali">Motivazionali</button>
-                        </div>
-                        
-                        <div class="template-editor">
-                            <div class="template-variables">
-                                <h4>Variabili Disponibili</h4>
-                                <div class="variables-list">
-                                    <span class="variable" onclick="window.TribuApp.insertVariable('{nome}')">{nome}</span>
-                                    <span class="variable" onclick="window.TribuApp.insertVariable('{cognome}')">{cognome}</span>
-                                    <span class="variable" onclick="window.TribuApp.insertVariable('{giorni}')">{giorni}</span>
-                                    <span class="variable" onclick="window.TribuApp.insertVariable('{data_scadenza}')">{data_scadenza}</span>
-                                </div>
-                            </div>
-                            
-                            <div class="template-content">
-                                <label>Template Messaggio</label>
-                                <textarea id="templateTextarea" class="form-control template-textarea" rows="8"></textarea>
-                                <div class="template-preview">
-                                    <h5>Anteprima</h5>
-                                    <div id="templatePreview" class="preview-content"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('templateEditorModal').remove()">Annulla</button>
-                        <button type="button" class="btn btn-primary" onclick="window.TribuApp.saveTemplate()">Salva Template</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        
-        // Setup tab switching
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                this.loadTemplate(e.target.dataset.template);
-            });
-        });
-        
-        // Setup textarea monitoring for preview
-        const textarea = document.getElementById('templateTextarea');
-        textarea.addEventListener('input', () => {
-            this.updateTemplatePreview();
-        });
-        
-        // Load initial template
-        this.loadTemplate('scadenza');
-    }
-    
-    loadTemplate(templateType) {
-        const textarea = document.getElementById('templateTextarea');
-        const defaultTemplates = {
-            scadenza: `Ciao {nome}! 
-Il tuo tesseramento presso Tribù Personal Training scadrà tra {giorni} giorni ({data_scadenza}). 
-Per rinnovarlo e continuare il tuo percorso di allenamento, contattaci al più presto!`,
-            pasti: `Ciao {nome}! 
-Ecco alcuni consigli per una sana alimentazione:
-- Inizia la giornata con una colazione proteica
-- Non saltare mai i pasti
-- Bevi almeno 2 litri d'acqua al giorno
-Continua così, sei sulla strada giusta!`,
-            motivazionali: `Ciao {nome}! 
-Ricorda: ogni piccolo passo conta nel tuo percorso di crescita.
-La costanza è la chiave del successo!
-Il team di Tribù Personal Training crede in te. 💪`
-        };
-        
-        const currentTemplate = this.templates[templateType] || defaultTemplates[templateType];
-        textarea.value = currentTemplate;
-        this.updateTemplatePreview();
-    }
-    
-    insertVariable(variable) {
-        const textarea = document.getElementById('templateTextarea');
-        const cursorPos = textarea.selectionStart;
-        const textBefore = textarea.value.substring(0, cursorPos);
-        const textAfter = textarea.value.substring(textarea.selectionEnd);
-        
-        textarea.value = textBefore + variable + textAfter;
-        textarea.focus();
-        textarea.setSelectionRange(cursorPos + variable.length, cursorPos + variable.length);
-        
-        this.updateTemplatePreview();
-    }
-    
-    updateTemplatePreview() {
-        const textarea = document.getElementById('templateTextarea');
-        const preview = document.getElementById('templatePreview');
-        
-        // Replace variables with example values
-        let previewText = textarea.value
-            .replace(/\{nome\}/g, 'Mario')
-            .replace(/\{cognome\}/g, 'Rossi')
-            .replace(/\{giorni\}/g, '15')
-            .replace(/\{data_scadenza\}/g, '31/12/2024');
-        
-        preview.innerHTML = previewText.replace(/\n/g, '<br>');
-    }
-    
-    saveTemplate() {
-        const activeTab = document.querySelector('.tab-btn.active');
-        const templateType = activeTab.dataset.template;
-        const templateText = document.getElementById('templateTextarea').value;
-        
-        this.templates[templateType] = templateText;
-        this.storage.saveTemplate(templateType, templateText);
-        
-        document.getElementById('templateEditorModal').remove();
-        this.toast?.success('✅ Template salvato con successo');
-    }
-    
-    editTemplate(templateType) {
-        this.showTemplateEditor();
-        // Wait for modal to be created, then switch to correct tab
-        setTimeout(() => {
-            const targetTab = document.querySelector(`[data-template="${templateType}"]`);
-            if (targetTab) {
-                targetTab.click();
-            }
-        }, 100);
-    }
-    
-    // Additional helper methods
-    async sendMarketingMessage(clientId) {
-        const client = this.marketingClienti.find(c => c.id === clientId);
-        if (!client) return;
-        
-        this.toast?.info(`📱 Apertura WhatsApp per ${client.nome} ${client.cognome}`);
-        
-        const message = encodeURIComponent(`Ciao ${client.nome}! Messaggio di marketing personalizzato da Tribù Personal Training.`);
-        const whatsappUrl = `https://api.whatsapp.com/send?phone=${client.telefono}&text=${message}`;
-        window.open(whatsappUrl, '_blank');
-    }
-    
-    async editMarketingClient(clientId) {
-        this.toast?.info('🔧 Funzione modifica cliente in sviluppo');
-    }
-    
-    async pauseScheduledMessage(messageId) {
-        try {
-            await this.storage.updateScheduledMessageStatus(messageId, 'paused');
-            
-            const message = this.scheduledMessages.find(m => m.id === messageId);
-            if (message) {
-                message.status = 'paused';
-            }
-            
-            this.renderScheduledMessages();
-            this.toast?.success('⏸️ Messaggio messo in pausa');
-            
-        } catch (error) {
-            console.error('Error pausing message:', error);
-            this.toast?.error('❌ Errore pausa messaggio');
-        }
-    }
-    
-    async cancelScheduledMessage(messageId) {
-        if (!confirm('Sei sicuro di voler annullare questo messaggio programmato?')) {
-            return;
-        }
-        
-        try {
-            await this.storage.deleteScheduledMessage(messageId);
-            
-            const index = this.scheduledMessages.findIndex(m => m.id === messageId);
-            if (index > -1) {
-                this.scheduledMessages.splice(index, 1);
-            }
-            
-            this.renderScheduledMessages();
-            this.toast?.success('❌ Messaggio annullato');
-            
-        } catch (error) {
-            console.error('Error cancelling message:', error);
-            this.toast?.error('❌ Errore annullamento messaggio');
-        }
-    }
-    
-    async viewScheduledMessage(messageId) {
-        const message = this.scheduledMessages.find(m => m.id === messageId);
-        if (!message) return;
-        
-        const modalHtml = `
-            <div class="modal-overlay" id="viewMessageModal" onclick="this.remove()">
-                <div class="modal-content" onclick="event.stopPropagation()">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-eye"></i> Dettagli Messaggio</h3>
-                        <button class="modal-close" onclick="document.getElementById('viewMessageModal').remove()">×</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="message-details">
-                            <h4>${message.title || 'Messaggio Programmato'}</h4>
-                            <p><strong>Stato:</strong> ${this.getMessageStatusText(message.status)}</p>
-                            <p><strong>Programmato per:</strong> ${new Date(message.scheduledAt).toLocaleString('it-IT')}</p>
-                            <p><strong>Ricorrenza:</strong> ${message.recurrence || 'Nessuna'}</p>
-                            <p><strong>Destinatari:</strong> ${message.recipients?.join(', ') || 'Nessuno'}</p>
-                            <p><strong>Template:</strong> ${message.template}</p>
-                            ${message.customMessage ? `<div class="custom-message"><strong>Messaggio:</strong><br>${message.customMessage}</div>` : ''}
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('viewMessageModal').remove()">Chiudi</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-    }
-    
-    showMainApp() {
-        const loadingScreen = document.getElementById('loading-screen');
-        const authContainer = document.getElementById('auth-container');
-        const mainApp = document.getElementById('main-app');
-        
-        if (loadingScreen) loadingScreen.classList.add('hidden');
-        if (authContainer) authContainer.classList.add('hidden');
-        if (mainApp) mainApp.classList.remove('hidden');
-    }
-    
-    showLoginScreen() {
-        const loadingScreen = document.getElementById('loading-screen');
-        const authContainer = document.getElementById('auth-container');
-        const mainApp = document.getElementById('main-app');
-        
-        if (loadingScreen) loadingScreen.classList.add('hidden');
-        if (mainApp) mainApp.classList.add('hidden');
-        if (authContainer) authContainer.classList.remove('hidden');
-    }
-    
-    handleInitError(error) {
-        document.body.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #1a1a2e; color: white; text-align: center; font-family: Arial, sans-serif;">
-                <div>
-                    <h1>❌ Errore Inizializzazione</h1>
-                    <p>Si è verificato un errore durante l'avvio dell'applicazione.</p>
-                    <p style="margin-top: 1rem; opacity: 0.7;">Ricarica la pagina per riprovare.</p>
-                    <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #64ffda; color: #1a1a2e; border: none; border-radius: 4px; cursor: pointer;">
-                        Ricarica Pagina
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-};
-
-// Initialize global app instance
-window.App_Instance = new window.TribuApp();d('addTesseratoModal').remove();
+            document.getElementById('addTesseratoModal').remove();
             this.toast?.success('✅ Tesserato aggiunto con successo');
             
         } catch (error) {
@@ -1800,4 +1800,4 @@ window.App_Instance = new window.TribuApp();d('addTesseratoModal').remove();
                 this.showPage('automazione');
             }
             
-            document.getElementByI
+            document.
