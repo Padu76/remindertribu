@@ -22,6 +22,10 @@ window.TribuApp = class {
         this.currentFilter = 'all';
         this.filteredData = [];
         this.selectedClients = [];
+        
+        // Google Calendar state
+        this.isGoogleApiLoaded = false;
+        this.isGoogleSignedIn = false;
     }
     
     async init() {
@@ -80,7 +84,7 @@ window.TribuApp = class {
             
             // Initialize Google Calendar if enabled
             if (window.AppConfig?.google?.enabled) {
-                this.initGoogleCalendar();
+                await this.initGoogleCalendar();
             }
             
             // Show dashboard
@@ -114,6 +118,9 @@ window.TribuApp = class {
             // Load templates
             this.templates = this.storage.getTemplates();
             console.log('📝 Templates loaded');
+            
+            // Initialize filteredData for tables
+            this.filteredData = [...this.tesseratiData];
             
             // Update UI badges
             this.updateNotificationBadges();
@@ -413,11 +420,26 @@ window.TribuApp = class {
             </div>
             
             <div class="card">
+                <div class="marketing-stats">
+                    <div class="stat-item">
+                        <i class="fas fa-users"></i>
+                        <div>
+                            <div class="stat-number">${this.marketingClienti.length}</div>
+                            <div class="stat-label">Clienti Marketing</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-paper-plane"></i>
+                        <div>
+                            <div class="stat-number">${this.scheduledMessages.filter(m => m.type === 'marketing').length}</div>
+                            <div class="stat-label">Messaggi Programmati</div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="marketing-content">
-                    <div class="empty-state">
-                        <i class="fas fa-bullhorn"></i>
-                        <h3>Funzionalità Marketing</h3>
-                        <p>Sistema di marketing automation in sviluppo.</p>
+                    <div id="marketingClientsList">
+                        <!-- Populated by JavaScript -->
                     </div>
                 </div>
             </div>
@@ -428,17 +450,36 @@ window.TribuApp = class {
         return `
             <div class="page-header">
                 <h1><i class="fas fa-calendar-alt"></i> Google Calendar</h1>
-                <button class="btn btn-primary" onclick="window.TribuApp.initGoogleCalendar()">
-                    <i class="fab fa-google"></i> Connetti Calendar
-                </button>
+                <div class="calendar-controls">
+                    ${!this.isGoogleSignedIn ? `
+                        <button class="btn btn-primary" onclick="window.TribuApp.signInGoogle()">
+                            <i class="fab fa-google"></i> Connetti Calendar
+                        </button>
+                    ` : `
+                        <button class="btn btn-success" disabled>
+                            <i class="fas fa-check-circle"></i> Connesso
+                        </button>
+                        <button class="btn btn-secondary" onclick="window.TribuApp.loadCalendarEvents()">
+                            <i class="fas fa-sync"></i> Aggiorna Eventi
+                        </button>
+                        <button class="btn btn-warning" onclick="window.TribuApp.signOutGoogle()">
+                            <i class="fas fa-sign-out-alt"></i> Disconnetti
+                        </button>
+                    `}
+                </div>
             </div>
             
             <div class="card">
                 <div class="calendar-content">
-                    <div class="empty-state">
-                        <i class="fas fa-calendar-alt"></i>
-                        <h3>Google Calendar</h3>
-                        <p>Integrazione Google Calendar in sviluppo.</p>
+                    <div id="calendarStatus" class="calendar-status">
+                        ${this.isGoogleSignedIn ? 
+                            '<i class="fas fa-check-circle text-success"></i> Google Calendar connesso' : 
+                            '<i class="fas fa-exclamation-circle text-warning"></i> Connetti Google Calendar per visualizzare gli appuntamenti'
+                        }
+                    </div>
+                    
+                    <div id="calendarEvents" class="calendar-events">
+                        <!-- Populated by JavaScript -->
                     </div>
                 </div>
             </div>
@@ -455,11 +496,33 @@ window.TribuApp = class {
             </div>
             
             <div class="card">
+                <div class="automation-stats">
+                    <div class="stat-item">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <div class="stat-number">${this.scheduledMessages.filter(m => m.status === 'scheduled').length}</div>
+                            <div class="stat-label">Programmati</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-check"></i>
+                        <div>
+                            <div class="stat-number">${this.scheduledMessages.filter(m => m.status === 'sent').length}</div>
+                            <div class="stat-label">Inviati</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-pause"></i>
+                        <div>
+                            <div class="stat-number">${this.scheduledMessages.filter(m => m.status === 'paused').length}</div>
+                            <div class="stat-label">In Pausa</div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="automation-content">
-                    <div class="empty-state">
-                        <i class="fas fa-robot"></i>
-                        <h3>Sistema Automazione</h3>
-                        <p>Programmazione invii automatici in sviluppo.</p>
+                    <div id="scheduledMessagesList">
+                        <!-- Populated by JavaScript -->
                     </div>
                 </div>
             </div>
@@ -476,11 +539,35 @@ window.TribuApp = class {
             </div>
             
             <div class="card">
-                <div class="whatsapp-content">
-                    <div class="empty-state">
-                        <i class="fab fa-whatsapp"></i>
-                        <h3>WhatsApp Templates</h3>
-                        <p>Gestione template messaggi in sviluppo.</p>
+                <div class="template-categories">
+                    <div class="template-category">
+                        <h4><i class="fas fa-exclamation-triangle"></i> Scadenze</h4>
+                        <div class="template-preview">
+                            <p>Template per notifiche scadenza tesseramento</p>
+                            <button class="btn btn-sm btn-outline" onclick="window.TribuApp.editTemplate('scadenza')">
+                                <i class="fas fa-edit"></i> Modifica
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="template-category">
+                        <h4><i class="fas fa-utensils"></i> Pasti</h4>
+                        <div class="template-preview">
+                            <p>Template per consigli alimentari e ricette</p>
+                            <button class="btn btn-sm btn-outline" onclick="window.TribuApp.editTemplate('pasti')">
+                                <i class="fas fa-edit"></i> Modifica
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="template-category">
+                        <h4><i class="fas fa-heart"></i> Motivazionali</h4>
+                        <div class="template-preview">
+                            <p>Template per messaggi motivazionali</p>
+                            <button class="btn btn-sm btn-outline" onclick="window.TribuApp.editTemplate('motivazionali')">
+                                <i class="fas fa-edit"></i> Modifica
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -528,6 +615,18 @@ window.TribuApp = class {
             case 'import':
                 this.initCSVUpload();
                 break;
+            case 'marketing':
+                this.initMarketingPage();
+                break;
+            case 'calendario':
+                this.initCalendarPage();
+                break;
+            case 'automazione':
+                this.initAutomationPage();
+                break;
+            case 'whatsapp':
+                this.initWhatsAppPage();
+                break;
         }
     }
     
@@ -548,8 +647,8 @@ window.TribuApp = class {
             });
         }
         
-        // Initial data load
-        this.updateDataTable();
+        // Initial data load - Apply current filter to populate table
+        this.applyFilters();
     }
     
     initCSVUpload() {
@@ -559,6 +658,24 @@ window.TribuApp = class {
                 this.handleCSVUpload(e);
             });
         }
+    }
+    
+    initMarketingPage() {
+        this.renderMarketingClients();
+    }
+    
+    initCalendarPage() {
+        if (this.isGoogleSignedIn) {
+            this.renderCalendarEvents();
+        }
+    }
+    
+    initAutomationPage() {
+        this.renderScheduledMessages();
+    }
+    
+    initWhatsAppPage() {
+        // Templates are already rendered in getWhatsAppContent
     }
     
     async handleCSVUpload(event) {
@@ -786,7 +903,7 @@ window.TribuApp = class {
             }
             
             // Refresh UI
-            this.updateDataTable();
+            this.applyFilters(); // This will update filteredData and call updateDataTable
             this.updateNotificationBadges();
             
             this.toast?.success(`🗑️ ${member.nome} ${member.cognome} eliminato`);
@@ -831,8 +948,612 @@ window.TribuApp = class {
         }, 5 * 60 * 1000);
     }
     
-    initGoogleCalendar() {
-        this.toast?.info('🔧 Integrazione Google Calendar in sviluppo');
+    // Google Calendar Integration
+    async initGoogleCalendar() {
+        try {
+            const googleConfig = window.AppConfig?.google;
+            if (!googleConfig?.enabled || !googleConfig?.apiKey || !googleConfig?.clientId) {
+                console.warn('⚠️ Google Calendar not properly configured');
+                return;
+            }
+            
+            // Load Google APIs
+            await this.loadGoogleAPI();
+            
+            // Initialize gapi
+            await new Promise((resolve) => {
+                gapi.load('client:auth2', resolve);
+            });
+            
+            // Initialize client
+            await gapi.client.init({
+                apiKey: googleConfig.apiKey,
+                clientId: googleConfig.clientId,
+                discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+                scope: 'https://www.googleapis.com/auth/calendar.readonly'
+            });
+            
+            this.isGoogleApiLoaded = true;
+            
+            // Check if user is signed in
+            const authInstance = gapi.auth2.getAuthInstance();
+            this.isGoogleSignedIn = authInstance.isSignedIn.get();
+            
+            if (this.isGoogleSignedIn) {
+                await this.loadCalendarEvents();
+            }
+            
+            this.toast?.success('🔗 Google Calendar inizializzato');
+            console.log('✅ Google Calendar API initialized');
+            
+        } catch (error) {
+            console.error('❌ Google Calendar initialization failed:', error);
+            this.toast?.error('❌ Errore inizializzazione Google Calendar');
+        }
+    }
+    
+    loadGoogleAPI() {
+        return new Promise((resolve, reject) => {
+            if (typeof gapi !== 'undefined') {
+                resolve();
+                return;
+            }
+            
+            const script = document.createElement('script');
+            script.src = 'https://apis.google.com/js/api.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+    
+    async signInGoogle() {
+        if (!this.isGoogleApiLoaded) {
+            this.toast?.warning('⚠️ Google API non ancora caricata');
+            return;
+        }
+        
+        try {
+            const authInstance = gapi.auth2.getAuthInstance();
+            await authInstance.signIn();
+            
+            this.isGoogleSignedIn = true;
+            await this.loadCalendarEvents();
+            
+            // Refresh calendar page if showing
+            if (this.currentPage === 'calendario') {
+                this.showPage('calendario');
+            }
+            
+            this.toast?.success('✅ Connesso a Google Calendar');
+            
+        } catch (error) {
+            console.error('❌ Google sign-in failed:', error);
+            this.toast?.error('❌ Errore connessione Google Calendar');
+        }
+    }
+    
+    async signOutGoogle() {
+        if (!this.isGoogleApiLoaded) return;
+        
+        try {
+            const authInstance = gapi.auth2.getAuthInstance();
+            await authInstance.signOut();
+            
+            this.isGoogleSignedIn = false;
+            this.calendarEvents = [];
+            
+            // Refresh calendar page if showing
+            if (this.currentPage === 'calendario') {
+                this.showPage('calendario');
+            }
+            
+            this.toast?.success('🔓 Disconnesso da Google Calendar');
+            
+        } catch (error) {
+            console.error('❌ Google sign-out failed:', error);
+            this.toast?.error('❌ Errore disconnessione Google Calendar');
+        }
+    }
+    
+    async loadCalendarEvents() {
+        if (!this.isGoogleApiLoaded || !this.isGoogleSignedIn) {
+            console.log('⚠️ Google API not ready or user not signed in');
+            return;
+        }
+        
+        try {
+            const now = new Date();
+            const timeMin = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
+            const timeMax = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days future
+            
+            const response = await gapi.client.calendar.events.list({
+                calendarId: 'primary',
+                timeMin: timeMin.toISOString(),
+                timeMax: timeMax.toISOString(),
+                singleEvents: true,
+                orderBy: 'startTime',
+                maxResults: 50
+            });
+            
+            const events = response.result.items || [];
+            
+            this.calendarEvents = events.map(event => ({
+                id: event.id,
+                title: event.summary || 'Evento senza titolo',
+                description: event.description || '',
+                start: new Date(event.start.dateTime || event.start.date),
+                end: new Date(event.end.dateTime || event.end.date),
+                location: event.location || '',
+                attendees: event.attendees || []
+            }));
+            
+            // Refresh calendar page if showing
+            if (this.currentPage === 'calendario') {
+                this.renderCalendarEvents();
+            }
+            
+            this.toast?.success(`📅 Caricati ${events.length} eventi calendario`);
+            console.log(`📅 Loaded ${events.length} calendar events`);
+            
+        } catch (error) {
+            console.error('❌ Error loading calendar events:', error);
+            this.toast?.error('❌ Errore caricamento eventi calendario');
+        }
+    }
+    
+    renderCalendarEvents() {
+        const eventsContainer = document.getElementById('calendarEvents');
+        if (!eventsContainer) return;
+        
+        if (this.calendarEvents.length === 0) {
+            eventsContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-calendar"></i>
+                    <h3>Nessun Evento</h3>
+                    <p>Non ci sono eventi nel calendario.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        eventsContainer.innerHTML = `
+            <div class="events-list">
+                ${this.calendarEvents.map(event => `
+                    <div class="event-card">
+                        <div class="event-date">
+                            ${event.start.toLocaleDateString('it-IT')}
+                        </div>
+                        <div class="event-time">
+                            ${event.start.toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}
+                        </div>
+                        <div class="event-details">
+                            <h4>${event.title}</h4>
+                            ${event.description ? `<p>${event.description}</p>` : ''}
+                            ${event.location ? `<div class="event-location"><i class="fas fa-map-marker-alt"></i> ${event.location}</div>` : ''}
+                        </div>
+                        <div class="event-actions">
+                            <button class="btn btn-sm btn-outline" onclick="window.TribuApp.createRemindersForEvent('${event.id}')">
+                                <i class="fas fa-bell"></i> Crea Reminder
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    async createRemindersForEvent(eventId) {
+        const event = this.calendarEvents.find(e => e.id === eventId);
+        if (!event) return;
+        
+        this.toast?.info(`📅 Creazione reminder per: ${event.title}`);
+        // Implementation for creating reminders based on calendar event
+    }
+    
+    renderMarketingClients() {
+        const clientsList = document.getElementById('marketingClientsList');
+        if (!clientsList) return;
+        
+        if (this.marketingClienti.length === 0) {
+            clientsList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-users"></i>
+                    <h3>Nessun Cliente Marketing</h3>
+                    <p>Aggiungi clienti per iniziare le campagne marketing.</p>
+                    <button class="btn btn-primary" onclick="window.TribuApp.showAddMarketingClientModal()">
+                        <i class="fas fa-user-plus"></i> Aggiungi Cliente
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        clientsList.innerHTML = `
+            <div class="clients-grid">
+                ${this.marketingClienti.map(client => `
+                    <div class="client-card">
+                        <div class="client-info">
+                            <h4>${client.nome} ${client.cognome}</h4>
+                            <p><i class="fab fa-whatsapp"></i> ${client.telefono}</p>
+                            <span class="client-category">${client.categoria || 'Standard'}</span>
+                        </div>
+                        <div class="client-actions">
+                            <button class="btn btn-sm btn-primary" onclick="window.TribuApp.sendMarketingMessage('${client.id}')">
+                                <i class="fas fa-paper-plane"></i> Invia
+                            </button>
+                            <button class="btn btn-sm btn-outline" onclick="window.TribuApp.editMarketingClient('${client.id}')">
+                                <i class="fas fa-edit"></i> Modifica
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    renderScheduledMessages() {
+        const messagesList = document.getElementById('scheduledMessagesList');
+        if (!messagesList) return;
+        
+        if (this.scheduledMessages.length === 0) {
+            messagesList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-robot"></i>
+                    <h3>Nessun Messaggio Programmato</h3>
+                    <p>Crea automazioni per inviare messaggi programmati.</p>
+                    <button class="btn btn-primary" onclick="window.TribuApp.showScheduleModal()">
+                        <i class="fas fa-clock"></i> Programma Invio
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        messagesList.innerHTML = `
+            <div class="messages-list">
+                ${this.scheduledMessages.map(msg => `
+                    <div class="message-card ${msg.status}">
+                        <div class="message-header">
+                            <h4>${msg.title || 'Messaggio Programmato'}</h4>
+                            <span class="message-status status-${msg.status}">${this.getMessageStatusText(msg.status)}</span>
+                        </div>
+                        <div class="message-details">
+                            <p><i class="fas fa-clock"></i> ${new Date(msg.scheduledAt).toLocaleString('it-IT')}</p>
+                            <p><i class="fas fa-users"></i> ${msg.recipients?.length || 0} destinatari</p>
+                        </div>
+                        <div class="message-actions">
+                            ${msg.status === 'scheduled' ? `
+                                <button class="btn btn-sm btn-warning" onclick="window.TribuApp.pauseScheduledMessage('${msg.id}')">
+                                    <i class="fas fa-pause"></i> Pausa
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="window.TribuApp.cancelScheduledMessage('${msg.id}')">
+                                    <i class="fas fa-times"></i> Annulla
+                                </button>
+                            ` : ''}
+                            <button class="btn btn-sm btn-outline" onclick="window.TribuApp.viewScheduledMessage('${msg.id}')">
+                                <i class="fas fa-eye"></i> Dettagli
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    getMessageStatusText(status) {
+        const statusMap = {
+            scheduled: '⏰ Programmato',
+            sent: '✅ Inviato',
+            paused: '⏸️ In Pausa',
+            cancelled: '❌ Annullato',
+            failed: '🚫 Fallito'
+        };
+        return statusMap[status] || status;
+    }
+    
+    // Modal implementations
+    showAddTesseratoModal() {
+        const modalHtml = `
+            <div class="modal-overlay" id="addTesseratoModal" onclick="this.remove()">
+                <div class="modal-content" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-user-plus"></i> Nuovo Tesserato</h3>
+                        <button class="modal-close" onclick="document.getElementById('addTesseratoModal').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="addTesseratoForm">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nome *</label>
+                                    <input type="text" name="nome" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Cognome *</label>
+                                    <input type="text" name="cognome" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Telefono</label>
+                                    <input type="tel" name="telefono" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label>Data Scadenza</label>
+                                    <input type="date" name="dataScadenza" class="form-control">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" name="email" class="form-control">
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('addTesseratoModal').remove()">Annulla</button>
+                        <button type="button" class="btn btn-primary" onclick="window.TribuApp.saveTesserato()">Salva Tesserato</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+    
+    async saveTesserato() {
+        const form = document.getElementById('addTesseratoForm');
+        const formData = new FormData(form);
+        
+        const tesseratoData = {
+            nome: formData.get('nome'),
+            cognome: formData.get('cognome'),
+            telefono: formData.get('telefono'),
+            email: formData.get('email'),
+            dataScadenza: formData.get('dataScadenza')
+        };
+        
+        try {
+            await this.storage.addMember(tesseratoData);
+            await this.loadAllData();
+            
+            // Refresh current page
+            if (this.currentPage === 'tesserati') {
+                this.showPage('tesserati');
+            }
+            
+            document.getElementById('scheduleModal').remove();
+            this.toast?.success('✅ Messaggio programmato con successo');
+            
+        } catch (error) {
+            console.error('Error scheduling message:', error);
+            this.toast?.error('❌ Errore programmazione messaggio');
+        }
+    }
+    
+    showTemplateEditor() {
+        const modalHtml = `
+            <div class="modal-overlay" id="templateEditorModal" onclick="this.remove()">
+                <div class="modal-content large" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-edit"></i> Editor Template WhatsApp</h3>
+                        <button class="modal-close" onclick="document.getElementById('templateEditorModal').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="template-tabs">
+                            <button class="tab-btn active" data-template="scadenza">Scadenze</button>
+                            <button class="tab-btn" data-template="pasti">Pasti</button>
+                            <button class="tab-btn" data-template="motivazionali">Motivazionali</button>
+                        </div>
+                        
+                        <div class="template-editor">
+                            <div class="template-variables">
+                                <h4>Variabili Disponibili</h4>
+                                <div class="variables-list">
+                                    <span class="variable" onclick="window.TribuApp.insertVariable('{nome}')">{nome}</span>
+                                    <span class="variable" onclick="window.TribuApp.insertVariable('{cognome}')">{cognome}</span>
+                                    <span class="variable" onclick="window.TribuApp.insertVariable('{giorni}')">{giorni}</span>
+                                    <span class="variable" onclick="window.TribuApp.insertVariable('{data_scadenza}')">{data_scadenza}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="template-content">
+                                <label>Template Messaggio</label>
+                                <textarea id="templateTextarea" class="form-control template-textarea" rows="8"></textarea>
+                                <div class="template-preview">
+                                    <h5>Anteprima</h5>
+                                    <div id="templatePreview" class="preview-content"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('templateEditorModal').remove()">Annulla</button>
+                        <button type="button" class="btn btn-primary" onclick="window.TribuApp.saveTemplate()">Salva Template</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Setup tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                this.loadTemplate(e.target.dataset.template);
+            });
+        });
+        
+        // Setup textarea monitoring for preview
+        const textarea = document.getElementById('templateTextarea');
+        textarea.addEventListener('input', () => {
+            this.updateTemplatePreview();
+        });
+        
+        // Load initial template
+        this.loadTemplate('scadenza');
+    }
+    
+    loadTemplate(templateType) {
+        const textarea = document.getElementById('templateTextarea');
+        const defaultTemplates = {
+            scadenza: `Ciao {nome}! 
+Il tuo tesseramento presso Tribù Personal Training scadrà tra {giorni} giorni ({data_scadenza}). 
+Per rinnovarlo e continuare il tuo percorso di allenamento, contattaci al più presto!`,
+            pasti: `Ciao {nome}! 
+Ecco alcuni consigli per una sana alimentazione:
+- Inizia la giornata con una colazione proteica
+- Non saltare mai i pasti
+- Bevi almeno 2 litri d'acqua al giorno
+Continua così, sei sulla strada giusta!`,
+            motivazionali: `Ciao {nome}! 
+Ricorda: ogni piccolo passo conta nel tuo percorso di crescita.
+La costanza è la chiave del successo!
+Il team di Tribù Personal Training crede in te. 💪`
+        };
+        
+        const currentTemplate = this.templates[templateType] || defaultTemplates[templateType];
+        textarea.value = currentTemplate;
+        this.updateTemplatePreview();
+    }
+    
+    insertVariable(variable) {
+        const textarea = document.getElementById('templateTextarea');
+        const cursorPos = textarea.selectionStart;
+        const textBefore = textarea.value.substring(0, cursorPos);
+        const textAfter = textarea.value.substring(textarea.selectionEnd);
+        
+        textarea.value = textBefore + variable + textAfter;
+        textarea.focus();
+        textarea.setSelectionRange(cursorPos + variable.length, cursorPos + variable.length);
+        
+        this.updateTemplatePreview();
+    }
+    
+    updateTemplatePreview() {
+        const textarea = document.getElementById('templateTextarea');
+        const preview = document.getElementById('templatePreview');
+        
+        // Replace variables with example values
+        let previewText = textarea.value
+            .replace(/\{nome\}/g, 'Mario')
+            .replace(/\{cognome\}/g, 'Rossi')
+            .replace(/\{giorni\}/g, '15')
+            .replace(/\{data_scadenza\}/g, '31/12/2024');
+        
+        preview.innerHTML = previewText.replace(/\n/g, '<br>');
+    }
+    
+    saveTemplate() {
+        const activeTab = document.querySelector('.tab-btn.active');
+        const templateType = activeTab.dataset.template;
+        const templateText = document.getElementById('templateTextarea').value;
+        
+        this.templates[templateType] = templateText;
+        this.storage.saveTemplate(templateType, templateText);
+        
+        document.getElementById('templateEditorModal').remove();
+        this.toast?.success('✅ Template salvato con successo');
+    }
+    
+    editTemplate(templateType) {
+        this.showTemplateEditor();
+        // Wait for modal to be created, then switch to correct tab
+        setTimeout(() => {
+            const targetTab = document.querySelector(`[data-template="${templateType}"]`);
+            if (targetTab) {
+                targetTab.click();
+            }
+        }, 100);
+    }
+    
+    // Additional helper methods
+    async sendMarketingMessage(clientId) {
+        const client = this.marketingClienti.find(c => c.id === clientId);
+        if (!client) return;
+        
+        this.toast?.info(`📱 Apertura WhatsApp per ${client.nome} ${client.cognome}`);
+        
+        const message = encodeURIComponent(`Ciao ${client.nome}! Messaggio di marketing personalizzato da Tribù Personal Training.`);
+        const whatsappUrl = `https://api.whatsapp.com/send?phone=${client.telefono}&text=${message}`;
+        window.open(whatsappUrl, '_blank');
+    }
+    
+    async editMarketingClient(clientId) {
+        this.toast?.info('🔧 Funzione modifica cliente in sviluppo');
+    }
+    
+    async pauseScheduledMessage(messageId) {
+        try {
+            await this.storage.updateScheduledMessageStatus(messageId, 'paused');
+            
+            const message = this.scheduledMessages.find(m => m.id === messageId);
+            if (message) {
+                message.status = 'paused';
+            }
+            
+            this.renderScheduledMessages();
+            this.toast?.success('⏸️ Messaggio messo in pausa');
+            
+        } catch (error) {
+            console.error('Error pausing message:', error);
+            this.toast?.error('❌ Errore pausa messaggio');
+        }
+    }
+    
+    async cancelScheduledMessage(messageId) {
+        if (!confirm('Sei sicuro di voler annullare questo messaggio programmato?')) {
+            return;
+        }
+        
+        try {
+            await this.storage.deleteScheduledMessage(messageId);
+            
+            const index = this.scheduledMessages.findIndex(m => m.id === messageId);
+            if (index > -1) {
+                this.scheduledMessages.splice(index, 1);
+            }
+            
+            this.renderScheduledMessages();
+            this.toast?.success('❌ Messaggio annullato');
+            
+        } catch (error) {
+            console.error('Error cancelling message:', error);
+            this.toast?.error('❌ Errore annullamento messaggio');
+        }
+    }
+    
+    async viewScheduledMessage(messageId) {
+        const message = this.scheduledMessages.find(m => m.id === messageId);
+        if (!message) return;
+        
+        const modalHtml = `
+            <div class="modal-overlay" id="viewMessageModal" onclick="this.remove()">
+                <div class="modal-content" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-eye"></i> Dettagli Messaggio</h3>
+                        <button class="modal-close" onclick="document.getElementById('viewMessageModal').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="message-details">
+                            <h4>${message.title || 'Messaggio Programmato'}</h4>
+                            <p><strong>Stato:</strong> ${this.getMessageStatusText(message.status)}</p>
+                            <p><strong>Programmato per:</strong> ${new Date(message.scheduledAt).toLocaleString('it-IT')}</p>
+                            <p><strong>Ricorrenza:</strong> ${message.recurrence || 'Nessuna'}</p>
+                            <p><strong>Destinatari:</strong> ${message.recipients?.join(', ') || 'Nessuno'}</p>
+                            <p><strong>Template:</strong> ${message.template}</p>
+                            ${message.customMessage ? `<div class="custom-message"><strong>Messaggio:</strong><br>${message.customMessage}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('viewMessageModal').remove()">Chiudi</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
     }
     
     showMainApp() {
@@ -869,24 +1590,214 @@ window.TribuApp = class {
             </div>
         `;
     }
-    
-    // Placeholder methods for future implementation
-    showAddTesseratoModal() {
-        this.toast?.info('🔧 Funzione aggiungi tesserato in sviluppo');
-    }
-    
-    showAddMarketingClientModal() {
-        this.toast?.info('🔧 Funzione marketing in sviluppo');
-    }
-    
-    showScheduleModal() {
-        this.toast?.info('🔧 Funzione automazione in sviluppo');
-    }
-    
-    showTemplateEditor() {
-        this.toast?.info('🔧 Editor template in sviluppo');
-    }
 };
 
 // Initialize global app instance
-window.App_Instance = new window.TribuApp();
+window.App_Instance = new window.TribuApp();d('addTesseratoModal').remove();
+            this.toast?.success('✅ Tesserato aggiunto con successo');
+            
+        } catch (error) {
+            console.error('Error adding member:', error);
+            this.toast?.error('❌ Errore aggiunta tesserato');
+        }
+    }
+    
+    showAddMarketingClientModal() {
+        const modalHtml = `
+            <div class="modal-overlay" id="addMarketingClientModal" onclick="this.remove()">
+                <div class="modal-content" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-bullhorn"></i> Nuovo Cliente Marketing</h3>
+                        <button class="modal-close" onclick="document.getElementById('addMarketingClientModal').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="addMarketingClientForm">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nome *</label>
+                                    <input type="text" name="nome" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Cognome *</label>
+                                    <input type="text" name="cognome" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Telefono *</label>
+                                    <input type="tel" name="telefono" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Categoria</label>
+                                    <select name="categoria" class="form-control">
+                                        <option value="standard">Standard</option>
+                                        <option value="premium">Premium</option>
+                                        <option value="vip">VIP</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Interessi</label>
+                                <div class="checkbox-group">
+                                    <label><input type="checkbox" name="interessi" value="pasti"> Consigli Alimentari</label>
+                                    <label><input type="checkbox" name="interessi" value="motivazionali"> Messaggi Motivazionali</label>
+                                    <label><input type="checkbox" name="interessi" value="offerte"> Offerte Speciali</label>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('addMarketingClientModal').remove()">Annulla</button>
+                        <button type="button" class="btn btn-primary" onclick="window.TribuApp.saveMarketingClient()">Salva Cliente</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+    
+    async saveMarketingClient() {
+        const form = document.getElementById('addMarketingClientForm');
+        const formData = new FormData(form);
+        
+        // Get selected interests
+        const interessiCheckboxes = form.querySelectorAll('input[name="interessi"]:checked');
+        const interessi = Array.from(interessiCheckboxes).map(cb => cb.value);
+        
+        const clientData = {
+            nome: formData.get('nome'),
+            cognome: formData.get('cognome'),
+            telefono: formData.get('telefono'),
+            categoria: formData.get('categoria'),
+            interessi: interessi,
+            dateAdded: new Date().toISOString()
+        };
+        
+        try {
+            await this.storage.addMarketingClient(clientData);
+            await this.loadAllData();
+            
+            // Refresh current page
+            if (this.currentPage === 'marketing') {
+                this.showPage('marketing');
+            }
+            
+            document.getElementById('addMarketingClientModal').remove();
+            this.toast?.success('✅ Cliente marketing aggiunto con successo');
+            
+        } catch (error) {
+            console.error('Error adding marketing client:', error);
+            this.toast?.error('❌ Errore aggiunta cliente marketing');
+        }
+    }
+    
+    showScheduleModal() {
+        const modalHtml = `
+            <div class="modal-overlay" id="scheduleModal" onclick="this.remove()">
+                <div class="modal-content large" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-clock"></i> Programma Invio</h3>
+                        <button class="modal-close" onclick="document.getElementById('scheduleModal').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="scheduleForm">
+                            <div class="form-group">
+                                <label>Titolo Campagna</label>
+                                <input type="text" name="title" class="form-control" placeholder="Es: Reminder Scadenze Settimanali">
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Data e Ora Invio</label>
+                                    <input type="datetime-local" name="scheduledAt" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Ricorrenza</label>
+                                    <select name="recurrence" class="form-control">
+                                        <option value="none">Nessuna</option>
+                                        <option value="daily">Giornaliera</option>
+                                        <option value="weekly">Settimanale</option>
+                                        <option value="monthly">Mensile</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Destinatari</label>
+                                <div class="checkbox-group">
+                                    <label><input type="checkbox" name="recipients" value="expired"> Tesserati Scaduti</label>
+                                    <label><input type="checkbox" name="recipients" value="expiring"> In Scadenza</label>
+                                    <label><input type="checkbox" name="recipients" value="marketing"> Clienti Marketing</label>
+                                    <label><input type="checkbox" name="recipients" value="all"> Tutti i Tesserati</label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Template Messaggio</label>
+                                <select name="template" class="form-control">
+                                    <option value="scadenza">Reminder Scadenza</option>
+                                    <option value="pasti">Consigli Alimentari</option>
+                                    <option value="motivazionale">Messaggio Motivazionale</option>
+                                    <option value="custom">Messaggio Personalizzato</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" id="customMessageGroup" style="display: none;">
+                                <label>Messaggio Personalizzato</label>
+                                <textarea name="customMessage" class="form-control" rows="4" placeholder="Scrivi il tuo messaggio personalizzato..."></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('scheduleModal').remove()">Annulla</button>
+                        <button type="button" class="btn btn-primary" onclick="window.TribuApp.saveScheduledMessage()">Programma Invio</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Setup template change handler
+        const templateSelect = document.querySelector('#scheduleModal select[name="template"]');
+        const customMessageGroup = document.getElementById('customMessageGroup');
+        
+        templateSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'custom') {
+                customMessageGroup.style.display = 'block';
+            } else {
+                customMessageGroup.style.display = 'none';
+            }
+        });
+    }
+    
+    async saveScheduledMessage() {
+        const form = document.getElementById('scheduleForm');
+        const formData = new FormData(form);
+        
+        // Get selected recipients
+        const recipientCheckboxes = form.querySelectorAll('input[name="recipients"]:checked');
+        const recipients = Array.from(recipientCheckboxes).map(cb => cb.value);
+        
+        const messageData = {
+            title: formData.get('title'),
+            scheduledAt: formData.get('scheduledAt'),
+            recurrence: formData.get('recurrence'),
+            recipients: recipients,
+            template: formData.get('template'),
+            customMessage: formData.get('customMessage'),
+            status: 'scheduled',
+            createdAt: new Date().toISOString()
+        };
+        
+        try {
+            await this.storage.addScheduledMessage(messageData);
+            await this.loadAllData();
+            
+            // Refresh current page
+            if (this.currentPage === 'automazione') {
+                this.showPage('automazione');
+            }
+            
+            document.getElementByI
