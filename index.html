@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ReminderTribù - Sistema Marketing Automation</title>
     
-    <!-- CSS Modules -->
+    <!-- CSS Modulari -->
     <link rel="stylesheet" href="assets/css/main.css">
     <link rel="stylesheet" href="assets/css/components.css">
     <link rel="stylesheet" href="assets/css/dashboard.css">
@@ -22,7 +22,6 @@
         import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         
-        // Make Firebase available globally
         window.Firebase = {
             initializeApp,
             getFirestore,
@@ -133,88 +132,71 @@
     <!-- Modal Container -->
     <div id="modal-container" class="modal-container"></div>
 
-    <!-- Configuration -->
+    <!-- Configuration & Core Modules -->
     <script src="config.js"></script>
-    
-    <!-- Core Modules - Load in correct order -->
     <script src="assets/js/components/toast.js"></script>
     <script src="assets/js/modules/auth.js"></script>
     <script src="assets/js/config/firebase.js"></script>
     <script src="assets/js/modules/storage.js"></script>
     <script src="assets/js/app.js"></script>
     
+    <!-- Application Initialization -->
     <script>
-        // Global helper functions
+        // Global helper functions for compatibility
         function handleLogin() {
             if (window.Auth_Instance && window.Auth_Instance.performLogin) {
                 window.Auth_Instance.performLogin();
             } else {
                 console.error('Auth_Instance not available');
-                alert('Errore: Sistema di autenticazione non disponibile');
+                showToast('Errore sistema autenticazione', 'error');
             }
         }
         
         function showTestToast() {
             if (window.Toast_Instance && window.Toast_Instance.show) {
                 window.Toast_Instance.show('Ciao Admin!', 'info');
-            } else {
-                console.log('Toast not available');
             }
         }
         
-        // Initialize Application
+        function showToast(message, type = 'info', duration = 4000) {
+            if (window.Toast_Instance && window.Toast_Instance.show) {
+                window.Toast_Instance.show(message, type, duration);
+            } else {
+                console.log('Toast:', message);
+            }
+        }
+        
+        // Main Application Initialization
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded, initializing TribuReminder...');
             
-            // Initialize modules step by step
             setTimeout(() => {
                 try {
-                    console.log('Starting module initialization...');
-                    
-                    // Check if modules are loaded
+                    // Check all required modules are loaded
                     if (!window.Toast_Instance) {
-                        console.error('Toast_Instance not found');
-                        showInitError('Toast module not loaded');
-                        return;
+                        throw new Error('Toast module not loaded');
                     }
                     
                     if (!window.Auth_Instance) {
-                        console.error('Auth_Instance not found');
-                        showInitError('Auth module not loaded');
-                        return;
+                        throw new Error('Auth module not loaded');
                     }
                     
                     if (!window.App_Instance) {
-                        console.error('App_Instance not found');
-                        showInitError('Main app module not loaded');
-                        return;
+                        throw new Error('App module not loaded');
                     }
                     
-                    // Initialize Toast first
-                    console.log('Initializing Toast...');
-                    const toastInit = window.Toast_Instance.init();
-                    if (toastInit) {
-                        console.log('Toast initialized successfully');
-                    }
-                    
-                    // Initialize Auth
-                    console.log('Initializing Auth...');
-                    window.Auth_Instance.init();
-                    console.log('Auth initialized successfully');
-                    
-                    // Initialize main app
-                    console.log('Initializing Main App...');
+                    // Initialize main application
                     window.App_Instance.init().then(() => {
                         console.log('TribuApp initialized successfully');
                         hideLoadingScreen();
                     }).catch(error => {
-                        console.error('TribuApp initialization failed:', error);
-                        showInitError('Main app initialization failed: ' + error.message);
+                        console.error('App initialization failed:', error);
+                        showInitError('App initialization failed: ' + error.message);
                     });
                     
                 } catch (error) {
-                    console.error('Critical initialization error:', error);
-                    showInitError('Critical initialization error: ' + error.message);
+                    console.error('Module loading error:', error);
+                    showInitError(error.message);
                 }
             }, 1000);
         });
@@ -226,7 +208,6 @@
             }
         }
         
-        // Show initialization error to user
         function showInitError(message) {
             document.body.innerHTML = `
                 <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; text-align: center; font-family: Arial, sans-serif; padding: 2rem;">
@@ -234,59 +215,33 @@
                         <h1 style="color: #ef4444; margin-bottom: 1rem;">Errore Inizializzazione</h1>
                         <p style="margin-bottom: 1rem; opacity: 0.9;">${message}</p>
                         <div style="background: rgba(255,255,255,0.1); padding: 1.5rem; border-radius: 8px; margin: 1.5rem 0; text-align: left;">
-                            <h3 style="color: #64ffda; margin-bottom: 1rem;">Debug Info:</h3>
+                            <h3 style="color: #64ffda; margin-bottom: 1rem;">Moduli Disponibili:</h3>
                             <p style="font-family: monospace; font-size: 0.9rem; margin: 0; line-height: 1.4;">
-                                Moduli disponibili: <br>
                                 - Toast_Instance: ${typeof window.Toast_Instance !== 'undefined' ? 'OK' : 'MANCANTE'}<br>
                                 - Auth_Instance: ${typeof window.Auth_Instance !== 'undefined' ? 'OK' : 'MANCANTE'}<br>
                                 - App_Instance: ${typeof window.App_Instance !== 'undefined' ? 'OK' : 'MANCANTE'}<br>
-                                <br>
-                                Controlla la console del browser (F12) per dettagli tecnici.
+                                - AppConfig: ${typeof window.AppConfig !== 'undefined' ? 'OK' : 'MANCANTE'}
                             </p>
                         </div>
                         <button onclick="location.reload()" style="padding: 0.8rem 1.5rem; background: #64ffda; color: #1a1a2e; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
                             Ricarica Pagina
-                        </button>
-                        <button onclick="window.open('https://developer.mozilla.org/en-US/docs/Web/API/Console', '_blank')" style="padding: 0.8rem 1.5rem; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; font-weight: 600; cursor: pointer; margin-left: 1rem;">
-                            Come aprire Console
                         </button>
                     </div>
                 </div>
             `;
         }
         
-        // Global error handler
+        // Error handling
         window.addEventListener('error', function(event) {
             console.error('Global error:', event.error);
-            
-            // If it's a module loading error, show helpful message
             if (event.filename && event.filename.includes('assets/js/')) {
                 const filename = event.filename.split('/').pop();
-                showInitError(`Errore caricamento modulo: ${filename}. Controlla che il file esista e non abbia errori di sintassi.`);
+                showInitError(`Errore caricamento: ${filename}`);
             }
         });
         
-        // Handle unhandled promise rejections
         window.addEventListener('unhandledrejection', function(event) {
             console.error('Unhandled promise rejection:', event.reason);
-        });
-        
-        // Add keyboard shortcuts
-        document.addEventListener('keydown', function(event) {
-            // Ctrl + Shift + L = Logout
-            if (event.ctrlKey && event.shiftKey && event.key === 'L') {
-                if (window.Auth_Instance && window.Auth_Instance.logout) {
-                    window.Auth_Instance.logout();
-                }
-                event.preventDefault();
-            }
-            
-            // ESC = Close modals/toasts
-            if (event.key === 'Escape') {
-                if (window.Toast_Instance && window.Toast_Instance.clearAll) {
-                    window.Toast_Instance.clearAll();
-                }
-            }
         });
     </script>
 </body>
