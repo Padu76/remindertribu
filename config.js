@@ -1,15 +1,4 @@
-    // Firebase Configuration - Use Environment Variables
-    firebase: {
-        enabled: true,
-        config: {
-            apiKey: process.env.FIREBASE_API_KEY || window.ENV?.FIREBASE_API_KEY || "AIzaSyC-s8VuHiNx2mnWvUynFa7eYj4r9LHC5LQ",
-            authDomain: process.env.FIREBASE_AUTH_DOMAIN || window.ENV?.FIREBASE_AUTH_DOMAIN || "reminderpush.firebaseapp.com",
-            projectId: process.env.FIREBASE_PROJECT_ID || window.ENV?.FIREBASE_PROJECT_ID || "reminderpush",
-            storageBucket: process.env.FIREBASE_STORAGE_BUCKET || window.ENV?.FIREBASE_STORAGE_BUCKET || "reminderpush.firebasestorage.app",
-            messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || window.ENV?.FIREBASE_MESSAGING_SENDER_ID || "533477700960",
-            appId: process.env.FIREBASE_APP_ID || window.ENV?.FIREBASE_APP_ID || "1:533477700960:web:94d90a7e327ec2912d1a05",
-            measurementId: process.env.FIREBASE_MEASUREMENT_ID || window.ENV?.FIREBASE_MEASUREMENT_ID || "G-RZ3Y5EV1DX"
-        },// TribuReminder Configuration
+// TribuReminder Configuration
 // Updated with real Firebase and Google credentials
 
 window.AppConfig = {
@@ -35,12 +24,13 @@ window.AppConfig = {
     firebase: {
         enabled: true,
         config: {
-            apiKey: process.env.FIREBASE_API_KEY || window.ENV?.FIREBASE_API_KEY || "YOUR_FIREBASE_API_KEY",
-            authDomain: process.env.FIREBASE_AUTH_DOMAIN || window.ENV?.FIREBASE_AUTH_DOMAIN || "reminderpush.firebaseapp.com",
-            projectId: process.env.FIREBASE_PROJECT_ID || window.ENV?.FIREBASE_PROJECT_ID || "reminderpush",
-            storageBucket: process.env.FIREBASE_STORAGE_BUCKET || window.ENV?.FIREBASE_STORAGE_BUCKET || "reminderpush.appspot.com",
-            messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || window.ENV?.FIREBASE_MESSAGING_SENDER_ID || "533477700960",
-            appId: process.env.FIREBASE_APP_ID || window.ENV?.FIREBASE_APP_ID || "YOUR_FIREBASE_APP_ID"
+            apiKey: process.env.FIREBASE_API_KEY || window.ENV?.FIREBASE_API_KEY || "",
+            authDomain: process.env.FIREBASE_AUTH_DOMAIN || window.ENV?.FIREBASE_AUTH_DOMAIN || "",
+            projectId: process.env.FIREBASE_PROJECT_ID || window.ENV?.FIREBASE_PROJECT_ID || "",
+            storageBucket: process.env.FIREBASE_STORAGE_BUCKET || window.ENV?.FIREBASE_STORAGE_BUCKET || "",
+            messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || window.ENV?.FIREBASE_MESSAGING_SENDER_ID || "",
+            appId: process.env.FIREBASE_APP_ID || window.ENV?.FIREBASE_APP_ID || "",
+            measurementId: process.env.FIREBASE_MEASUREMENT_ID || window.ENV?.FIREBASE_MEASUREMENT_ID || ""
         },
         collections: {
             members: "members",
@@ -102,62 +92,3 @@ window.AppConfig = {
         theme: "dark",
         language: "it",
         dateFormat: "DD/MM/YYYY",
-        timeFormat: "HH:mm",
-        itemsPerPage: 20
-    },
-    
-    // Status Configuration for CSEN Members
-    memberStatus: {
-        active: {
-            label: "Attivo",
-            color: "#10b981",
-            daysThreshold: 30
-        },
-        expiring: {
-            label: "In Scadenza",
-            color: "#f59e0b",
-            daysThreshold: 0
-        },
-        expired: {
-            label: "Scaduto",
-            color: "#ef4444",
-            daysThreshold: -999
-        },
-        messagesent: {
-            label: "Messaggio Inviato",
-            color: "#3b82f6",
-            daysThreshold: null
-        },
-        renewed: {
-            label: "Rinnovato",
-            color: "#8b5cf6",
-            daysThreshold: null
-        }
-    },
-    
-    // Demo Data Settings
-    demo: {
-        enabled: false,
-        sampleData: {
-            generateContacts: false,
-            generateReminders: false,
-            generateAnalytics: false
-        }
-    },
-    
-    // Debug Settings
-    debug: {
-        enabled: false,
-        logLevel: "info", // error | warn | info | debug
-        showConsoleMessages: true
-    }
-};
-
-// Make config globally available
-window.CONFIG = window.AppConfig;
-
-// Log initialization
-console.log('🔧 TribuReminder Configuration Loaded');
-console.log('📡 Firebase Project:', window.AppConfig.firebase.config.projectId);
-console.log('📅 Google Calendar:', window.AppConfig.google.calendarId);
-console.log('🎯 Environment:', window.AppConfig.app.environment);
