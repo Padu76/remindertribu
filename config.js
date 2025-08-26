@@ -10,10 +10,10 @@ window.AppConfig = {
     // Google Services Configuration
     google: {
         enabled: true,
-        apiKey: window.ENV?.GOOGLE_API_KEY || "",
-        clientId: window.ENV?.GOOGLE_CLIENT_ID || "", 
-        clientSecret: window.ENV?.GOOGLE_CLIENT_SECRET || "",
-        calendarId: window.ENV?.GOOGLE_CALENDAR_ID || "tribupersonalstudio@gmail.com",
+        apiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY || "",
+        clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "", 
+        clientSecret: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_SECRET || "",
+        calendarId: process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_ID || "tribupersonalstudio@gmail.com",
         scopes: "https://www.googleapis.com/auth/calendar.readonly",
         discoveryDoc: "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"
     },
@@ -22,13 +22,13 @@ window.AppConfig = {
     firebase: {
         enabled: true,
         config: {
-            apiKey: window.ENV?.FIREBASE_API_KEY || "",
-            authDomain: window.ENV?.FIREBASE_AUTH_DOMAIN || "",
-            projectId: window.ENV?.FIREBASE_PROJECT_ID || "",
-            storageBucket: window.ENV?.FIREBASE_STORAGE_BUCKET || "",
-            messagingSenderId: window.ENV?.FIREBASE_MESSAGING_SENDER_ID || "",
-            appId: window.ENV?.FIREBASE_APP_ID || "",
-            measurementId: window.ENV?.FIREBASE_MEASUREMENT_ID || ""
+            apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
+            authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "",
+            projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "",
+            storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "",
+            messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
+            appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
+            measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || ""
         },
         collections: {
             members: "members",
