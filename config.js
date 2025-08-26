@@ -1,4 +1,15 @@
-// TribuReminder Configuration
+    // Firebase Configuration - Use Environment Variables
+    firebase: {
+        enabled: true,
+        config: {
+            apiKey: process.env.FIREBASE_API_KEY || window.ENV?.FIREBASE_API_KEY || "AIzaSyC-s8VuHiNx2mnWvUynFa7eYj4r9LHC5LQ",
+            authDomain: process.env.FIREBASE_AUTH_DOMAIN || window.ENV?.FIREBASE_AUTH_DOMAIN || "reminderpush.firebaseapp.com",
+            projectId: process.env.FIREBASE_PROJECT_ID || window.ENV?.FIREBASE_PROJECT_ID || "reminderpush",
+            storageBucket: process.env.FIREBASE_STORAGE_BUCKET || window.ENV?.FIREBASE_STORAGE_BUCKET || "reminderpush.firebasestorage.app",
+            messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || window.ENV?.FIREBASE_MESSAGING_SENDER_ID || "533477700960",
+            appId: process.env.FIREBASE_APP_ID || window.ENV?.FIREBASE_APP_ID || "1:533477700960:web:94d90a7e327ec2912d1a05",
+            measurementId: process.env.FIREBASE_MEASUREMENT_ID || window.ENV?.FIREBASE_MEASUREMENT_ID || "G-RZ3Y5EV1DX"
+        },// TribuReminder Configuration
 // Updated with real Firebase and Google credentials
 
 window.AppConfig = {
