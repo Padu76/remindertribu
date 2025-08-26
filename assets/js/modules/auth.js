@@ -51,8 +51,8 @@ window.AppAuth = class {
         const password = document.getElementById('loginPassword')?.value;
         
         if (!email || !password) {
-            if (window.AppToast) {
-                window.AppToast.show('Inserisci email e password', 'error');
+            if (window.Toast_Instance) {
+                window.Toast_Instance.show('Inserisci email e password', 'error');
             }
             return false;
         }
@@ -81,8 +81,8 @@ window.AppAuth = class {
                 };
                 localStorage.setItem('tribu_session', JSON.stringify(sessionData));
                 
-                if (window.AppToast) {
-                    window.AppToast.show('Login effettuato con successo!', 'success');
+                if (window.Toast_Instance) {
+                    window.Toast_Instance.show('Login effettuato con successo!', 'success');
                 }
                 
                 // Hide login screen and show app
@@ -93,16 +93,16 @@ window.AppAuth = class {
                 return true;
                 
             } else {
-                if (window.AppToast) {
-                    window.AppToast.show('Credenziali non valide', 'error');
+                if (window.Toast_Instance) {
+                    window.Toast_Instance.show('Credenziali non valide', 'error');
                 }
                 return false;
             }
             
         } catch (error) {
             console.error('Login error:', error);
-            if (window.AppToast) {
-                window.AppToast.show('Errore durante il login', 'error');
+            if (window.Toast_Instance) {
+                window.Toast_Instance.show('Errore durante il login', 'error');
             }
             return false;
         }
@@ -117,9 +117,11 @@ window.AppAuth = class {
         if (authContainer) authContainer.classList.add('hidden');
         if (mainApp) mainApp.classList.remove('hidden');
         
-        // Initialize the main application
-        if (window.TribuApp) {
-            window.TribuApp.postLoginInit();
+        // Initialize the main application - FIXED REFERENCE
+        if (window.App_Instance && window.App_Instance.postLoginInit) {
+            window.App_Instance.postLoginInit();
+        } else {
+            console.warn('App_Instance.postLoginInit not available');
         }
     }
     
@@ -128,8 +130,8 @@ window.AppAuth = class {
         this.currentUser = null;
         this.clearSession();
         
-        if (window.AppToast) {
-            window.AppToast.show('Disconnesso con successo', 'info');
+        if (window.Toast_Instance) {
+            window.Toast_Instance.show('Disconnesso con successo', 'info');
         }
         
         // Redirect to login
@@ -169,8 +171,8 @@ window.AppAuth = class {
         
         this.sessionTimeout = setTimeout(() => {
             if (this.isAuthenticated) {
-                if (window.AppToast) {
-                    window.AppToast.show('Sessione scaduta. Effettua nuovamente il login.', 'warning');
+                if (window.Toast_Instance) {
+                    window.Toast_Instance.show('Sessione scaduta. Effettua nuovamente il login.', 'warning');
                 }
                 this.logout();
             }
@@ -187,8 +189,8 @@ window.AppAuth = class {
     
     requireAuth() {
         if (!this.isAuthenticated) {
-            if (window.AppToast) {
-                window.AppToast.show('Accesso richiesto', 'warning');
+            if (window.Toast_Instance) {
+                window.Toast_Instance.show('Accesso richiesto', 'warning');
             }
             this.showLoginScreen();
             return false;
