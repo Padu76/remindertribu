@@ -59,7 +59,7 @@
                     <input type="password" id="loginPassword" class="form-control" value="tribu2025" autocomplete="current-password">
                 </div>
                 
-                <button class="btn btn-primary btn-login" onclick="window.AppAuth?.performLogin() || console.error('Auth not ready')">
+                <button class="btn btn-primary btn-login" onclick="handleLogin()">
                     <i class="fas fa-sign-in-alt"></i> Accedi
                 </button>
             </div>
@@ -72,7 +72,7 @@
                     <i class="fas fa-bell"></i>
                     <span class="brand-text">ReminderTribù</span>
                 </div>
-                <div class="header-user" onclick="AppToast.show('Ciao Admin!', 'info')">
+                <div class="header-user" onclick="showTestToast()">
                     TT
                 </div>
             </header>
@@ -136,64 +136,157 @@
     <!-- Configuration -->
     <script src="config.js"></script>
     
-    <!-- Core Modules (Only existing ones) -->
+    <!-- Core Modules - Load in correct order -->
     <script src="assets/js/components/toast.js"></script>
     <script src="assets/js/modules/auth.js"></script>
     <script src="assets/js/config/firebase.js"></script>
     <script src="assets/js/modules/storage.js"></script>
-    
-    <!-- Main Application -->
     <script src="assets/js/app.js"></script>
     
     <script>
+        // Global helper functions
+        function handleLogin() {
+            if (window.Auth_Instance && window.Auth_Instance.performLogin) {
+                window.Auth_Instance.performLogin();
+            } else {
+                console.error('Auth_Instance not available');
+                alert('Errore: Sistema di autenticazione non disponibile');
+            }
+        }
+        
+        function showTestToast() {
+            if (window.Toast_Instance && window.Toast_Instance.show) {
+                window.Toast_Instance.show('Ciao Admin!', 'info');
+            } else {
+                console.log('Toast not available');
+            }
+        }
+        
         // Initialize Application
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded, initializing TribuReminder...');
             
-            // Initialize modules in correct order
+            // Initialize modules step by step
             setTimeout(() => {
                 try {
-                    // Initialize toast first
-                    if (window.Toast_Instance) {
-                        window.Toast_Instance.init();
-                        window.AppToast = window.Toast_Instance;
-                        console.log('Toast initialized');
+                    console.log('Starting module initialization...');
+                    
+                    // Check if modules are loaded
+                    if (!window.Toast_Instance) {
+                        console.error('Toast_Instance not found');
+                        showInitError('Toast module not loaded');
+                        return;
                     }
                     
-                    // Initialize auth
-                    if (window.Auth_Instance) {
-                        window.AppAuth = window.Auth_Instance;
-                        window.Auth_Instance.init();
-                        console.log('Auth initialized');
+                    if (!window.Auth_Instance) {
+                        console.error('Auth_Instance not found');
+                        showInitError('Auth module not loaded');
+                        return;
                     }
+                    
+                    if (!window.App_Instance) {
+                        console.error('App_Instance not found');
+                        showInitError('Main app module not loaded');
+                        return;
+                    }
+                    
+                    // Initialize Toast first
+                    console.log('Initializing Toast...');
+                    const toastInit = window.Toast_Instance.init();
+                    if (toastInit) {
+                        console.log('Toast initialized successfully');
+                    }
+                    
+                    // Initialize Auth
+                    console.log('Initializing Auth...');
+                    window.Auth_Instance.init();
+                    console.log('Auth initialized successfully');
                     
                     // Initialize main app
-                    if (window.App_Instance) {
-                        window.TribuApp = window.App_Instance;
-                        window.App_Instance.init();
-                        console.log('TribuApp initialized');
-                    } else {
-                        console.error('App_Instance not found');
-                        console.log('Available window objects:', Object.keys(window).filter(k => k.includes('Instance') || k.includes('App')));
-                        
-                        // Show error message to user
-                        document.body.innerHTML = `
-                            <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #1a1a2e; color: white; text-align: center;">
-                                <div>
-                                    <h1>Errore Caricamento Moduli</h1>
-                                    <p>Il file app.js non si è caricato correttamente.</p>
-                                    <p>Controlla che il file esista in: assets/js/app.js</p>
-                                    <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #64ffda; color: #1a1a2e; border: none; border-radius: 4px;">
-                                        Ricarica Pagina
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    }
+                    console.log('Initializing Main App...');
+                    window.App_Instance.init().then(() => {
+                        console.log('TribuApp initialized successfully');
+                        hideLoadingScreen();
+                    }).catch(error => {
+                        console.error('TribuApp initialization failed:', error);
+                        showInitError('Main app initialization failed: ' + error.message);
+                    });
+                    
                 } catch (error) {
-                    console.error('Initialization error:', error);
+                    console.error('Critical initialization error:', error);
+                    showInitError('Critical initialization error: ' + error.message);
                 }
             }, 1000);
+        });
+        
+        function hideLoadingScreen() {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                loadingScreen.classList.add('hidden');
+            }
+        }
+        
+        // Show initialization error to user
+        function showInitError(message) {
+            document.body.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; text-align: center; font-family: Arial, sans-serif; padding: 2rem;">
+                    <div style="max-width: 600px;">
+                        <h1 style="color: #ef4444; margin-bottom: 1rem;">Errore Inizializzazione</h1>
+                        <p style="margin-bottom: 1rem; opacity: 0.9;">${message}</p>
+                        <div style="background: rgba(255,255,255,0.1); padding: 1.5rem; border-radius: 8px; margin: 1.5rem 0; text-align: left;">
+                            <h3 style="color: #64ffda; margin-bottom: 1rem;">Debug Info:</h3>
+                            <p style="font-family: monospace; font-size: 0.9rem; margin: 0; line-height: 1.4;">
+                                Moduli disponibili: <br>
+                                - Toast_Instance: ${typeof window.Toast_Instance !== 'undefined' ? 'OK' : 'MANCANTE'}<br>
+                                - Auth_Instance: ${typeof window.Auth_Instance !== 'undefined' ? 'OK' : 'MANCANTE'}<br>
+                                - App_Instance: ${typeof window.App_Instance !== 'undefined' ? 'OK' : 'MANCANTE'}<br>
+                                <br>
+                                Controlla la console del browser (F12) per dettagli tecnici.
+                            </p>
+                        </div>
+                        <button onclick="location.reload()" style="padding: 0.8rem 1.5rem; background: #64ffda; color: #1a1a2e; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                            Ricarica Pagina
+                        </button>
+                        <button onclick="window.open('https://developer.mozilla.org/en-US/docs/Web/API/Console', '_blank')" style="padding: 0.8rem 1.5rem; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; font-weight: 600; cursor: pointer; margin-left: 1rem;">
+                            Come aprire Console
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Global error handler
+        window.addEventListener('error', function(event) {
+            console.error('Global error:', event.error);
+            
+            // If it's a module loading error, show helpful message
+            if (event.filename && event.filename.includes('assets/js/')) {
+                const filename = event.filename.split('/').pop();
+                showInitError(`Errore caricamento modulo: ${filename}. Controlla che il file esista e non abbia errori di sintassi.`);
+            }
+        });
+        
+        // Handle unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+        });
+        
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            // Ctrl + Shift + L = Logout
+            if (event.ctrlKey && event.shiftKey && event.key === 'L') {
+                if (window.Auth_Instance && window.Auth_Instance.logout) {
+                    window.Auth_Instance.logout();
+                }
+                event.preventDefault();
+            }
+            
+            // ESC = Close modals/toasts
+            if (event.key === 'Escape') {
+                if (window.Toast_Instance && window.Toast_Instance.clearAll) {
+                    window.Toast_Instance.clearAll();
+                }
+            }
         });
     </script>
 </body>
