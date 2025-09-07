@@ -21,13 +21,19 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        
-        window.Firebase = {
-            initializeApp,
-            getFirestore,
-            getAuth
-        };
+        window.Firebase = { initializeApp, getFirestore, getAuth };
     </script>
+
+    <!-- UI tweaks non invasivi -->
+    <style>
+      .app-header{backdrop-filter:saturate(140%) blur(4px); border-bottom:1px solid #243041;}
+      .header-brand .brand-text{font-weight:700; letter-spacing:.3px}
+      .sidebar .nav .nav-item{border-radius:10px; transition:background .2s ease}
+      .sidebar .nav .nav-item:hover{background:#0b1220; cursor:pointer}
+      .sidebar .nav .nav-item.active{background:#0f172a; border:1px solid #243041}
+      .notification-badge{background:#ef4444;color:#fff;border-radius:10px;padding:.1rem .45rem;font-size:.75rem;margin-left:.4rem;display:none}
+      .btn{border-radius:10px}
+    </style>
 </head>
 <body>
     <div id="app">
@@ -71,7 +77,7 @@
                     <i class="fas fa-bell"></i>
                     <span class="brand-text">ReminderTribù</span>
                 </div>
-                <div class="header-user" onclick="showTestToast()">
+                <div class="header-user" onclick="showTestToast()" title="Clicca per test toast">
                     TT
                 </div>
             </header>
@@ -79,38 +85,38 @@
             <div class="main-content">
                 <aside class="sidebar">
                     <nav class="nav" id="main-navigation">
-                        <div class="nav-item active" data-page="dashboard">
+                        <div class="nav-item active" data-page="dashboard" title="Dashboard">
                             <i class="fas fa-tachometer-alt"></i>
                             <span>Dashboard</span>
                         </div>
-                        <div class="nav-item" data-page="tesserati">
+                        <div class="nav-item" data-page="tesserati" title="Anagrafica Tesserati CSEN">
                             <i class="fas fa-id-card"></i>
                             <span>Tesserati CSEN</span>
                         </div>
-                        <div class="nav-item" data-page="scadenze">
+                        <div class="nav-item" data-page="scadenze" title="Scadenze tesseramenti">
                             <i class="fas fa-exclamation-triangle"></i>
                             <span>Scadenze</span>
                             <span class="notification-badge" id="scadenzeBadge"></span>
                         </div>
-                        <div class="nav-item" data-page="marketing">
+                        <div class="nav-item" data-page="marketing" title="Campagne marketing">
                             <i class="fas fa-bullhorn"></i>
                             <span>Marketing</span>
                         </div>
-                        <div class="nav-item" data-page="calendario">
+                        <div class="nav-item" data-page="calendario" title="Calendario appuntamenti">
                             <i class="fas fa-calendar-alt"></i>
                             <span>Calendario</span>
                             <span class="notification-badge" id="calendarBadge"></span>
                         </div>
-                        <div class="nav-item" data-page="automazione">
+                        <div class="nav-item" data-page="automazione" title="Automazioni e cron">
                             <i class="fas fa-robot"></i>
                             <span>Automazione</span>
                             <span class="notification-badge" id="automationBadge"></span>
                         </div>
-                        <div class="nav-item" data-page="whatsapp">
+                        <div class="nav-item" data-page="whatsapp" title="Template e link WhatsApp">
                             <i class="fab fa-whatsapp"></i>
                             <span>WhatsApp</span>
                         </div>
-                        <div class="nav-item" data-page="import">
+                        <div class="nav-item" data-page="import" title="Importa contatti CSV">
                             <i class="fas fa-upload"></i>
                             <span>Import CSV</span>
                         </div>
@@ -138,54 +144,34 @@
     <script src="assets/js/modules/auth.js"></script>
     <script src="assets/js/config/firebase.js"></script>
     <script src="assets/js/modules/storage.js"></script>
+
+    <!-- NUOVO: modulo Scadenze -->
+    <script src="assets/js/modules/scadenze.js"></script>
+
+    <!-- App core -->
     <script src="assets/js/app.js"></script>
     
     <!-- Application Initialization -->
     <script>
-        // Global helper functions for compatibility
         function handleLogin() {
-            if (window.Auth_Instance && window.Auth_Instance.performLogin) {
-                window.Auth_Instance.performLogin();
-            } else {
-                console.error('Auth_Instance not available');
-                showToast('Errore sistema autenticazione', 'error');
-            }
+            if (window.Auth_Instance?.performLogin) window.Auth_Instance.performLogin();
+            else { console.error('Auth_Instance not available'); showToast('Errore sistema autenticazione', 'error'); }
         }
-        
         function showTestToast() {
-            if (window.Toast_Instance && window.Toast_Instance.show) {
-                window.Toast_Instance.show('Ciao Admin!', 'info');
-            }
+            if (window.Toast_Instance?.show) window.Toast_Instance.show('Ciao Admin!', 'info');
         }
-        
         function showToast(message, type = 'info', duration = 4000) {
-            if (window.Toast_Instance && window.Toast_Instance.show) {
-                window.Toast_Instance.show(message, type, duration);
-            } else {
-                console.log('Toast:', message);
-            }
+            if (window.Toast_Instance?.show) window.Toast_Instance.show(message, type, duration);
+            else console.log('Toast:', message);
         }
-        
-        // Main Application Initialization
+
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded, initializing TribuReminder...');
-            
             setTimeout(() => {
                 try {
-                    // Check all required modules are loaded
-                    if (!window.Toast_Instance) {
-                        throw new Error('Toast module not loaded');
-                    }
-                    
-                    if (!window.Auth_Instance) {
-                        throw new Error('Auth module not loaded');
-                    }
-                    
-                    if (!window.App_Instance) {
-                        throw new Error('App module not loaded');
-                    }
-                    
-                    // Initialize main application
+                    if (!window.Toast_Instance) throw new Error('Toast module not loaded');
+                    if (!window.Auth_Instance) throw new Error('Auth module not loaded');
+                    if (!window.App_Instance) throw new Error('App module not loaded');
                     window.App_Instance.init().then(() => {
                         console.log('TribuApp initialized successfully');
                         hideLoadingScreen();
@@ -193,45 +179,41 @@
                         console.error('App initialization failed:', error);
                         showInitError('App initialization failed: ' + error.message);
                     });
-                    
                 } catch (error) {
                     console.error('Module loading error:', error);
                     showInitError(error.message);
                 }
-            }, 1000);
+            }, 800);
         });
         
         function hideLoadingScreen() {
             const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) {
-                loadingScreen.classList.add('hidden');
-            }
+            if (loadingScreen) loadingScreen.classList.add('hidden');
         }
         
         function showInitError(message) {
             document.body.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; text-align: center; font-family: Arial, sans-serif; padding: 2rem;">
-                    <div style="max-width: 600px;">
-                        <h1 style="color: #ef4444; margin-bottom: 1rem;">Errore Inizializzazione</h1>
-                        <p style="margin-bottom: 1rem; opacity: 0.9;">${message}</p>
-                        <div style="background: rgba(255,255,255,0.1); padding: 1.5rem; border-radius: 8px; margin: 1.5rem 0; text-align: left;">
-                            <h3 style="color: #64ffda; margin-bottom: 1rem;">Moduli Disponibili:</h3>
-                            <p style="font-family: monospace; font-size: 0.9rem; margin: 0; line-height: 1.4;">
+                <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);color:white;text-align:center;font-family:Arial,sans-serif;padding:2rem;">
+                    <div style="max-width: 640px;">
+                        <h1 style="color:#ef4444;margin-bottom:1rem;">Errore Inizializzazione</h1>
+                        <p style="margin-bottom:1rem;opacity:.9;">${message}</p>
+                        <div style="background:rgba(255,255,255,.08);padding:1.25rem;border-radius:10px;margin:1rem 0;text-align:left;">
+                            <h3 style="color:#64ffda;margin-bottom:.75rem;">Moduli Disponibili:</h3>
+                            <p style="font-family:monospace;font-size:.9rem;margin:0;line-height:1.4;">
                                 - Toast_Instance: ${typeof window.Toast_Instance !== 'undefined' ? 'OK' : 'MANCANTE'}<br>
                                 - Auth_Instance: ${typeof window.Auth_Instance !== 'undefined' ? 'OK' : 'MANCANTE'}<br>
                                 - App_Instance: ${typeof window.App_Instance !== 'undefined' ? 'OK' : 'MANCANTE'}<br>
                                 - AppConfig: ${typeof window.AppConfig !== 'undefined' ? 'OK' : 'MANCANTE'}
                             </p>
                         </div>
-                        <button onclick="location.reload()" style="padding: 0.8rem 1.5rem; background: #64ffda; color: #1a1a2e; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        <button onclick="location.reload()" style="padding:.8rem 1.5rem;background:#64ffda;color:#1a1a2e;border:none;border-radius:8px;font-weight:700;cursor:pointer;">
                             Ricarica Pagina
                         </button>
                     </div>
                 </div>
             `;
         }
-        
-        // Error handling
+
         window.addEventListener('error', function(event) {
             console.error('Global error:', event.error);
             if (event.filename && event.filename.includes('assets/js/')) {
@@ -239,7 +221,6 @@
                 showInitError(`Errore caricamento: ${filename}`);
             }
         });
-        
         window.addEventListener('unhandledrejection', function(event) {
             console.error('Unhandled promise rejection:', event.reason);
         });
