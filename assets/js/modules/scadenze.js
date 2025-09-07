@@ -4,7 +4,9 @@
     state: {
       loading: false,
       items: [],
-      serverSettings: null
+      serverSettings: null,
+      audit: null,       // preview result
+      applyResult: null  // apply result
     },
 
     init() {
@@ -52,6 +54,7 @@
       }
     },
 
+    // --------- Actions base ---------
     async refresh(container) {
       if (this.state.loading) return;
       await this.renderInto(container);
@@ -70,7 +73,7 @@
           ? `Dry-run completato. Candidati: ${res?.candidates ?? 0}.`
           : `Inviati ${sent} reminder.`;
         this._toast(msg, 'success');
-        await this.renderInto(container); // ricarica per aggiornare cooldown/lastReminderAt
+        await this.renderInto(container);
       } catch (err) {
         console.error(err);
         this._toast(err?.message || 'Errore invio reminder', 'error');
@@ -86,7 +89,42 @@
       window.open(url, '_blank');
     },
 
-    // ---------- Helpers ----------
+    // --------- Phone tools ---------
+    async previewPhones(container) {
+      try {
+        this._toast('Verifica numeri in corso...', 'info');
+        const res = await this._fetchJSON('/api/phones-preview?limit=200');
+        this.state.audit = res;
+        this._renderAudit(container);
+        this._toast(`Anteprima: ${res.toUpdateDocs} contatti con aggiornamenti, ${res.invalidFields} campi invalidi`, 'success');
+      } catch (err) {
+        console.error(err);
+        this._toast(err?.message || 'Errore anteprima numeri', 'error');
+      }
+    },
+
+    async applyPhones(container) {
+      const ok = confirm('Confermi la normalizzazione dei numeri? (userà i dati di anteprima, applicazione a blocchi)');
+      if (!ok) return;
+      try {
+        this._toast('Normalizzazione numeri in corso...', 'info', 4000);
+        const res = await this._fetchJSON('/api/phones-apply?limit=100');
+        this.state.applyResult = res;
+        this._renderApplyResult(container);
+        const msg = res.dryRun
+          ? `Simulazione completata: ${res.docsToUpdate} contatti da aggiornare.`
+          : `Aggiornati ${res.docsToUpdate} contatti (${res.fieldsUpdated} campi).`;
+        this._toast(msg, 'success');
+
+        // Dopo l'applicazione, ricarico lista scadenze per riflettere i numeri aggiornati
+        await this.renderInto(container);
+      } catch (err) {
+        console.error(err);
+        this._toast(err?.message || 'Errore applicazione numeri', 'error');
+      }
+    },
+
+    // --------- UI helpers ---------
     _setActive(item) {
       document.querySelectorAll('.nav .nav-item').forEach(el => el.classList.remove('active'));
       item.classList.add('active');
@@ -159,6 +197,8 @@
           <div class="actions">
             <button class="btn btn-secondary" data-action="refresh" title="Ricarica elenco"><i class="fas fa-rotate"></i> Aggiorna</button>
             <button class="btn btn-primary" data-action="send" title="Invia ora tramite API"><i class="fas fa-paper-plane"></i> Invia ora</button>
+            <button class="btn" data-action="preview-phones" title="Verifica numeri"><i class="fas fa-check-double"></i> Verifica numeri</button>
+            <button class="btn" data-action="apply-phones" title="Normalizza numeri"><i class="fas fa-wrench"></i> Normalizza numeri</button>
           </div>
         </section>
 
@@ -169,7 +209,7 @@
           </div>
           <div class="tips">
             <i class="fas fa-lightbulb"></i>
-            <span>Consiglio: usa “Invia ora” solo dopo aver verificato il numero in E.164 (+39...). Imposta “dryRun=false” per invii reali.</span>
+            <span>Consiglio: esegui “Verifica numeri” prima di inviare. Per applicare davvero imposta ALLOW_PHONE_APPLY=true su Vercel.</span>
           </div>
         </section>
 
@@ -193,6 +233,8 @@
               <p>Nessun cliente da contattare al momento.</p>
             </div>` : ''}
         </section>
+
+        <section id="phones-audit" class="audit-wrap" style="margin-top:1rem;"></section>
 
         <style>
           .page-head{display:flex;align-items:center;gap:1rem;justify-content:space-between;flex-wrap:wrap;margin-bottom:1rem}
@@ -222,7 +264,67 @@
           .btn-wa{background:#0b3d2e;color:#a7f3d0;border:1px solid #134e4a}
           .c-name .title{font-weight:600}
           .empty{padding:1.25rem;text-align:center;opacity:.8}
+          .audit-card{background:#0f172a;border:1px solid #243041;border-radius:12px;padding:1rem}
+          .audit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin:.75rem 0}
+          .audit-pill{background:#0b1220;border:1px solid #243041;border-radius:10px;padding:.5rem .75rem}
+          .audit-table{width:100%;border-collapse:collapse;margin-top:.5rem}
+          .audit-table th,.audit-table td{padding:.5rem;border-bottom:1px solid #1e293b;text-align:left;font-size:.9rem}
+          .small{font-size:.85rem;opacity:.9}
+          .mono{font-family:monospace}
         </style>
+      `;
+    },
+
+    _renderAudit(container) {
+      const host = container.querySelector('#phones-audit');
+      if (!host) return;
+      const a = this.state.audit;
+      if (!a) { host.innerHTML = ''; return; }
+
+      const rows = (a.results || []).slice(0, 50).map(r => {
+        const up = r.updates?.map(u => `<div><b>${u.field}</b>: <span class="mono">${u.before}</span> → <span class="mono">${u.after}</span></div>`).join('') || '';
+        const inv = r.invalids?.map(u => `<div><b>${u.field}</b>: <span class="mono">${u.before}</span> → <i>INVAL</i></div>`).join('') || '';
+        return `
+          <tr>
+            <td>${r.name || '—'}<div class="small mono">${r.id}</div></td>
+            <td>${up || '—'}</td>
+            <td>${inv || '—'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      host.innerHTML = `
+        <div class="audit-card">
+          <h3 style="margin:0 0 .5rem 0">Verifica numeri (anteprima)</h3>
+          <div class="audit-grid">
+            <div class="audit-pill">Scansionati: <b>${a.scanned}</b></div>
+            <div class="audit-pill">Da aggiornare (doc): <b>${a.toUpdateDocs}</b></div>
+            <div class="audit-pill">Campi invalidi: <b>${a.invalidFields}</b></div>
+          </div>
+          <table class="audit-table">
+            <thead><tr><th>Cliente</th><th>Update</th><th>Invalidi</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="small" style="margin-top:.5rem">Mostro max 50 righe per anteprima veloce. Usa l’endpoint per l’elenco completo.</div>
+        </div>
+      `;
+    },
+
+    _renderApplyResult(container) {
+      const host = container.querySelector('#phones-audit');
+      if (!host) return;
+      const r = this.state.applyResult;
+      if (!r) return;
+      host.innerHTML = `
+        <div class="audit-card">
+          <h3 style="margin:0 0 .5rem 0">Risultato normalizzazione</h3>
+          <div class="audit-grid">
+            <div class="audit-pill">Dry-run: <b>${r.dryRun ? 'true' : 'false'}</b></div>
+            <div class="audit-pill">Docs da aggiornare: <b>${r.docsToUpdate}</b></div>
+            <div class="audit-pill">Campi aggiornati: <b>${r.fieldsUpdated}</b></div>
+          </div>
+          <div class="small">Se vedi <b>dryRun: true</b>, abilita su Vercel <code>ALLOW_PHONE_APPLY=true</code> e rilancia.</div>
+        </div>
       `;
     },
 
@@ -237,10 +339,14 @@
     _bindActions(container) {
       const btnRefresh = container.querySelector('[data-action="refresh"]');
       const btnSend = container.querySelector('[data-action="send"]');
+      const btnPrev = container.querySelector('[data-action="preview-phones"]');
+      const btnApply = container.querySelector('[data-action="apply-phones"]');
       const tbody = container.querySelector('tbody');
 
       if (btnRefresh) btnRefresh.addEventListener('click', () => this.refresh(container));
       if (btnSend) btnSend.addEventListener('click', () => this.sendNow(container));
+      if (btnPrev) btnPrev.addEventListener('click', () => this.previewPhones(container));
+      if (btnApply) btnApply.addEventListener('click', () => this.applyPhones(container));
 
       if (tbody) {
         tbody.addEventListener('click', (e) => {
