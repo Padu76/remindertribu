@@ -1,0 +1,14 @@
+{
+  "name": "reminder-tribu",
+  "version": "1.0.0",
+  "description": "ReminderTribù - Sistema di Marketing Automation e gestione scadenze clienti",
+  "private": true,
+  "scripts": {
+    "dev": "node inject-env.js && vercel dev",
+    "build": "node inject-env.js",
+    "vercel-build": "node inject-env.js",
+    "start": "node inject-env.js && vercel serve"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
