@@ -8,17 +8,15 @@
     },
 
     init() {
-      // Bind al click della voce di menu "Scadenze"
       const navItem = document.querySelector('.nav-item[data-page="scadenze"]');
       if (navItem && !navItem.dataset.rtBound) {
         navItem.addEventListener('click', (e) => {
           e.preventDefault();
           this.renderInto(document.getElementById('page-content'));
+          this._setActive(navItem);
         });
         navItem.dataset.rtBound = '1';
       }
-
-      // Se all'avvio è già attiva la pagina scadenze, renderizza
       if (navItem && navItem.classList.contains('active')) {
         this.renderInto(document.getElementById('page-content'));
       }
@@ -30,7 +28,6 @@
       container.innerHTML = this._skeleton();
 
       try {
-        // Impostazioni server (no segreti)
         const health = await this._fetchJSON('/api/health');
         this.state.serverSettings = health?.env ? {
           daysAhead: health.env.daysAhead,
@@ -39,7 +36,6 @@
           dryRun: health.env.dryRun
         } : null;
 
-        // Anteprima scadenze
         const data = await this._fetchJSON('/api/preview-expiries');
         this.state.items = Array.isArray(data?.results) ? data.results : [];
 
@@ -74,9 +70,7 @@
           ? `Dry-run completato. Candidati: ${res?.candidates ?? 0}.`
           : `Inviati ${sent} reminder.`;
         this._toast(msg, 'success');
-
-        // Ricarico per aggiornare cooldown/lastReminderAt
-        await this.renderInto(container);
+        await this.renderInto(container); // ricarica per aggiornare cooldown/lastReminderAt
       } catch (err) {
         console.error(err);
         this._toast(err?.message || 'Errore invio reminder', 'error');
@@ -87,15 +81,17 @@
 
     openWhatsApp(phone, message) {
       const normalized = this._normalizeE164(phone);
-      if (!normalized) {
-        this._toast('Numero non valido', 'error');
-        return;
-      }
+      if (!normalized) return this._toast('Numero non valido', 'error');
       const url = `https://wa.me/${normalized.replace('+','')}?text=${encodeURIComponent(message || 'Ciao!')}`;
       window.open(url, '_blank');
     },
 
-    // ----------------- Helpers -----------------
+    // ---------- Helpers ----------
+    _setActive(item) {
+      document.querySelectorAll('.nav .nav-item').forEach(el => el.classList.remove('active'));
+      item.classList.add('active');
+    },
+
     _normalizeE164(raw) {
       if (!raw) return null;
       const digits = String(raw).replace(/[^\d+]/g, '');
@@ -138,7 +134,7 @@
           <td class="c-days">${this._daysBadge(item.daysLeft)}</td>
           <td class="c-last">${item.lastReminderAt ? new Date(item.lastReminderAt).toLocaleString('it-IT') : '—'}</td>
           <td class="c-actions">
-            <button class="btn btn-xs btn-wa" data-action="wa" data-phone="${phone}" data-message="${encodeURIComponent(msg)}">
+            <button class="btn btn-xs btn-wa" data-action="wa" data-phone="${phone}" data-message="${encodeURIComponent(msg)}" title="Apri WhatsApp">
               <i class="fab fa-whatsapp"></i> WhatsApp
             </button>
           </td>
@@ -151,16 +147,18 @@
       const s = state.serverSettings || {};
       return `
         <section class="page-head">
-          <h2><i class="fas fa-exclamation-triangle"></i> Scadenze</h2>
-          <div class="meta">
-            <span>daysAhead: <b>${s.daysAhead ?? '—'}</b></span>
-            <span>onlyExpired: <b>${s.onlyExpired ? 'true' : 'false'}</b></span>
-            <span>cooldownDays: <b>${s.cooldownDays ?? '—'}</b></span>
-            <span>dryRun: <b>${s.dryRun ? 'true' : 'false'}</b></span>
+          <div class="ph-left">
+            <h2><i class="fas fa-exclamation-triangle"></i> Scadenze</h2>
+            <div class="meta">
+              <span>daysAhead: <b>${s.daysAhead ?? '—'}</b></span>
+              <span>onlyExpired: <b>${s.onlyExpired ? 'true' : 'false'}</b></span>
+              <span>cooldownDays: <b>${s.cooldownDays ?? '—'}</b></span>
+              <span>dryRun: <b>${s.dryRun ? 'true' : 'false'}</b></span>
+            </div>
           </div>
           <div class="actions">
-            <button class="btn btn-secondary" data-action="refresh"><i class="fas fa-rotate"></i> Aggiorna elenco</button>
-            <button class="btn btn-primary" data-action="send"><i class="fas fa-paper-plane"></i> Invia ora</button>
+            <button class="btn btn-secondary" data-action="refresh" title="Ricarica elenco"><i class="fas fa-rotate"></i> Aggiorna</button>
+            <button class="btn btn-primary" data-action="send" title="Invia ora tramite API"><i class="fas fa-paper-plane"></i> Invia ora</button>
           </div>
         </section>
 
@@ -168,6 +166,10 @@
           <div class="card stat">
             <div class="stat-num">${count}</div>
             <div class="stat-label">Clienti da contattare</div>
+          </div>
+          <div class="tips">
+            <i class="fas fa-lightbulb"></i>
+            <span>Consiglio: usa “Invia ora” solo dopo aver verificato il numero in E.164 (+39...). Imposta “dryRun=false” per invii reali.</span>
           </div>
         </section>
 
@@ -186,19 +188,28 @@
               ${state.items.map(it => this._row(it)).join('')}
             </tbody>
           </table>
+          ${count === 0 ? `<div class="empty">
+              <i class="far fa-smile"></i>
+              <p>Nessun cliente da contattare al momento.</p>
+            </div>` : ''}
         </section>
 
         <style>
           .page-head{display:flex;align-items:center;gap:1rem;justify-content:space-between;flex-wrap:wrap;margin-bottom:1rem}
-          .page-head .meta{display:flex;gap:1rem;flex-wrap:wrap;font-size:.9rem;opacity:.9}
-          .actions .btn{margin-right:.5rem}
-          .summary{margin:1rem 0}
-          .card.stat{background:#101827;border:1px solid #243041;border-radius:10px;padding:1rem;display:inline-block}
-          .stat-num{font-size:2rem;font-weight:700}
+          .ph-left h2{margin:0}
+          .page-head .meta{display:flex;gap:.75rem;flex-wrap:wrap;font-size:.9rem;opacity:.9}
+          .actions .btn{margin-left:.5rem}
+          .summary{margin:1rem 0;display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+          .card.stat{background:#0f172a;border:1px solid #243041;border-radius:12px;padding:1rem 1.25rem;display:inline-block;box-shadow:0 1px 8px rgba(0,0,0,.2)}
+          .stat-num{font-size:2rem;font-weight:800}
           .stat-label{opacity:.8}
-          .table-wrap{overflow:auto}
-          .rt-table{width:100%;border-collapse:collapse}
-          .rt-table th,.rt-table td{padding:.75rem;border-bottom:1px solid #243041;text-align:left}
+          .tips{display:flex;align-items:center;gap:.5rem;opacity:.85}
+          .tips i{color:#f59e0b}
+          .table-wrap{overflow:auto;border-radius:12px;border:1px solid #243041}
+          .rt-table{width:100%;border-collapse:separate;border-spacing:0}
+          .rt-table thead th{position:sticky;top:0;background:#0b1220;padding:.75rem;border-bottom:1px solid #243041;text-align:left;z-index:1}
+          .rt-table td{padding:.75rem;border-bottom:1px solid #1e293b}
+          .rt-table tr:hover{background:#0b1220}
           .muted{opacity:.8;font-size:.9rem}
           .badge{padding:.25rem .5rem;border-radius:.5rem;font-size:.75rem}
           .badge.success{background:#065f46;color:#a7f3d0}
@@ -207,9 +218,10 @@
           .badge.alert{background:#991b1b;color:#fecaca}
           .badge.danger{background:#7f1d1d;color:#fecaca}
           .badge.neutral{background:#374151;color:#e5e7eb}
-          .btn-xs{font-size:.8rem;padding:.3rem .5rem}
-          .btn-wa{background:#1f2937;color:#a7f3d0;border:1px solid #334155}
+          .btn-xs{font-size:.8rem;padding:.35rem .6rem;border-radius:8px}
+          .btn-wa{background:#0b3d2e;color:#a7f3d0;border:1px solid #134e4a}
           .c-name .title{font-weight:600}
+          .empty{padding:1.25rem;text-align:center;opacity:.8}
         </style>
       `;
     },
@@ -244,13 +256,8 @@
     _updateBadge(n) {
       const b = document.getElementById('scadenzeBadge');
       if (!b) return;
-      if (!n || n <= 0) {
-        b.textContent = '';
-        b.style.display = 'none';
-      } else {
-        b.textContent = n;
-        b.style.display = 'inline-block';
-      }
+      if (!n || n <= 0) { b.textContent = ''; b.style.display = 'none'; }
+      else { b.textContent = n; b.style.display = 'inline-block'; }
     },
 
     async _fetchJSON(url) {
