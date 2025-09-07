@@ -1,45 +1,42 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>ReminderTribù - Sistema Marketing Automation</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ReminderTribù - Sistema Marketing Automation</title>
 
-    <!-- CSS -->
-    <link rel="stylesheet" href="assets/css/main.css"/>
-    <link rel="stylesheet" href="assets/css/components.css"/>
-    <link rel="stylesheet" href="assets/css/dashboard.css"/>
-    <link rel="stylesheet" href="assets/css/auth.css"/>
-    <link rel="stylesheet" href="assets/css/responsive.css"/>
-    <!-- 🔹 NEW: UX tweaks -->
-    <link rel="stylesheet" href="assets/css/ux.css"/>
+  <!-- CSS -->
+  <link rel="stylesheet" href="assets/css/main.css"/>
+  <link rel="stylesheet" href="assets/css/components.css"/>
+  <link rel="stylesheet" href="assets/css/dashboard.css"/>
+  <link rel="stylesheet" href="assets/css/auth.css"/>
+  <link rel="stylesheet" href="assets/css/responsive.css"/>
+  <link rel="stylesheet" href="assets/css/ux.css"/>
 
-    <!-- Lib esterne -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- Lib esterne -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
-    <!-- Firebase SDK (modulare, esposto su window) -->
-    <script type="module">
-      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-      import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-      import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-      window.Firebase = { initializeApp, getFirestore, getAuth };
-    </script>
+  <!-- Firebase SDK (modulare) -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+    window.Firebase = { initializeApp, getFirestore, getAuth };
+  </script>
 
-    <!-- Micro-tweak UI -->
-    <style>
-      .app-header{backdrop-filter:saturate(140%) blur(4px); border-bottom:1px solid #243041;}
-      .header-brand .brand-text{font-weight:700; letter-spacing:.3px}
-      .sidebar .nav .nav-item{border-radius:10px; transition:background .2s ease}
-      .sidebar .nav .nav-item:hover{background:#0b1220; cursor:pointer}
-      .sidebar .nav .nav-item.active{background:#0f172a; border:1px solid #243041}
-      .notification-badge{background:#ef4444;color:#fff;border-radius:10px;padding:.1rem .45rem;font-size:.75rem;margin-left:.4rem;display:none}
-      .btn{border-radius:10px}
-    </style>
+  <style>
+    .app-header{backdrop-filter:saturate(140%) blur(4px); border-bottom:1px solid #243041;}
+    .header-brand .brand-text{font-weight:700; letter-spacing:.3px}
+    .sidebar .nav .nav-item{border-radius:10px; transition:background .2s ease}
+    .sidebar .nav .nav-item:hover{background:#0b1220; cursor:pointer}
+    .sidebar .nav .nav-item.active{background:#0f172a; border:1px solid #243041}
+    .notification-badge{background:#ef4444;color:#fff;border-radius:10px;padding:.1rem .45rem;font-size:.75rem;margin-left:.4rem;display:none}
+    .btn{border-radius:10px}
+  </style>
 </head>
 <body>
   <div id="app">
-    <!-- Loading -->
     <div class="loading-screen" id="loading-screen">
       <div class="loading-content">
         <i class="fas fa-bell loading-icon"></i>
@@ -49,86 +46,47 @@
       </div>
     </div>
 
-    <!-- Auth -->
     <div id="auth-container" class="auth-container hidden">
       <div class="auth-card">
         <i class="fas fa-bell auth-icon"></i>
         <h1 class="auth-main-title">ReminderTribù</h1>
         <h2 class="auth-subtitle">Accedi</h2>
-
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="loginEmail" class="form-control" value="admin@tribu.com" autocomplete="email"/>
-        </div>
-
-        <div class="form-group">
-          <label>Password</label>
-          <input type="password" id="loginPassword" class="form-control" value="tribu2025" autocomplete="current-password"/>
-        </div>
-
-        <button class="btn btn-primary btn-login" onclick="handleLogin()">
-          <i class="fas fa-sign-in-alt"></i> Accedi
-        </button>
+        <div class="form-group"><label>Email</label><input type="email" id="loginEmail" class="form-control" value="admin@tribu.com" autocomplete="email"/></div>
+        <div class="form-group"><label>Password</label><input type="password" id="loginPassword" class="form-control" value="tribu2025" autocomplete="current-password"/></div>
+        <button class="btn btn-primary btn-login" onclick="handleLogin()"><i class="fas fa-sign-in-alt"></i> Accedi</button>
       </div>
     </div>
 
-    <!-- App -->
     <div id="main-app" class="main-app hidden">
       <header class="app-header">
-        <div class="header-brand">
-          <i class="fas fa-bell"></i>
-          <span class="brand-text">ReminderTribù</span>
-        </div>
+        <div class="header-brand"><i class="fas fa-bell"></i><span class="brand-text">ReminderTribù</span></div>
         <div class="header-user" onclick="showTestToast()" title="Clicca per test toast">TT</div>
       </header>
 
       <div class="main-content">
         <aside class="sidebar">
           <nav class="nav" id="main-navigation">
-            <div class="nav-item active" data-page="dashboard" title="Dashboard">
-              <i class="fas fa-tachometer-alt"></i><span>Dashboard</span>
-            </div>
-            <div class="nav-item" data-page="tesserati" title="Anagrafica Tesserati">
-              <i class="fas fa-id-card"></i><span>Tesserati CSEN</span>
-            </div>
-            <div class="nav-item" data-page="scadenze" title="Scadenze tesseramenti">
-              <i class="fas fa-exclamation-triangle"></i><span>Scadenze</span>
-              <span class="notification-badge" id="scadenzeBadge"></span>
-            </div>
-            <div class="nav-item" data-page="marketing" title="Campagne marketing">
-              <i class="fas fa-bullhorn"></i><span>Marketing</span>
-            </div>
-            <div class="nav-item" data-page="calendario" title="Calendario appuntamenti">
-              <i class="fas fa-calendar-alt"></i><span>Calendario</span>
-              <span class="notification-badge" id="calendarBadge"></span>
-            </div>
-            <div class="nav-item" data-page="automazione" title="Automazioni e cron">
-              <i class="fas fa-robot"></i><span>Automazione</span>
-              <span class="notification-badge" id="automationBadge"></span>
-            </div>
-            <div class="nav-item" data-page="whatsapp" title="Template e invii WhatsApp">
-              <i class="fab fa-whatsapp"></i><span>WhatsApp</span>
-            </div>
-            <div class="nav-item" data-page="import" title="Importa contatti CSV">
-              <i class="fas fa-upload"></i><span>Import CSV</span>
-            </div>
+            <div class="nav-item active" data-page="dashboard"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></div>
+            <div class="nav-item" data-page="tesserati"><i class="fas fa-id-card"></i><span>Tesserati CSEN</span></div>
+            <div class="nav-item" data-page="scadenze"><i class="fas fa-exclamation-triangle"></i><span>Scadenze</span><span class="notification-badge" id="scadenzeBadge"></span></div>
+            <div class="nav-item" data-page="marketing"><i class="fas fa-bullhorn"></i><span>Marketing</span></div>
+            <div class="nav-item" data-page="calendario"><i class="fas fa-calendar-alt"></i><span>Calendario</span><span class="notification-badge" id="calendarBadge"></span></div>
+            <div class="nav-item" data-page="automazione"><i class="fas fa-robot"></i><span>Automazione</span><span class="notification-badge" id="automationBadge"></span></div>
+            <div class="nav-item" data-page="whatsapp"><i class="fab fa-whatsapp"></i><span>WhatsApp</span></div>
+            <div class="nav-item" data-page="import"><i class="fas fa-upload"></i><span>Import CSV</span></div>
           </nav>
         </aside>
         <main class="content-area">
-          <div id="page-content"><!-- page content --></div>
+          <div id="page-content"></div>
         </main>
       </div>
     </div>
   </div>
 
-  <!-- Toast/Modal containers -->
   <div id="toast-container" class="toast-container"></div>
   <div id="modal-container" class="modal-container"></div>
 
-  <!-- Config pubblico -->
   <script src="config.js"></script>
-
-  <!-- Shim WhatsApp legacy -->
   <script src="assets/js/compat/whatsapp-shim.js"></script>
 
   <!-- Components -->
@@ -142,7 +100,7 @@
   <script src="assets/js/utils/validation.js"></script>
   <script src="assets/js/utils/api.js"></script>
 
-  <!-- Modules di base -->
+  <!-- Modules base -->
   <script src="assets/js/modules/auth.js"></script>
   <script src="assets/js/config/firebase.js"></script>
   <script src="assets/js/modules/storage.js"></script>
@@ -152,54 +110,28 @@
   <script src="assets/js/modules/contacts.js"></script>
   <script src="assets/js/modules/reminders.js"></script>
   <script src="assets/js/modules/billing.js"></script>
-  <!-- WhatsApp (TUO con template) -->
   <script src="assets/js/modules/whatsapp.js"></script>
-
-  <!-- Scadenze (nuovo modulo) -->
   <script src="assets/js/modules/scadenze.js"></script>
+  <!-- 👇 NUOVO: modulo Import CSV -->
+  <script src="assets/js/modules/import.js"></script>
 
-  <!-- App core (router) -->
   <script src="assets/js/app.js"></script>
 
-  <!-- Init -->
   <script>
-    function handleLogin() {
-      if (window.Auth_Instance?.performLogin) window.Auth_Instance.performLogin();
-      else if (window.App_Instance) window.App_Instance.showMainApp();
-    }
-    function showTestToast() {
-      if (window.Toast_Instance?.show) window.Toast_Instance.show('Ciao Admin!', 'info');
-    }
-    function showToast(message, type = 'info', duration = 4000) {
-      if (window.Toast_Instance?.show) window.Toast_Instance.show(message, type, duration);
-      else console.log('Toast:', message);
-    }
+    function handleLogin(){ if (window.Auth_Instance?.performLogin) window.Auth_Instance.performLogin(); else window.App_Instance?.showMainApp(); }
+    function showTestToast(){ if (window.Toast_Instance?.show) window.Toast_Instance.show('Ciao Admin!','info'); }
+    function showToast(msg,type='info',ms=4000){ if(window.Toast_Instance?.show) window.Toast_Instance.show(msg,type,ms); else console.log('Toast:',msg); }
 
-    document.addEventListener('DOMContentLoaded', function () {
-      setTimeout(() => {
-        try {
-          if (!window.App_Instance) throw new Error('App core non caricato');
-          window.App_Instance.init()
-            .then(() => {
-              document.getElementById('loading-screen')?.classList.add('hidden');
-              document.getElementById('main-app')?.classList.remove('hidden');
-            })
-            .catch((e) => {
-              console.error(e);
-              showToast('Errore inizializzazione app', 'error');
-            });
-        } catch (err) {
-          console.error(err);
-        }
-      }, 400);
-    });
+    document.addEventListener('DOMContentLoaded',()=>{ setTimeout(()=>{ try{
+      if(!window.App_Instance) throw new Error('App core non caricato');
+      window.App_Instance.init().then(()=>{
+        document.getElementById('loading-screen')?.classList.add('hidden');
+        document.getElementById('main-app')?.classList.remove('hidden');
+      }).catch(e=>{console.error(e);showToast('Errore inizializzazione app','error');});
+    }catch(err){console.error(err);} },400); });
 
-    window.addEventListener('error', function (event) {
-      console.error('Global error:', event.error);
-    });
-    window.addEventListener('unhandledrejection', function (event) {
-      console.error('Unhandled promise rejection:', event.reason);
-    });
+    window.addEventListener('error',e=>console.error('Global error:',e.error));
+    window.addEventListener('unhandledrejection',e=>console.error('Unhandled promise:',e.reason));
   </script>
 </body>
 </html>
