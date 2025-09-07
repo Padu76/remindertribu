@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
-  <!-- Firebase SDK (modulare) -->
+  <!-- Firebase SDK (modulare, esposto su window) -->
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
     import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
@@ -112,8 +112,9 @@
   <script src="assets/js/modules/billing.js"></script>
   <script src="assets/js/modules/whatsapp.js"></script>
   <script src="assets/js/modules/scadenze.js"></script>
-  <!-- 👇 NUOVO: modulo Import CSV -->
   <script src="assets/js/modules/import.js"></script>
+  <!-- 👇 NUOVO: Calendario -->
+  <script src="assets/js/modules/calendar.js"></script>
 
   <script src="assets/js/app.js"></script>
 
