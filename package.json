@@ -1,17 +1,15 @@
 {
   "name": "reminder-tribu",
-  "version": "1.1.2",
-  "description": "ReminderTribù - Sistema di Marketing Automation e gestione scadenze clienti",
-  "private": true,
+  "version": "1.2.0",
   "type": "module",
+  "private": true,
   "scripts": {
-    "dev": "node inject-env.cjs && vercel dev",
-    "build": "node inject-env.cjs",
-    "vercel-build": "node inject-env.cjs",
-    "start": "node inject-env.cjs && vercel serve"
+    "dev": "vercel dev",
+    "build": "echo \"Static build handled by Vercel\"",
+    "vercel-build": "node inject-env.cjs"
   },
   "dependencies": {
-    "firebase-admin": "^12.6.0"
-  },
-  "devDependencies": {}
+    "firebase-admin": "^12.5.0",
+    "googleapis": "^131.0.0"
+  }
 }
