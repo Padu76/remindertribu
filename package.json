@@ -1,6 +1,6 @@
 {
   "name": "reminder-tribu",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "ReminderTribù - Sistema di Marketing Automation e gestione scadenze clienti",
   "private": true,
   "type": "module",
