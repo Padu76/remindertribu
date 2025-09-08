@@ -4,10 +4,10 @@
 
   /**
    * ScadenzeModule
-   * - Elenca solo tesserati con status "expiring" o "expired"
-   * - Azioni per riga: WhatsApp, Rinnova (oggi+1 anno o data scelta), Elimina
-   * - Azioni bulk: WA, Rinnova, Elimina
-   * - Montaggio "safe": se qualcosa va storto mostra un messaggio, NON lascia pagina vuota
+   * - Elenca tesserati "expiring" o "expired"
+   * - Azioni: WhatsApp, Rinnova (con datepicker), Elimina
+   * - Bulk: WA, Rinnova (con datepicker), Elimina
+   * - Montaggio safe con fallback messaggi
    */
   class ScadenzeModule {
     constructor() {
@@ -22,14 +22,13 @@
       return true;
     }
 
-    // ---- UI skeleton (nessun accesso a DOM qui) ----
     getPageContent() {
       return `
         <section class="page-container" style="padding:1rem">
           <div class="page-header">
             <div>
               <h1 class="page-title"><i class="fas fa-exclamation-triangle"></i> Scadenze</h1>
-              <p class="page-subtitle">Tesseramenti in scadenza e scaduti. Invia reminder e gestisci rinnovi.</p>
+              <p class="page-subtitle">Tesseramenti in scadenza e scaduti. Invia reminder e gestisci i rinnovi.</p>
             </div>
             <div class="quick-actions">
               <select id="sdFilter" class="form-control">
@@ -74,14 +73,11 @@
       `;
     }
 
-    // ---- Mount sicuro sul DOM ----
     async initializePage() {
       if (this._mounted) return;
       try {
-        // Attendi che lo storage sia pronto (max 3s)
         await this._waitStorageReady(3000);
 
-        // Bind controlli
         document.getElementById('sdFilter')?.addEventListener('change', e => {
           this.filter = e.target.value; this.renderRows();
         });
@@ -102,7 +98,6 @@
         document.getElementById('sdBulkRenew')?.addEventListener('click', () => this._bulkRenew());
         document.getElementById('sdBulkDel')?.addEventListener('click', () => this._bulkDelete());
 
-        // Prima render
         this.renderRows();
         this._mounted = true;
         console.log('✅ [Scadenze] mounted');
@@ -113,7 +108,6 @@
       }
     }
 
-    // ---- Data helpers ----
     _storage() { return (window.App?.modules?.storage || window.Storage_Instance); }
 
     _getList() {
@@ -129,17 +123,12 @@
         .sort((a, b) => (a.daysTillExpiry || 0) - (b.daysTillExpiry || 0));
     }
 
-    // ---- Render tabella ----
     renderRows() {
       const body = document.getElementById('sdBody');
       if (!body) return;
 
       let list = [];
-      try {
-        list = this._getList();
-      } catch (e) {
-        console.warn('[Scadenze] lista non disponibile:', e);
-      }
+      try { list = this._getList(); } catch (e) { console.warn('[Scadenze] lista non disponibile:', e); }
 
       if (!Array.isArray(list) || list.length === 0) {
         body.innerHTML = `<tr><td colspan="7"><div class="empty">Nessuna scadenza trovata.</div></td></tr>`;
@@ -173,7 +162,6 @@
         `;
       }).join('');
 
-      // Bind riga → selezione
       body.querySelectorAll('[data-sd-sel]').forEach(cb => {
         cb.addEventListener('change', (e) => {
           const id = e.currentTarget.getAttribute('data-sd-sel');
@@ -182,7 +170,6 @@
         });
       });
 
-      // Bind azioni
       body.querySelectorAll('[data-sd-wa]').forEach(btn => {
         btn.addEventListener('click', (e) => this._sendOne(e.currentTarget.getAttribute('data-sd-wa')));
       });
@@ -201,7 +188,7 @@
       if (el) el.textContent = `${this.selected.size} selezionati`;
     }
 
-    // ---- Azioni singole ----
+    // -------- Azioni singole --------
     async _sendOne(id) {
       try {
         const s = this._storage();
@@ -215,7 +202,6 @@
         if (WA.send) return WA.send(phone, msg);
         if (window.TribuApp?.sendWhatsAppMessage) return window.TribuApp.sendWhatsAppMessage(phone, msg);
 
-        // fallback diretto
         const e164 = String(phone).replace(/[^\d+]/g, '');
         window.open(`https://wa.me/${e164.replace('+','')}?text=${encodeURIComponent(msg)}`, '_blank');
       } catch (e) {
@@ -230,12 +216,15 @@
         const m = s.getMembersCached().find(x => x.id === id);
         if (!m) return;
 
-        const today = new Date(); const def = today.toISOString().slice(0,10);
-        const start = prompt(`Data di rinnovo per ${m.fullName} (YYYY-MM-DD)`, def);
-        if (!start) return;
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) { alert('Formato data non valido'); return; }
+        const defaultDate = this._yyyyMMdd(new Date());
+        const chosen = await this._openDateModal({
+          title: `Rinnovo per ${m.fullName || ''}`,
+          subtitle: 'Scegli la data di rinnovo (la scadenza sarà +1 anno).',
+          defaultDate
+        });
+        if (!chosen) return;
 
-        await s.markMemberRenewed(id, { startDate: start });
+        await s.markMemberRenewed(id, { startDate: chosen });
         await s.refreshMembers();
         this.renderRows();
         window.Toast_Instance?.show?.('Rinnovo salvato', 'success');
@@ -262,7 +251,7 @@
       }
     }
 
-    // ---- Azioni bulk ----
+    // -------- Azioni bulk --------
     async _bulkSend() {
       if (!this.selected.size) return alert('Seleziona almeno un contatto');
       const s = this._storage();
@@ -277,14 +266,17 @@
 
     async _bulkRenew() {
       if (!this.selected.size) return alert('Seleziona almeno un contatto');
-      const today = new Date(); const def = today.toISOString().slice(0,10);
-      const start = prompt(`Data di rinnovo (YYYY-MM-DD) per ${this.selected.size} contatti`, def);
-      if (!start) return;
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) { alert('Formato data non valido'); return; }
+
+      const chosen = await this._openDateModal({
+        title: `Rinnovo di ${this.selected.size} contatti`,
+        subtitle: 'Scegli la data di rinnovo per tutti (la scadenza sarà +1 anno).',
+        defaultDate: this._yyyyMMdd(new Date())
+      });
+      if (!chosen) return;
 
       const s = this._storage();
       for (const id of this.selected) {
-        await s.markMemberRenewed(id, { startDate: start });
+        await s.markMemberRenewed(id, { startDate: chosen });
       }
       await s.refreshMembers();
       this.renderRows();
@@ -301,7 +293,7 @@
       this.renderRows();
     }
 
-    // ---- Messaggi ----
+    // -------- Template messaggi --------
     _composeReminderMessage(m) {
       const s = this._storage();
       const tpls = s.getTemplates?.() || {};
@@ -328,7 +320,87 @@
       return out;
     }
 
-    // ---- Util ----
+    // -------- Modale DatePicker (senza dipendenze) --------
+    async _openDateModal({ title, subtitle, defaultDate }) {
+      return new Promise(resolve => {
+        // overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+          position:fixed;inset:0;background:rgba(0,0,0,.5);
+          display:flex;align-items:center;justify-content:center;z-index:9999;
+        `;
+
+        // card
+        const card = document.createElement('div');
+        card.style.cssText = `
+          width:min(520px, 94vw); background:#0b1220; color:#e7edf8;
+          border:1px solid #243041; border-radius:16px; padding:18px;
+          box-shadow:0 12px 30px rgba(0,0,0,.35);
+        `;
+        card.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.5rem">
+            <h3 style="margin:0;font-size:1.1rem">${this._esc(title||'Rinnovo')}</h3>
+            <button id="dpClose" class="btn btn-outline" style="padding:.2rem .5rem"><i class="fas fa-times"></i></button>
+          </div>
+          <p style="opacity:.8;margin:.2rem 0 1rem">${this._esc(subtitle||'')}</p>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;align-items:center">
+            <label for="dpDate">Data rinnovo</label>
+            <input id="dpDate" type="date" class="form-control" value="${this._esc(defaultDate||'')}" />
+
+            <div>Nuova scadenza ( +1 anno )</div>
+            <div id="dpPreview" class="badge">—</div>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem">
+            <button id="dpCancel" class="btn btn-outline">Annulla</button>
+            <button id="dpOk" class="btn btn-primary"><i class="fas fa-check"></i> Conferma</button>
+          </div>
+        `;
+
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+
+        const dateInput = card.querySelector('#dpDate');
+        const preview = card.querySelector('#dpPreview');
+        const btnOk = card.querySelector('#dpOk');
+        const btnCancel = card.querySelector('#dpCancel');
+        const btnClose = card.querySelector('#dpClose');
+
+        const updatePreview = () => {
+          const val = dateInput.value;
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) { preview.textContent = '—'; return; }
+          const parts = val.split('-').map(n=>+n);
+          const base = new Date(parts[0], parts[1]-1, parts[2]);
+          if (isNaN(base)) { preview.textContent = '—'; return; }
+          const end = new Date(base); end.setFullYear(end.getFullYear()+1);
+          preview.textContent = end.toLocaleDateString('it-IT');
+        };
+        updatePreview();
+
+        const close = (ret=null) => {
+          document.body.removeChild(overlay);
+          resolve(ret);
+        };
+
+        btnOk.addEventListener('click', () => {
+          const val = dateInput.value;
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) { alert('Seleziona una data valida (YYYY-MM-DD)'); return; }
+          close(val);
+        });
+        btnCancel.addEventListener('click', () => close(null));
+        btnClose.addEventListener('click', () => close(null));
+
+        // esc chiude
+        const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); close(null); } };
+        document.addEventListener('keydown', onKey, { once:true });
+
+        // click fuori chiude
+        overlay.addEventListener('click', (e)=> { if (e.target === overlay) close(null); });
+      });
+    }
+
+    // -------- Utils --------
     async _waitStorageReady(timeoutMs = 3000) {
       const start = Date.now();
       while (Date.now() - start < timeoutMs) {
@@ -338,9 +410,9 @@
       }
       throw new Error('Storage non inizializzato');
     }
+    _yyyyMMdd(d){ const x=new Date(d); const y=x.getFullYear(); const m=String(x.getMonth()+1).padStart(2,'0'); const dd=String(x.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; }
     _esc(s) { return (s ?? '').replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m])); }
   }
 
-  // export globale
   window.ScadenzeModule = new ScadenzeModule();
 })();
