@@ -2,47 +2,33 @@
 (function () {
   'use strict';
 
-  /**
-   * StorageModule
-   * - cache locale (members / reminders / templates)
-   * - integrazione Firebase/Firestore con fallback multipli
-   * - normalizzazione dati e util per i moduli UI
-   */
   class StorageModule {
     constructor() {
-      this.cache = {
-        members: [],
-        reminders: [],
-        templates: {}
-      };
+      this.cache = { members: [], reminders: [], templates: {} };
       this.isInitialized = false;
+      this._retryTimer = null;
 
-      const cfg = (window.AppConfig && window.AppConfig.FIREBASE) || {};
-      this.useFirebase = !!cfg.enabled || !!cfg.config;
+      const cfg = (window.AppConfig && (window.AppConfig.FIREBASE || window.AppConfig.firebase)) || {};
+      this.useFirebase = !!(cfg.enabled || cfg.config);
     }
 
-    // ------------- INIT -------------
     async init() {
       console.log('🗃️ [Storage] init. Firebase:', this.useFirebase ? 'ON' : 'OFF');
-
       try {
-        if (this.useFirebase) {
-          await this._ensureFirebaseReady();
-          await this.refreshMembers();
-          await this.refreshTemplates().catch(() => {});
-        }
+        await this._ensureFirebaseReady();
+        await this.refreshMembers();
+        await this.refreshTemplates().catch(() => {});
         this.isInitialized = true;
       } catch (e) {
-        console.error('❌ [Storage] init error:', e);
-        this.isInitialized = true; // comunque permetti ai moduli di montare
+        console.warn('⚠️ [Storage] init: Firebase non pronto, entro in modalità lazy. Motivo:', e?.message || e);
+        this.isInitialized = true;
+        this._lazyWaitFirebaseAndWarmup(); // retry silenzioso
       }
       return true;
     }
 
-    // ------------- PUBLIC: MEMBERS -------------
-    getMembersCached() {
-      return Array.isArray(this.cache.members) ? this.cache.members : [];
-    }
+    // ---------- PUBLIC ----------
+    getMembersCached() { return Array.isArray(this.cache.members) ? this.cache.members : []; }
 
     async refreshMembers() {
       if (!this.useFirebase) {
@@ -57,32 +43,19 @@
       return normalized;
     }
 
-    /**
-     * Rinnova un tesserato:
-     * - startDate: "YYYY-MM-DD"
-     * - nuova scadenza = startDate + 1 anno (stessa data)
-     */
     async markMemberRenewed(id, { startDate }) {
       if (!id) throw new Error('markMemberRenewed: id mancante');
       const start = this._parseYMD(startDate);
       if (!start) throw new Error('markMemberRenewed: startDate invalida');
+      const newExpiry = new Date(start); newExpiry.setFullYear(newExpiry.getFullYear() + 1);
 
-      const newExpiry = new Date(start); // +1 anno
-      newExpiry.setFullYear(newExpiry.getFullYear() + 1);
-
-      const update = {
-        lastRenewalAt: new Date().toISOString(),
-        dataScadenza: this._toYMD(newExpiry)
-      };
-
+      const update = { lastRenewalAt: new Date().toISOString(), dataScadenza: this._toYMD(newExpiry) };
       await this._updateMemberDoc(id, update);
 
-      // aggiorna cache
       const m = this.cache.members.find(x => x.id === id);
       if (m) {
         Object.assign(m, update);
-        const n = this._normalizeMember(m);
-        Object.assign(m, n);
+        Object.assign(m, this._normalizeMember(m));
       }
       return true;
     }
@@ -94,14 +67,11 @@
       return true;
     }
 
-    // ------------- PUBLIC: TEMPLATES -------------
-    getTemplates() {
-      return this.cache.templates || {};
-    }
+    getTemplates() { return this.cache.templates || {}; }
 
     async refreshTemplates() {
       try {
-        const all = await this._fetchTemplatesFromFirebase(); // {key:{name,body,...}}
+        const all = await this._fetchTemplatesFromFirebase();
         if (all && typeof all === 'object') {
           this.cache.templates = all;
           console.log('[Storage] templates refreshed:', Object.keys(all).length);
@@ -112,11 +82,6 @@
       return this.cache.templates;
     }
 
-    /**
-     * salva/aggiorna un template
-     * @param {string} key es: 'rinnovo_csen'
-     * @param {{name?:string, body:string}} tpl
-     */
     async saveTemplate(key, tpl) {
       if (!key || !tpl || !tpl.body) throw new Error('saveTemplate: parametri mancanti');
       await this._saveTemplateDoc(key, tpl);
@@ -124,150 +89,104 @@
       return true;
     }
 
-    // ------------- PRIVATE: FIREBASE BRIDGE -------------
+    // KPI per billing / dashboard (non bloccare se mancano dati)
+    async getUserStats() {
+      return {
+        members: this.getMembersCached().length || 0,
+        expiring: this.getMembersCached().filter(m => m.status === 'expiring').length || 0,
+        expired: this.getMembersCached().filter(m => m.status === 'expired').length || 0
+      };
+    }
+
+    // ---------- PRIVATE: Firebase bridge ----------
     async _ensureFirebaseReady() {
-      // se esiste un modulo firebase custom, usalo
-      if (window.FirebaseModule && window.FirebaseModule.ready) return true;
+      if (!this.useFirebase) throw new Error('Firebase disabilitato');
+      const FM = window.FirebaseModule;
+      if (FM && FM.ready) return true;
 
-      // compat global (se hai incluso sdk compat in index.html)
-      if (window.firebase && (window.firebase.firestore || (window.firebase.apps && window.firebase.apps.length))) {
-        return true;
-      }
-
-      // se il tuo firebase.js inizializza su window.Firebase (o simili),
-      // attendi un attimo che compaia.
+      // attesa breve
       const start = Date.now();
       while (Date.now() - start < 3000) {
-        if (window.FirebaseModule || window.firebase) return true;
+        if (window.FirebaseModule && window.FirebaseModule.ready) return true;
         await new Promise(r => setTimeout(r, 100));
       }
       throw new Error('Firebase non pronto');
     }
 
     async _fetchMembersFromFirebase() {
-      // 1) Usa eventuale adattatore esposto dal tuo firebase.js
-      const FB = window.FirebaseModule || window.FirebaseService || window.Firebase || {};
+      const FB = window.FirebaseModule || {};
       if (typeof FB.getMembers === 'function') {
         const list = await FB.getMembers();
         if (Array.isArray(list)) return list;
       }
-      if (typeof FB.fetchMembers === 'function') {
-        const list = await FB.fetchMembers();
-        if (Array.isArray(list)) return list;
-      }
-
-      // 2) Fallback: Firestore compat
-      if (window.firebase && typeof window.firebase.firestore === 'function') {
-        const db = window.firebase.firestore();
-        const snap = await db.collection('members').get();
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      }
-
-      // 3) Estremo fallback: se qualcun altro mette i dati su window
-      if (Array.isArray(window.__MEMBERS__)) return window.__MEMBERS__;
-
-      console.warn('[Storage] nessuna via disponibile per leggere i membri');
+      console.warn('[Storage] getMembers non disponibile');
       return [];
     }
 
     async _updateMemberDoc(id, update) {
-      const FB = window.FirebaseModule || window.FirebaseService || window.Firebase || {};
-
-      if (typeof FB.updateMember === 'function') {
-        return FB.updateMember(id, update);
-      }
-      if (window.firebase && typeof window.firebase.firestore === 'function') {
-        const db = window.firebase.firestore();
-        await db.collection('members').doc(id).set(update, { merge: true });
-        return true;
-      }
+      const FB = window.FirebaseModule || {};
+      if (typeof FB.updateMember === 'function') return FB.updateMember(id, update);
       throw new Error('updateMember non disponibile');
     }
 
     async _deleteMemberDoc(id) {
-      const FB = window.FirebaseModule || window.FirebaseService || window.Firebase || {};
+      const FB = window.FirebaseModule || {};
       if (typeof FB.deleteMember === 'function') return FB.deleteMember(id);
-
-      if (window.firebase && typeof window.firebase.firestore === 'function') {
-        const db = window.firebase.firestore();
-        await db.collection('members').doc(id).delete();
-        return true;
-      }
       throw new Error('deleteMember non disponibile');
     }
 
     async _fetchTemplatesFromFirebase() {
-      // prova vari percorsi: 'templates' o 'whatsapp_templates'
-      const tryCollections = async (coll) => {
-        if (window.firebase && typeof window.firebase.firestore === 'function') {
-          const db = window.firebase.firestore();
-          const snap = await db.collection(coll).get();
-          if (!snap.empty) {
-            const out = {};
-            snap.forEach(d => {
-              const v = d.data() || {};
-              const key = d.id;
-              out[key] = { key, name: v.name || key, body: v.body || '', updatedAt: v.updatedAt || null };
-            });
-            return out;
-          }
-        }
-        const FB = window.FirebaseModule || window.FirebaseService || window.Firebase || {};
-        if (typeof FB.getTemplates === 'function') {
-          const obj = await FB.getTemplates(coll);
-          if (obj) return obj;
-        }
-        return null;
-      };
-
-      return (await tryCollections('templates')) ||
-             (await tryCollections('whatsapp_templates')) ||
-             {};
+      const FB = window.FirebaseModule || {};
+      if (typeof FB.getTemplates === 'function') return FB.getTemplates();
+      return {};
     }
 
     async _saveTemplateDoc(key, tpl) {
-      const FB = window.FirebaseModule || window.FirebaseService || window.Firebase || {};
-      const payload = Object.assign({}, tpl, { name: tpl.name || key, updatedAt: new Date().toISOString() });
-
-      if (typeof FB.saveTemplate === 'function') {
-        return FB.saveTemplate(key, payload);
-      }
-
-      if (window.firebase && typeof window.firebase.firestore === 'function') {
-        const db = window.firebase.firestore();
-        await db.collection('templates').doc(key).set(payload, { merge: true });
-        return true;
-      }
+      const FB = window.FirebaseModule || {};
+      if (typeof FB.saveTemplate === 'function') return FB.saveTemplate(key, tpl);
       throw new Error('saveTemplate non disponibile');
     }
 
-    // ------------- NORMALIZZAZIONE -------------
+    // ---------- LAZY RETRY ----------
+    _lazyWaitFirebaseAndWarmup() {
+      if (this._retryTimer) return;
+      let tries = 0;
+      this._retryTimer = setInterval(async () => {
+        tries++;
+        try {
+          if (window.FirebaseModule && window.FirebaseModule.ready) {
+            clearInterval(this._retryTimer);
+            this._retryTimer = null;
+            console.log('🔄 [Storage] Firebase pronto, carico membri...');
+            await this.refreshMembers();
+            await this.refreshTemplates().catch(() => {});
+          } else if (tries > 60) { // ~60*500ms = 30s
+            clearInterval(this._retryTimer);
+            this._retryTimer = null;
+            console.warn('⏱️ [Storage] Firebase non è diventato pronto nei tempi previsti.');
+          }
+        } catch (e) {
+          console.warn('⚠️ [Storage] retry error:', e?.message || e);
+        }
+      }, 500);
+    }
+
+    // ---------- NORMALIZZAZIONE ----------
     _normalizeMember(raw) {
       if (!raw) return null;
       const id = raw.id || raw.uid || raw._id || null;
-
-      // nome
       const fullName = raw.fullName || raw.nome || raw.name || '';
-
-      // telefono: preferisci whatsapp, poi telefono/phone
       const phone = raw.whatsapp || raw.telefono || raw.phone || '';
-
-      // dataScadenza: accetta tanti formati
       const expiryDate = this._parseAnyDate(raw.dataScadenza || raw.expiry || raw.scadenza || raw.expirationDate);
-
-      // giorni mancanti
       const daysTillExpiry = (expiryDate) ? this._diffInDays(expiryDate, new Date()) : null;
 
-      // status normalizzato
       let status = raw.status;
       if (!['active','expiring','expired'].includes(status)) {
         if (typeof daysTillExpiry === 'number') {
           if (daysTillExpiry < 0) status = 'expired';
           else if (daysTillExpiry <= 30) status = 'expiring';
           else status = 'active';
-        } else {
-          status = 'active';
-        }
+        } else status = 'active';
       }
 
       return {
@@ -281,7 +200,6 @@
       };
     }
 
-    // ------------- DATE UTILS -------------
     _parseYMD(ymd) {
       if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null;
       const [y,m,d] = ymd.split('-').map(n=>+n);
@@ -298,31 +216,14 @@
 
     _parseAnyDate(val) {
       if (!val) return null;
-
-      // Firestore Timestamp
-      if (val && typeof val === 'object' && typeof val.toDate === 'function') {
-        return val.toDate();
-      }
-      // epoch millis
-      if (typeof val === 'number') {
-        const d = new Date(val);
-        return isNaN(d) ? null : d;
-      }
-      // ISO
-      if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
-        const d = new Date(val);
-        return isNaN(d) ? null : d;
-      }
-      // DD/MM/YYYY o DD-MM-YYYY
+      if (val && typeof val === 'object' && typeof val.toDate === 'function') return val.toDate();
+      if (typeof val === 'number') { const d = new Date(val); return isNaN(d)?null:d; }
+      if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) { const d=new Date(val); return isNaN(d)?null:d; }
       if (typeof val === 'string' && /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.test(val)) {
         const m = val.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-        const dd = +m[1], mm = +m[2], yy = +m[3];
-        const d = new Date(yy, mm-1, dd);
-        return isNaN(d) ? null : d;
+        const dd=+m[1], mm=+m[2], yy=+m[3]; const d=new Date(yy,mm-1,dd); return isNaN(d)?null:d;
       }
-      // fallback: Date.parse
-      const d = new Date(val);
-      return isNaN(d) ? null : d;
+      const d = new Date(val); return isNaN(d)?null:d;
     }
 
     _diffInDays(target, base) {
@@ -332,8 +233,11 @@
     }
   }
 
-  // istanza globale
+  // istanza globale + wiring verso App
   const instance = new StorageModule();
   window.StorageModule = instance;
   window.Storage_Instance = instance;
+  window.App = window.App || { modules: {} };
+  window.App.modules = window.App.modules || {};
+  window.App.modules.storage = instance;
 })();
