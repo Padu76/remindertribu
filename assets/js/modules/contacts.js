@@ -4,14 +4,15 @@
 
   /**
    * ContactsModule (Tesserati CSEN)
-   * - Elenco completo tesserati con filtri (tutti/attivi/in scadenza/scaduti) + ricerca
+   * - Elenco completo tesserati con filtri (tutti/attivi/in scadenza/scaduti/recenti) + ricerca
    * - Azioni per riga: WhatsApp, Rinnova (datepicker), Elimina
    * - Azioni bulk: WA, Rinnova (datepicker), Elimina
-   * - Montaggio "safe": non lascia mai la pagina vuota in caso di errori
+   * - Badge "Appena rinnovato" se lastRenewalAt (o simili) <= 7 giorni
+   * - Montaggio robusto: mai pagina vuota in caso di errori
    */
   class ContactsModule {
     constructor() {
-      this.filter = 'all';  // all|active|expiring|expired
+      this.filter = 'all';  // all|active|expiring|expired|recent
       this.query = '';
       this.selected = new Set();
       this._mounted = false;
@@ -31,12 +32,13 @@
             <h1 class="page-title"><i class="fas fa-id-card"></i> Tesserati CSEN</h1>
             <p class="page-subtitle">Gestisci iscritti, rinnovi e comunicazioni</p>
           </div>
-          <div class="quick-actions">
+          <div class="quick-actions" style="gap:.5rem;flex-wrap:wrap">
             <select id="ctFilter" class="form-control">
               <option value="all">Tutti</option>
               <option value="active">Attivi</option>
               <option value="expiring">In scadenza ≤30gg</option>
               <option value="expired">Scaduti</option>
+              <option value="recent">Rinnovati ≤7gg</option>
             </select>
             <input id="ctSearch" class="form-control" placeholder="Cerca nome/telefono…"/>
           </div>
@@ -108,17 +110,45 @@
     // ---- Data ----
     _storage() { return (window.App?.modules?.storage || window.Storage_Instance); }
 
+    _isRecentlyRenewed(m) {
+      // accetta più possibili nomi campo, tutti ISO o date parseable
+      const src = m.lastRenewalAt || m.lastRenewalDate || m.renewedAt || m.renewalAt;
+      if (!src) return false;
+      const dt = new Date(src);
+      if (isNaN(dt)) return false;
+      const now = new Date();
+      const diffDays = Math.floor((now - dt) / 86400000);
+      return diffDays >= 0 && diffDays <= 7;
+    }
+
     _getList() {
       const s = this._storage();
       const list = s.getMembersCached();
-      return (list || [])
-        .filter(m => (this.filter === 'all') ? true : (m.status === this.filter))
-        .filter(m => {
-          if (!this.query) return true;
-          const phone = (m.whatsapp||m.telefono||m.phone||'');
-          return (m.fullName||'').toLowerCase().includes(this.query) || String(phone).includes(this.query);
-        })
-        .sort((a,b) => (a.fullName||'').localeCompare(b.fullName||''));
+
+      let arr = (list || []).filter(m => {
+        if (this.filter === 'recent') return this._isRecentlyRenewed(m);
+        if (this.filter === 'all') return true;
+        return m.status === this.filter;
+      });
+
+      // ricerca
+      arr = arr.filter(m => {
+        if (!this.query) return true;
+        const phone = (m.whatsapp||m.telefono||m.phone||'');
+        return (m.fullName||'').toLowerCase().includes(this.query) || String(phone).includes(this.query);
+      });
+
+      // ordinamento: se "recent", per data rinnovo desc; altrimenti alfabetico
+      if (this.filter === 'recent') {
+        arr.sort((a, b) => {
+          const ad = new Date(a.lastRenewalAt || a.lastRenewalDate || a.renewedAt || 0).getTime();
+          const bd = new Date(b.lastRenewalAt || b.lastRenewalDate || b.renewedAt || 0).getTime();
+          return bd - ad;
+        });
+      } else {
+        arr.sort((a,b) => (a.fullName||'').localeCompare(b.fullName||''));
+      }
+      return arr;
     }
 
     // ---- Render ----
@@ -130,7 +160,8 @@
       try { list = this._getList(); } catch (e) { console.warn('[Tesserati] lista non disponibile:', e); }
 
       if (!Array.isArray(list) || list.length === 0) {
-        body.innerHTML = `<tr><td colspan="7"><div class="empty">Nessun tesserato</div></td></tr>`;
+        const msg = this.filter==='recent' ? 'Nessun rinnovo negli ultimi 7 giorni' : 'Nessun tesserato';
+        body.innerHTML = `<tr><td colspan="7"><div class="empty">${msg}</div></td></tr>`;
         this.selected.clear();
         this._updateSelCount();
         return;
@@ -142,10 +173,19 @@
         const dStr = d ? d.toLocaleDateString('it-IT') : '—';
         const phone = m.whatsapp||m.telefono||m.phone||'';
         const stBadge = m.status==='expired' ? 'danger' : (m.status==='expiring'?'warn':'ok');
+
+        const recent = this._isRecentlyRenewed(m);
+        const recentBadge = recent ? `<span class="badge badge-ok" title="Rinnovo negli ultimi 7 giorni">Appena rinnovato</span>` : '';
+
         return `
           <tr data-ct-id="${this._esc(id)}">
             <td><input type="checkbox" data-ct-sel="${this._esc(id)}"/></td>
-            <td>${this._esc(m.fullName||'')}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+                <span>${this._esc(m.fullName||'')}</span>
+                ${recentBadge}
+              </div>
+            </td>
             <td>${this._esc(phone)}</td>
             <td>${dStr}</td>
             <td><span class="badge badge-${stBadge}">${m.status}</span></td>
