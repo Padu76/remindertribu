@@ -29,15 +29,13 @@ function buildCalendarEmbedUrl() {
   const calId = pickEnv('GOOGLE_CALENDAR_ID');            // NON segreto
   const tz = pickEnv('CALENDAR_TZ', 'Europe/Rome');
   if (!calId) return '';
-  const url = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calId)}&ctz=${encodeURIComponent(tz)}`;
-  return url;
+  return `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calId)}&ctz=${encodeURIComponent(tz)}`;
 }
 
-function generateConfig() {
+function generateConfig(embedUrl) {
   const FIREBASE = buildFirebaseConfig();
   const WHATSAPP_API_BASE = pickEnv('WHATSAPP_API_BASE', '/api');
   const REMINDER_DAYS_AHEAD = Number(pickEnv('REMINDER_DAYS_AHEAD', '7')) || 7;
-  const GOOGLE_CALENDAR_EMBED_URL = buildCalendarEmbedUrl();
 
   const VERSION = pickEnv('VERCEL_GIT_COMMIT_SHA', Math.random().toString(36).slice(2));
   const BUILD_AT = new Date().toISOString();
@@ -47,7 +45,7 @@ window.AppConfig = Object.freeze({
   FIREBASE: ${JSON.stringify(FIREBASE, null, 2)},
   REMINDER_DAYS_AHEAD: ${REMINDER_DAYS_AHEAD},
   WHATSAPP_API_BASE: ${JSON.stringify(WHATSAPP_API_BASE)},
-  GOOGLE_CALENDAR_EMBED_URL: ${JSON.stringify(GOOGLE_CALENDAR_EMBED_URL)},
+  GOOGLE_CALENDAR_EMBED_URL: ${JSON.stringify(embedUrl || '')},
   VERSION: ${JSON.stringify(VERSION)},
   BUILD_AT: ${JSON.stringify(BUILD_AT)}
 });
@@ -55,10 +53,11 @@ window.AppConfig = Object.freeze({
 }
 
 try {
-  const content = generateConfig();
+  const embedUrl = buildCalendarEmbedUrl();
+  const content = generateConfig(embedUrl);
   fs.writeFileSync('config.js', content, 'utf8');
   console.log('✅ Generato ./config.js');
-  if (JSON.parse(content.match(/\{[\s\S]*\}$/)[0]).GOOGLE_CALENDAR_EMBED_URL) {
+  if (embedUrl) {
     console.log('✅ GOOGLE_CALENDAR_EMBED_URL impostato');
   } else {
     console.log('ℹ️ Nessun GOOGLE_CALENDAR_ID definito: la vista iframe sarà disabilitata');
