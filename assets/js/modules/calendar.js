@@ -9,6 +9,7 @@
       this.month = now.getMonth(); // 0..11
       this.eventsByDate = {}; // iso -> [{type,title}]
       this.gcalEnabled = false;
+      this.view = 'app'; // 'app' | 'iframe'
     }
 
     async init() {
@@ -17,6 +18,7 @@
     }
 
     getPageContent() {
+      const hasIframe = !!(window.AppConfig?.GOOGLE_CALENDAR_EMBED_URL);
       return `
         <section class="page-container" style="padding:1rem">
           <div class="page-header">
@@ -25,16 +27,15 @@
               <p class="page-subtitle">Scadenze, promemoria e appuntamenti ufficiali</p>
             </div>
             <div class="quick-actions">
-              <span id="calConnBadge" class="badge">GCAL: —</span>
-              <button id="calPrev" class="btn btn-outline"><i class="fas fa-chevron-left"></i></button>
-              <div id="calTitle" class="badge" style="align-self:center;"></div>
-              <button id="calNext" class="btn btn-outline"><i class="fas fa-chevron-right"></i></button>
-              <button id="calToday" class="btn btn-outline">Oggi</button>
+              <button class="btn ${this.view==='app'?'btn-primary':'btn-outline'}" data-calview="app"><i class="fas fa-table"></i> Vista mese (app)</button>
+              <button class="btn ${this.view==='iframe'?'btn-primary':'btn-outline'}" data-calview="iframe" ${hasIframe?'':'disabled'} title="${hasIframe?'':'Imposta GOOGLE_CALENDAR_ID / CALENDAR_TZ su Vercel'}">
+                <i class="fab fa-google"></i> Vista Google (iframe)
+              </button>
             </div>
           </div>
 
-          <div id="calGrid"></div>
-          <div id="calList" style="margin-top:1rem;"></div>
+          <div id="calAppWrap"></div>
+          <div id="calIframeWrap" style="display:none"></div>
 
           <style>
             .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
@@ -48,30 +49,86 @@
             .evt{display:flex;gap:.5rem;align-items:center;border-bottom:1px dashed #243041;padding:.35rem 0}
             .evt:last-child{border-bottom:none}
             .evt-badge{border:1px solid #243041;border-radius:8px;padding:.05rem .35rem;font-size:.75rem}
+            .gcal-iframe{
+              width:100%; height:75vh; min-height:600px; border:1px solid #243041;
+              border-radius:12px; background:#0b1220; box-shadow:0 6px 18px rgba(0,0,0,.18);
+            }
           </style>
         </section>
       `;
     }
 
     initializePage() {
+      // toggle vista
+      document.querySelectorAll('[data-calview]').forEach(btn=>{
+        btn.addEventListener('click', (e)=>{
+          const v = e.currentTarget.getAttribute('data-calview');
+          if (v === 'iframe' && !window.AppConfig?.GOOGLE_CALENDAR_EMBED_URL) return;
+          this.view = v;
+          this._renderView();
+        });
+      });
+
+      this._renderView();
+    }
+
+    async _renderView() {
+      // attiva/deattiva pulsanti
+      document.querySelectorAll('[data-calview]').forEach(b=>{
+        const v = b.getAttribute('data-calview');
+        b.classList.toggle('btn-primary', v===this.view);
+        b.classList.toggle('btn-outline', v!==this.view);
+      });
+
+      const appWrap = document.getElementById('calAppWrap');
+      const iframeWrap = document.getElementById('calIframeWrap');
+
+      if (this.view === 'iframe') {
+        appWrap.style.display = 'none';
+        iframeWrap.style.display = 'block';
+        const url = window.AppConfig?.GOOGLE_CALENDAR_EMBED_URL;
+        iframeWrap.innerHTML = url
+          ? `<iframe class="gcal-iframe" src="${url}" loading="lazy"></iframe>`
+          : `<div class="empty">Imposta GOOGLE_CALENDAR_ID e (opzionale) CALENDAR_TZ su Vercel.</div>`;
+        return;
+      }
+
+      // Vista app
+      iframeWrap.style.display = 'none';
+      appWrap.style.display = 'block';
+      appWrap.innerHTML = `
+        <div class="page-header" style="padding:0 0 .75rem">
+          <div class="badge" id="calTitle"></div>
+          <div class="quick-actions">
+            <span id="calConnBadge" class="badge">GCAL: —</span>
+            <button id="calPrev" class="btn btn-outline"><i class="fas fa-chevron-left"></i></button>
+            <button id="calNext" class="btn btn-outline"><i class="fas fa-chevron-right"></i></button>
+            <button id="calToday" class="btn btn-outline">Oggi</button>
+          </div>
+        </div>
+        <div id="calGrid"></div>
+        <div id="calList" style="margin-top:1rem;"></div>
+      `;
+
       document.getElementById('calPrev')?.addEventListener('click', () => this._shift(-1));
       document.getElementById('calNext')?.addEventListener('click', () => this._shift(1));
       document.getElementById('calToday')?.addEventListener('click', () => {
         const now = new Date();
         this.year = now.getFullYear(); this.month = now.getMonth();
-        this._render();
+        this._renderApp();
       });
-      this._render();
+
+      await this._renderApp();
     }
 
     _shift(delta) {
       this.month += delta;
       if (this.month < 0) { this.month = 11; this.year--; }
       if (this.month > 11) { this.month = 0; this.year++; }
-      this._render();
+      this._renderApp();
     }
 
-    async _render() {
+    async _renderApp() {
       const s = window.App?.modules?.storage || window.Storage_Instance;
       await this._collectEvents(s); // include fetch Google
 
@@ -159,7 +216,7 @@
         this._pushEvt(this._iso(d), { type:'Scadenza', title:`Tesseramento: ${m.fullName || m.nome || ''}` });
       }
 
-      // 2) Reminders datati (se presenti)
+      // 2) Reminders datati
       const rems = storage?.getRemindersCached?.() || [];
       for (const r of rems) {
         const ts = r.sendAt || r.scheduledAt || r.dueAt || r.date || null;
@@ -180,7 +237,6 @@
 
         const events = Array.isArray(data.events) ? data.events : [];
         for (const e of events) {
-          // Espandi all-day/multi-day sugli specifici giorni del mese
           const span = this._expandSpanDays(e.start, e.end);
           for (const iso of span) {
             const d = this._parseISODate(iso);
@@ -195,7 +251,6 @@
     }
 
     _expandSpanDays(start, end) {
-      // accetta dateTime o date; end all-day è esclusivo: sottraggo 1 giorno
       const s = this._parseISODate(start);
       let e = this._parseISODate(end);
       if (/^\d{4}-\d{2}-\d{2}$/.test(end)) e = new Date(e.getTime() - 86400000);
