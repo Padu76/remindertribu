@@ -5,7 +5,7 @@
   class TribuStorage {
     constructor() {
       this.firebase = window.Firebase_Instance || null;
-      this.useFirebase = !!(window.AppConfig?.firebase?.enabled);
+      this.useFirebase = !!(window.AppConfig?.FIREBASE?.enabled);
       this.isInitialized = false;
 
       this.db = null;
@@ -24,7 +24,12 @@
     async init() {
       try {
         if (this.firebase?.init) await this.firebase.init();
-        await Promise.allSettled([this.refreshMembers(), this.refreshReminders(), this.refreshCampaigns(), this.refreshLinks()]);
+        await Promise.allSettled([
+          this.refreshMembers(),
+          this.refreshReminders(),
+          this.refreshCampaigns(),
+          this.refreshLinks()
+        ]);
         this.isInitialized = true;
         console.log('✅ [Storage] initialized', { useFirebase: this.useFirebase });
       } catch (e) {
@@ -43,7 +48,7 @@
       } else {
         const FB = window.Firebase || {};
         if (!FB.initializeApp || !FB.getFirestore) throw new Error('Firebase SDK non disponibile');
-        if (!window.__RT_FIREBASE_APP) window.__RT_FIREBASE_APP = FB.initializeApp(window.AppConfig?.firebase?.config || {});
+        if (!window.__RT_FIREBASE_APP) window.__RT_FIREBASE_APP = FB.initializeApp(window.AppConfig?.FIREBASE?.config || {});
         this.db = FB.getFirestore(window.__RT_FIREBASE_APP);
       }
       this._fs = this._fs || await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
@@ -71,6 +76,8 @@
       if (m2) { const y=+m2[1], mo=+m2[2]-1, d=+m2[3]; const dt=new Date(y,mo,d); return isNaN(dt)?null:dt.toISOString(); }
       const dt = new Date(t); return isNaN(dt)?null:dt.toISOString();
     }
+    _startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+    _iso(d){ return (new Date(d)).toISOString(); }
 
     // ---------- Members ----------
     async refreshMembers() {
@@ -85,14 +92,22 @@
           const d = m.dataScadenza ? new Date(m.dataScadenza) : null;
           let days = null, status='active';
           if (d && !isNaN(d)) {
-            const a = new Date(); a.setHours(0,0,0,0);
+            const a = this._startOfDay(new Date());
             const b = new Date(d.getFullYear(), d.getMonth(), d.getDate());
             days = Math.ceil((b - a) / 86400000);
             status = (days < 0) ? 'expired' : (days <= 30) ? 'expiring' : 'active';
           }
-          return { ...m, id: m.id||m.firebaseId, fullName, dataScadenza:d, daysTillExpiry:days, status,
-            telefono: m.telefono||m.phone||null, whatsapp: m.whatsapp||m.telefono||m.phone||null,
-            email: (m.email||'').trim().toLowerCase(), tags: Array.isArray(m.tags)?m.tags:[] };
+          return { ...m,
+            id: m.id||m.firebaseId,
+            fullName,
+            dataScadenza:d,
+            daysTillExpiry:days,
+            status,
+            telefono: m.telefono||m.phone||null,
+            whatsapp: m.whatsapp||m.telefono||m.phone||null,
+            email: (m.email||'').trim().toLowerCase(),
+            tags: Array.isArray(m.tags)?m.tags:[]
+          };
         });
 
         this.cache.members = list;
@@ -124,7 +139,7 @@
     getTemplates(){ try{ if(this.cache.templates) return this.cache.templates; const t=this._getFromLocal('tribu_templates')||{}; this.cache.templates=t; return t; }catch{return{};} }
     saveTemplate(key, content){ const t={...this.getTemplates()}; t[key]=content; this.cache.templates=t; this._saveToLocal('tribu_templates',t); return true; }
 
-    // ---------- CSV upsert (resta invariato) ----------
+    // ---------- CSV / CRUD ----------
     async addMember(data){
       if(!this.useFirebase){
         const arr=this._getArrayFromLocal('tribu_tesserati'); const id='tribu_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
@@ -133,9 +148,33 @@
       await this._ensureDb(); const {collection,addDoc}=this._fs; const ref=await addDoc(collection(this.db,'members'),data); await this.refreshMembers(); return {id:ref.id};
     }
     async updateMember(id,updates){
-      if(!this.useFirebase){ const arr=this._getArrayFromLocal('tribu_tesserati').map(x=>x.id===id?{...x,...updates}:x); this._saveToLocal('tribu_tesserati',arr); await this.refreshMembers(); return {ok:true}; }
+      if(!this.useFirebase){
+        const arr=this._getArrayFromLocal('tribu_tesserati').map(x=>x.id===id?{...x,...updates}:x);
+        this._saveToLocal('tribu_tesserati',arr); await this.refreshMembers(); return {ok:true};
+      }
       await this._ensureDb(); const {doc,setDoc}=this._fs; await setDoc(doc(this.db,'members',id),updates,{merge:true}); await this.refreshMembers(); return {ok:true};
     }
+    async deleteMember(id){
+      if(!id) return {ok:false};
+      if(!this.useFirebase){
+        const arr=this._getArrayFromLocal('tribu_tesserati').filter(x=>x.id!==id);
+        this._saveToLocal('tribu_tesserati',arr); await this.refreshMembers(); return {ok:true};
+      }
+      await this._ensureDb(); const {doc,deleteDoc}=this._fs; await deleteDoc(doc(this.db,'members',id)); await this.refreshMembers(); return {ok:true};
+    }
+    async markMemberRenewed(id, {startDate=null}={}){
+      const base = startDate ? new Date(startDate) : new Date();
+      if (isNaN(base)) throw new Error('Data rinnovo non valida');
+      const s = new Date(base.getFullYear(), base.getMonth(), base.getDate()); // alle 00:00
+      const e = new Date(s); e.setFullYear(e.getFullYear()+1); // +1 anno netto
+      const patch = {
+        dataScadenza: this._iso(e),
+        lastRenewalAt: this._iso(new Date()),
+        status: 'active'
+      };
+      return this.updateMember(id, patch);
+    }
+
     async upsertMembersFromCSV(rows, opts={}){
       const updateExisting=!!opts.updateExisting;
       const curr=this.getMembersCached();
