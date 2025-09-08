@@ -3,12 +3,12 @@
   'use strict';
 
   /**
-   * ContactsModule (Tesserati CSEN)
-   * - Elenco completo tesserati con filtri (tutti/attivi/in scadenza/scaduti/recenti) + ricerca
-   * - Azioni per riga: WhatsApp, Rinnova (datepicker), Elimina
-   * - Azioni bulk: WA, Rinnova (datepicker), Elimina
-   * - Badge "Appena rinnovato" se lastRenewalAt (o simili) <= 7 giorni
-   * - Montaggio robusto: mai pagina vuota in caso di errori
+   * ContactsModule (Tesserati CSEN) – versione robusta
+   * - Legge membri da storage.getMembersCached() oppure fallback s.cache.members
+   * - Normalizza status se mancante: >30=active, 0..30=expiring, <0=expired
+   * - Watcher che si autorefresha quando la cache arriva
+   * - Azioni: WA / Rinnova (datepicker) / Elimina + bulk
+   * - Filtro “Rinnovati ≤7gg” con badge “Appena rinnovato”
    */
   class ContactsModule {
     constructor() {
@@ -16,6 +16,7 @@
       this.query = '';
       this.selected = new Set();
       this._mounted = false;
+      this._watchTimer = null;
     }
 
     async init() {
@@ -23,7 +24,7 @@
       return true;
     }
 
-    // ---- UI skeleton ----
+    // ------------- UI -------------
     getPageContent() {
       return `
       <section class="page-container" style="padding:1rem">
@@ -50,6 +51,8 @@
             <button id="ctBulkRenew" class="btn btn-outline"><i class="fas fa-rotate"></i> Segna rinnovati</button>
             <button id="ctBulkDel" class="btn btn-danger"><i class="fas fa-trash"></i> Elimina</button>
             <span class="badge" id="ctSelCount">0 selezionati</span>
+            <span style="flex:1"></span>
+            <button id="ctRefresh" class="btn btn-outline" title="Ricarica da Firebase"><i class="fas fa-sync"></i> Ricarica</button>
           </div>
         </div>
 
@@ -74,7 +77,7 @@
       </section>`;
     }
 
-    // ---- Mount sicuro ----
+    // ------------- Mount -------------
     async initializePage() {
       if (this._mounted) return;
       try {
@@ -96,8 +99,10 @@
         document.getElementById('ctBulkWa')?.addEventListener('click', () => this._bulkSend());
         document.getElementById('ctBulkRenew')?.addEventListener('click', () => this._bulkRenew());
         document.getElementById('ctBulkDel')?.addEventListener('click', () => this._bulkDelete());
+        document.getElementById('ctRefresh')?.addEventListener('click', () => this._forceRefresh());
 
         this.renderRows();
+        this._startWatcher();
         this._mounted = true;
         console.log('✅ [Tesserati] mounted');
       } catch (err) {
@@ -107,38 +112,49 @@
       }
     }
 
-    // ---- Data ----
+    // ------------- Data helpers -------------
     _storage() { return (window.App?.modules?.storage || window.Storage_Instance); }
 
+    _rawMembers() {
+      const s = this._storage();
+      return (s?.getMembersCached?.() || s?.cache?.members || s?.members || []);
+    }
+
+    _normalizeStatus(m) {
+      const hasValid = ['active','expiring','expired'].includes(m.status);
+      if (hasValid) return m.status;
+      const d = (typeof m.daysTillExpiry === 'number') ? m.daysTillExpiry : null;
+      if (d === null) return 'active';
+      if (d < 0) return 'expired';
+      if (d <= 30) return 'expiring';
+      return 'active';
+    }
+
     _isRecentlyRenewed(m) {
-      // accetta più possibili nomi campo, tutti ISO o date parseable
       const src = m.lastRenewalAt || m.lastRenewalDate || m.renewedAt || m.renewalAt;
       if (!src) return false;
       const dt = new Date(src);
       if (isNaN(dt)) return false;
-      const now = new Date();
-      const diffDays = Math.floor((now - dt) / 86400000);
+      const diffDays = Math.floor((Date.now() - dt.getTime()) / 86400000);
       return diffDays >= 0 && diffDays <= 7;
     }
 
     _getList() {
-      const s = this._storage();
-      const list = s.getMembersCached();
-
-      let arr = (list || []).filter(m => {
+      const list = this._rawMembers().map(m => ({ ...m, status: this._normalizeStatus(m) }));
+      let arr = list.filter(m => {
         if (this.filter === 'recent') return this._isRecentlyRenewed(m);
         if (this.filter === 'all') return true;
         return m.status === this.filter;
       });
 
-      // ricerca
-      arr = arr.filter(m => {
-        if (!this.query) return true;
-        const phone = (m.whatsapp||m.telefono||m.phone||'');
-        return (m.fullName||'').toLowerCase().includes(this.query) || String(phone).includes(this.query);
-      });
+      if (this.query) {
+        const q = this.query;
+        arr = arr.filter(m => {
+          const phone = (m.whatsapp||m.telefono||m.phone||'');
+          return (m.fullName||'').toLowerCase().includes(q) || String(phone).includes(q);
+        });
+      }
 
-      // ordinamento: se "recent", per data rinnovo desc; altrimenti alfabetico
       if (this.filter === 'recent') {
         arr.sort((a, b) => {
           const ad = new Date(a.lastRenewalAt || a.lastRenewalDate || a.renewedAt || 0).getTime();
@@ -151,7 +167,7 @@
       return arr;
     }
 
-    // ---- Render ----
+    // ------------- Render -------------
     renderRows() {
       const body = document.getElementById('ctBody');
       if (!body) return;
@@ -160,8 +176,14 @@
       try { list = this._getList(); } catch (e) { console.warn('[Tesserati] lista non disponibile:', e); }
 
       if (!Array.isArray(list) || list.length === 0) {
-        const msg = this.filter==='recent' ? 'Nessun rinnovo negli ultimi 7 giorni' : 'Nessun tesserato';
-        body.innerHTML = `<tr><td colspan="7"><div class="empty">${msg}</div></td></tr>`;
+        body.innerHTML = `
+          <tr><td colspan="7">
+            <div class="empty">
+              ${this.filter==='recent' ? 'Nessun rinnovo negli ultimi 7 giorni' : 'Nessun tesserato in cache'}
+              <div style="margin-top:.5rem"><button id="ctReloadBtn" class="btn btn-outline"><i class="fas fa-sync"></i> Ricarica da Firebase</button></div>
+            </div>
+          </td></tr>`;
+        document.getElementById('ctReloadBtn')?.addEventListener('click', () => this._forceRefresh());
         this.selected.clear();
         this._updateSelCount();
         return;
@@ -173,7 +195,6 @@
         const dStr = d ? d.toLocaleDateString('it-IT') : '—';
         const phone = m.whatsapp||m.telefono||m.phone||'';
         const stBadge = m.status==='expired' ? 'danger' : (m.status==='expiring'?'warn':'ok');
-
         const recent = this._isRecentlyRenewed(m);
         const recentBadge = recent ? `<span class="badge badge-ok" title="Rinnovo negli ultimi 7 giorni">Appena rinnovato</span>` : '';
 
@@ -200,7 +221,7 @@
           </tr>`;
       }).join('');
 
-      // bind
+      // bind riga
       body.querySelectorAll('[data-ct-sel]').forEach(cb=>{
         cb.addEventListener('change', (e)=>{
           const id = e.currentTarget.getAttribute('data-ct-sel');
@@ -223,11 +244,44 @@
 
     _updateSelCount(){ const el=document.getElementById('ctSelCount'); if(el) el.textContent = `${this.selected.size} selezionati`; }
 
-    // ---- Azioni singole ----
+    // ------------- Watcher -------------
+    _startWatcher() {
+      if (this._watchTimer) clearInterval(this._watchTimer);
+      let tries = 0;
+      this._watchTimer = setInterval(() => {
+        tries++;
+        const count = this._rawMembers().length;
+        if (count > 0) {
+          clearInterval(this._watchTimer);
+          this._watchTimer = null;
+          console.log('🔄 [Tesserati] cache pronta:', count);
+          this.renderRows();
+        } else if (tries === 1) {
+          // primo giro, se vuoto provo un refresh
+          this._forceRefresh();
+        } else if (tries > 30) { // ~15s
+          clearInterval(this._watchTimer);
+          this._watchTimer = null;
+          console.warn('⏱️ [Tesserati] cache ancora vuota dopo 15s');
+        }
+      }, 500);
+    }
+
+    async _forceRefresh() {
+      try {
+        const s = this._storage();
+        await s?.refreshMembers?.();
+        setTimeout(() => this.renderRows(), 400);
+      } catch (e) {
+        console.error('⚠️ [Tesserati] refresh error:', e);
+      }
+    }
+
+    // ------------- Azioni -------------
     async _sendOne(id){
       try{
         const s = this._storage();
-        const m = s.getMembersCached().find(x=>x.id===id); if(!m) return;
+        const m = this._rawMembers().find(x=>x.id===id); if(!m) return;
         const msg = this._composeReminderMessage(m);
         const phone = m.whatsapp || m.telefono || m.phone || '';
         const WA = window.App?.modules?.whatsapp || window.WhatsAppModule || {};
@@ -240,7 +294,7 @@
     async _renewOne(id){
       try{
         const s = this._storage();
-        const m = s.getMembersCached().find(x=>x.id===id); if(!m) return;
+        const m = this._rawMembers().find(x=>x.id===id); if(!m) return;
         const chosen = await this._openDateModal({
           title: `Rinnovo per ${m.fullName || ''}`,
           subtitle: 'Scegli la data di rinnovo (la scadenza sarà +1 anno).',
@@ -257,7 +311,7 @@
     async _deleteOne(id){
       try{
         const s = this._storage();
-        const m = s.getMembersCached().find(x=>x.id===id); if(!m) return;
+        const m = this._rawMembers().find(x=>x.id===id); if(!m) return;
         if (!confirm(`Eliminare ${m.fullName}?`)) return;
         await s.deleteMember(id);
         await s.refreshMembers();
@@ -266,11 +320,9 @@
       }catch(e){ console.error('[Tesserati] deleteOne error:', e); alert('Eliminazione non riuscita.'); }
     }
 
-    // ---- Azioni bulk ----
     async _bulkSend(){
       if (!this.selected.size) return alert('Seleziona almeno un contatto');
-      const s = this._storage();
-      const list = s.getMembersCached().filter(x=>this.selected.has(x.id));
+      const list = this._rawMembers().filter(x=>this.selected.has(x.id));
       const ok = confirm(`Inviare ${list.length} messaggi WhatsApp?`);
       if (!ok) return;
       for (const m of list){
@@ -304,7 +356,7 @@
       this.renderRows();
     }
 
-    // ---- Messaggi ----
+    // ------------- Template messaggi -------------
     _composeReminderMessage(m){
       const s = this._storage();
       const tpls = s.getTemplates?.() || {};
@@ -331,7 +383,7 @@
       return out;
     }
 
-    // ---- Modale DatePicker (no deps) ----
+    // ------------- Modale DatePicker (no deps) -------------
     async _openDateModal({ title, subtitle, defaultDate }) {
       return new Promise(resolve => {
         const overlay = document.createElement('div');
@@ -402,12 +454,13 @@
       });
     }
 
-    // ---- Utils ----
+    // ------------- Utils -------------
     async _waitStorageReady(timeoutMs = 3000) {
       const start = Date.now();
       while (Date.now() - start < timeoutMs) {
         const s = this._storage();
-        if (s && s.isInitialized && Array.isArray(s.getMembersCached?.())) return true;
+        const has = s && (Array.isArray(s.getMembersCached?.()) || Array.isArray(s?.cache?.members));
+        if (s && s.isInitialized && has) return true;
         await new Promise(r => setTimeout(r, 100));
       }
       throw new Error('Storage non inizializzato');
