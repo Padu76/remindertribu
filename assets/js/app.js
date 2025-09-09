@@ -2,154 +2,282 @@
 (function () {
   'use strict';
 
-  const qs = (s) => document.querySelector(s);
-
-  const isClass = (fn) => {
-    try { return typeof fn === 'function' && /^class\s/.test(Function.prototype.toString.call(fn)); }
-    catch { return false; }
-  };
-  const ensureInstance = (maybe) => {
-    if (!maybe) return null;
-    try { return isClass(maybe) ? new maybe() : maybe; }
-    catch { return maybe; }
-  };
-  const getGlobal = (names=[]) => { for (const n of names) if (typeof window[n] !== 'undefined') return window[n]; };
-
-  const mountModule = (mod, container, page) => {
-    if (!mod || !container) return false;
-    try {
-      if (typeof mod.renderInto === 'function') { mod.renderInto(container); return true; }
-      if (typeof mod.mount === 'function')      { mod.mount(container); return true; }
-      if (typeof mod.getPageContent === 'function') {
-        const html = mod.getPageContent(page) || mod.getPageContent();
-        if (typeof html === 'string') container.innerHTML = html;
-        if (typeof mod.initializePage === 'function') mod.initializePage(container, page);
-        return true;
-      }
-      if (typeof mod.initializePage === 'function') { container.innerHTML = ''; mod.initializePage(container, page); return true; }
-      if (typeof mod.render === 'function')         { mod.render(container, page); return true; }
-    } catch (e) { console.error('Errore mount modulo:', e); }
-    return false;
-  };
-
-  const existingApp = window.App || {};
-  existingApp.modules = existingApp.modules || {};
-
-  const App = Object.assign(existingApp, {
-    currentPage: existingApp.currentPage || 'dashboard',
+  const App = {
+    modules: {},                 // moduli agganciati
+    _initedModules: new Set(),   // moduli già inizializzati (init one-shot)
+    state: {
+      currentPage: 'dashboard'
+    },
 
     async init() {
-      try { if (window.Firebase_Instance?.init) await window.Firebase_Instance.init(); } catch (e) { console.warn('Firebase init warn:', e); }
-      try { if (window.Storage_Instance?.init)  await window.Storage_Instance.init(); }  catch (e) { console.warn('Storage init warn:', e); }
+      try {
+        this._wireModules();          // auto-wiring dai global window.*
+        await this._waitStorage();    // aspetta Storage + primo warmup
+        this._bindUI();               // navbar + refresh
+        this._renderInitialPage();    // monta pagina attiva
+        this._updateBadges();         // aggiorna contatori in sidebar
+        console.log('TribuReminder Application initialized successfully');
+        return true;
+      } catch (e) {
+        console.error('❌ App init error:', e);
+        this._renderError('Errore di inizializzazione. Riprova a ricaricare la pagina.');
+        return false;
+      }
+    },
 
-      this.modules.storage   = this.modules.storage   || window.Storage_Instance || null;
-      this._attachModule('contacts',  ['contacts','Contacts_Module','ContactsModule']);
-      this._attachModule('analytics', ['analytics','AnalyticsModule']);
-      this._attachModule('reminders', ['reminders','RemindersModule']);
-      this._attachModule('billing',   ['billing','BillingModule']);
-      this._attachModule('whatsapp',  ['WhatsAppModule','WhatsApp_Module']);
-      this._attachModule('scadenze',  ['ScadenzeUI','Scadenze_Module']);
-      this._attachModule('calendar',  ['CalendarModule']);
-      this._attachModule('importcsv', ['ImportCSVModule','Import_Module']); // 👈 nuovo
+    // ---------------- Wiring ----------------
+    _wireModules() {
+      const candidates = {
+        storage:   window.Storage_Instance,
+        analytics: window.AnalyticsModule,
+        auth:      window.AuthModule,         // può essere uno stub
+        contacts:  window.ContactsModule,
+        scadenze:  window.ScadenzeModule,
+        marketing: window.MarketingModule,
+        reminders: window.RemindersModule,
+        calendar:  window.CalendarModule,
+        billing:   window.BillingModule,
+        whatsapp:  window.WhatsAppModule,
+        importcsv: window.ImportCsvModule     // opzionale
+      };
+      this.modules = candidates;
+      // fallback di cortesia per moduli mancanti (non bloccare l’app)
+      if (!this.modules.auth) {
+        this.modules.auth = { init: async ()=>true, mount: ()=>{} };
+      }
+    },
 
-      for (const k of Object.keys(this.modules)) {
-        const m = this.modules[k];
-        if (m && typeof m.init === 'function') { try { await m.init(); } catch (e) { console.warn(`Init ${k} warn:`, e); } }
+    async _waitStorage() {
+      const timeoutMs = 10000; // 10s
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs) {
+        if (this.modules.storage) break;
+        await new Promise(r => setTimeout(r, 100));
+      }
+      const s = this.modules.storage;
+      if (!s) throw new Error('Storage non disponibile');
+
+      // se non inizializzato, inizializza
+      if (!s.isInitialized && typeof s.init === 'function') {
+        await s.init();
       }
 
-      this.bindNavigation();
-      this.showMainApp();
-
-      const nav = qs('#main-navigation');
-      const active = nav ? nav.querySelector('.nav-item.active') : null;
-      this.renderPage(active ? active.getAttribute('data-page') : 'dashboard');
-
-      console.log('TribuReminder Application initialized successfully');
-      return true;
+      // se zero membri, prova un refresh
+      if (typeof s.getMembersCached === 'function' &&
+          s.getMembersCached().length === 0 &&
+          typeof s.refreshMembers === 'function') {
+        try { await s.refreshMembers(); } catch(_) {}
+      }
     },
 
-    _attachModule(key, names) {
-      if (this.modules[key]) return;
-      const fromApp = (window.App && window.App[key]) ? window.App[key] : null;
-      if (fromApp) { this.modules[key] = ensureInstance(fromApp); return; }
-      const g = getGlobal(names);
-      if (g) { this.modules[key] = ensureInstance(g); return; }
-      this.modules[key] = null;
-    },
+    // --------------- UI / Routing ---------------
+    _bindUI() {
+      const nav = document.getElementById('main-navigation');
+      if (nav) {
+        nav.addEventListener('click', (e) => {
+          const item = e.target.closest('.nav-item');
+          if (!item) return;
+          const page = item.getAttribute('data-page');
+          if (!page) return;
+          this._activateNavItem(item);
+          this.renderPage(page);
+        });
 
-    hideLoading(){ qs('#loading-screen')?.classList.add('hidden'); },
-    showMainApp(){ this.hideLoading(); qs('#auth-container')?.classList.add('hidden'); qs('#main-app')?.classList.remove('hidden'); },
-    showAuth(){ this.hideLoading(); qs('#main-app')?.classList.add('hidden'); qs('#auth-container')?.classList.remove('hidden'); },
+        // attiva l'item già marcato active (se presente)
+        const active = nav.querySelector('.nav-item.active');
+        if (active) this.state.currentPage = active.getAttribute('data-page') || 'dashboard';
+      }
 
-    bindNavigation() {
-      const nav = qs('#main-navigation'); if (!nav) return;
-      nav.addEventListener('click', (e) => {
-        const item = e.target.closest('.nav-item'); if (!item) return;
-        const page = item.getAttribute('data-page'); if (!page) return;
-        nav.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        item.classList.add('active');
-        this.renderPage(page);
-        window.dispatchEvent(new CustomEvent('route:change', { detail: { page } }));
-        console.log('Page changed to:', page);
-      });
-    },
-
-    renderPage(page) {
-      const c = qs('#page-content'); if (!c) return;
-      this.currentPage = page;
-
-      const map = {
-        dashboard: () => {
-          const m = this.modules.analytics;
-          if (m) {
-            if (typeof m.renderDashboard === 'function') { c.innerHTML=''; return m.renderDashboard(c); }
-            if (mountModule(m, c, 'dashboard')) return;
+      const btnRefresh = document.getElementById('btn-refresh');
+      if (btnRefresh) {
+        btnRefresh.addEventListener('click', async () => {
+          btnRefresh.disabled = true;
+          try {
+            await this._refreshData();
+            await this.renderPage(this.state.currentPage);
+            this._updateBadges();
+          } finally {
+            btnRefresh.disabled = false;
           }
-          c.innerHTML = `<section style="padding:1rem"><h2><i class="fas fa-tachometer-alt"></i> Dashboard</h2><p>Benvenuto in ReminderTribù.</p></section>`;
-        },
-        tesserati: () => {
-          const m = this.modules.contacts;
-          if (mountModule(m, c, 'tesserati')) return;
-          c.innerHTML = `<section style="padding:1rem"><h2><i class="fas fa-id-card"></i> Tesserati</h2><p>Modulo contatti non disponibile.</p></section>`;
-        },
-        scadenze: () => {
-          const m = this.modules.scadenze;
-          if (mountModule(m, c, 'scadenze')) return;
-          c.innerHTML = `<section style="padding:1rem"><h2><i class="fas fa-exclamation-triangle"></i> Scadenze</h2><p>Modulo scadenze non disponibile.</p></section>`;
-        },
-        marketing: () => {
-          const m = this.modules.analytics;
-          if (mountModule(m, c, 'marketing')) return;
-          c.innerHTML = `<section style="padding:1rem"><h2><i class="fas fa-bullhorn"></i> Marketing</h2><p>Modulo marketing non disponibile.</p></section>`;
-        },
-        calendario: () => {
-          const m = this.modules.calendar;
-          if (mountModule(m, c, 'calendario')) return;
-          c.innerHTML = `<section style="padding:1rem"><h2><i class="fas fa-calendar-alt"></i> Calendario</h2><p>Modulo calendario non disponibile.</p></section>`;
-        },
-        automazione: () => {
-          const m1 = this.modules.reminders, m2 = this.modules.billing;
-          if (mountModule(m1, c, 'automazione')) return;
-          if (mountModule(m2, c, 'automazione')) return;
-          c.innerHTML = `<section style="padding:1rem"><h2><i class="fas fa-robot"></i> Automazione</h2><p>Nessun modulo disponibile.</p></section>`;
-        },
-        whatsapp: () => {
-          const m = this.modules.whatsapp;
-          if (mountModule(m, c, 'whatsapp')) return;
-          c.innerHTML = `<section style="padding:1rem"><h2><i class="fab fa-whatsapp"></i> WhatsApp</h2><p>Modulo WhatsApp non disponibile.</p></section>`;
-        },
-        import: () => {
-          const m = this.modules.importcsv; // 👈 usa modulo dedicato
-          if (mountModule(m, c, 'import')) return;
-          c.innerHTML = `<section style="padding:1rem"><h2><i class="fas fa-upload"></i> Import CSV</h2><p>Modulo import non disponibile.</p></section>`;
-        }
+        });
+      }
+    },
+
+    _renderInitialPage() {
+      this.renderPage(this.state.currentPage || 'dashboard');
+    },
+
+    _activateNavItem(item) {
+      document.querySelectorAll('.nav .nav-item').forEach(el => el.classList.remove('active'));
+      item.classList.add('active');
+    },
+
+    // --------------- Render ---------------
+    async renderPage(page) {
+      this.state.currentPage = page;
+      const container = document.getElementById('page-content');
+      const titleEl = document.getElementById('page-title');
+      if (titleEl) titleEl.textContent = this._prettyTitle(page);
+      if (!container) return;
+
+      // Spinner
+      container.innerHTML = `
+        <div class="loading">
+          <i class="fa-solid fa-spinner fa-spin"></i> Caricamento…
+        </div>
+      `;
+
+      // mappa pagina -> modulo
+      const map = {
+        dashboard: 'analytics',
+        tesserati: 'contacts',
+        scadenze:  'scadenze',
+        marketing: 'marketing',
+        calendario:'calendar',
+        automazione:'reminders',
+        whatsapp:  'whatsapp',
+        'import-csv':'importcsv'
       };
 
-      if (map[page]) map[page]();
-      else c.innerHTML = `<section style="padding:1rem"><h2>${page}</h2><p>Pagina non trovata.</p></section>`;
-    }
-  });
+      const key = map[page] || page; // fallback: stesso nome
+      const mod = this.modules[key];
 
+      // se non c'è, messaggio elegante
+      if (!mod) {
+        container.innerHTML = `
+          <section class="empty-state">
+            <h2>Modulo ${this._prettyTitle(page)} non disponibile</h2>
+            <p>Il modulo "${key}" non è stato caricato. Verifica che il file esista e che esponga <code>window.${this._guessGlobalName(key)}</code>.</p>
+          </section>
+        `;
+        return;
+      }
+
+      // init one-shot
+      if (typeof mod.init === 'function' && !this._initedModules.has(key)) {
+        try {
+          await mod.init();
+        } catch (e) {
+          console.warn(`[${key}] init warning:`, e?.message || e);
+        } finally {
+          this._initedModules.add(key);
+        }
+      }
+
+      // mount
+      if (typeof mod.mount === 'function') {
+        try {
+          await mod.mount(container, { page, app: this });
+        } catch (e) {
+          console.error(`[${key}] mount error:`, e);
+          container.innerHTML = `
+            <section class="empty-state">
+              <h2>Errore nel modulo ${this._prettyTitle(page)}</h2>
+              <p>${e?.message || e}</p>
+            </section>
+          `;
+        }
+      } else {
+        container.innerHTML = `
+          <section class="empty-state">
+            <h2>${this._prettyTitle(page)}</h2>
+            <p>Modulo caricato ma non espone <code>mount(container)</code>.</p>
+          </section>
+        `;
+      }
+    },
+
+    // --------------- Helpers ---------------
+    async _refreshData() {
+      const s = this.modules.storage;
+      if (!s) return;
+      const ops = [];
+      if (typeof s.refreshMembers === 'function')   ops.push(s.refreshMembers());
+      if (typeof s.refreshReminders === 'function') ops.push(s.refreshReminders());
+      if (typeof s.refreshTemplates === 'function') ops.push(s.refreshTemplates());
+      try { await Promise.all(ops); } catch(_) {}
+    },
+
+    _updateBadges() {
+      const s = this.modules.storage;
+      if (!s || typeof s.getMembersCached !== 'function') return;
+      const list = s.getMembersCached() || [];
+      const expired  = list.filter(x => x.status === 'expired').length;
+      const expiring = list.filter(x => x.status === 'expiring').length;
+
+      const bScad = document.getElementById('badge-scadenze');
+      if (bScad) {
+        const total = expired + expiring;
+        bScad.textContent = total;
+        bScad.hidden = total <= 0;
+      }
+
+      // badge marketing: numero template disponibili
+      const tpls = (typeof s.getTemplates === 'function' ? s.getTemplates() : {}) || {};
+      const bMkt = document.getElementById('badge-marketing');
+      if (bMkt) {
+        const n = Object.keys(tpls).length;
+        bMkt.textContent = n;
+        bMkt.hidden = n <= 0;
+      }
+
+      // badge calendario (se vuoi mostrare numero eventi, qui potremmo leggerli in futuro)
+      const bCal = document.getElementById('badge-calendario');
+      if (bCal) {
+        bCal.hidden = true;
+      }
+
+      // badge automazione: reminders in coda (se collezione esiste)
+      const rems = (typeof s.getRemindersCached === 'function' ? s.getRemindersCached() : []) || [];
+      const bAuto = document.getElementById('badge-automazione');
+      if (bAuto) {
+        bAuto.textContent = rems.length;
+        bAuto.hidden = rems.length <= 0;
+      }
+    },
+
+    _prettyTitle(page) {
+      const map = {
+        dashboard: 'Dashboard',
+        tesserati: 'Tesserati CSEN',
+        scadenze:  'Scadenze',
+        marketing: 'Marketing',
+        calendario:'Calendario',
+        automazione:'Automazione',
+        whatsapp:  'WhatsApp',
+        'import-csv': 'Import CSV'
+      };
+      return map[page] || (page.charAt(0).toUpperCase() + page.slice(1));
+    },
+
+    _guessGlobalName(key) {
+      const map = {
+        analytics: 'AnalyticsModule',
+        contacts:  'ContactsModule',
+        scadenze:  'ScadenzeModule',
+        marketing: 'MarketingModule',
+        reminders: 'RemindersModule',
+        calendar:  'CalendarModule',
+        billing:   'BillingModule',
+        whatsapp:  'WhatsAppModule',
+        importcsv: 'ImportCsvModule'
+      };
+      return map[key] || key;
+    },
+
+    _renderError(msg) {
+      const container = document.getElementById('page-content');
+      if (!container) return;
+      container.innerHTML = `
+        <section class="empty-state">
+          <h2>Errore</h2>
+          <p>${msg}</p>
+        </section>
+      `;
+    }
+  };
+
+  // Esporta global
   window.App = App;
-  window.App_Instance = window.App_Instance || App;
+  window.App_Instance = App; // compat vecchio codice
 })();
