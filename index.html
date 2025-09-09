@@ -1,129 +1,128 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ReminderTribù - Sistema Marketing Automation</title>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ReminderTribù</title>
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="assets/css/main.css"/>
-  <link rel="stylesheet" href="assets/css/components.css"/>
-  <link rel="stylesheet" href="assets/css/dashboard.css"/>
-  <link rel="stylesheet" href="assets/css/auth.css"/>
-  <link rel="stylesheet" href="assets/css/responsive.css"/>
-  <link rel="stylesheet" href="assets/css/ux.css"/>
+  <!-- Icone -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-QYWK5KX1..." crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-  <!-- Lib esterne -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-
-  <!-- Firebase SDK (modulare, esposto su window) -->
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-    import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-    window.Firebase = { initializeApp, getFirestore, getAuth };
-  </script>
+  <!-- CSS principali (mantengo i tuoi file) -->
+  <link rel="stylesheet" href="assets/css/main.css" />
+  <link rel="stylesheet" href="assets/css/dashboard.css" />
+  <link rel="stylesheet" href="assets/css/components.css" />
+  <link rel="stylesheet" href="assets/css/auth.css" />
+  <link rel="stylesheet" href="assets/css/responsive.css" />
 </head>
+
 <body>
-  <div id="app">
-    <div class="loading-screen" id="loading-screen">
-      <div class="loading-content">
-        <i class="fas fa-bell loading-icon"></i>
-        <h1 class="loading-title">ReminderTribù</h1>
-        <i class="fas fa-spinner fa-spin loading-spinner"></i>
-        <p class="loading-text">Inizializzazione...</p>
-      </div>
-    </div>
+  <noscript>Attiva JavaScript per usare ReminderTribù.</noscript>
 
-    <div id="auth-container" class="auth-container hidden">
-      <div class="auth-card">
-        <i class="fas fa-bell auth-icon"></i>
-        <h1 class="auth-main-title">ReminderTribù</h1>
-        <h2 class="auth-subtitle">Accedi</h2>
-        <div class="form-group"><label>Email</label><input type="email" id="loginEmail" class="form-control" value="admin@tribu.com" autocomplete="email"/></div>
-        <div class="form-group"><label>Password</label><input type="password" id="loginPassword" class="form-control" value="tribu2025" autocomplete="current-password"/></div>
-        <button class="btn btn-primary btn-login" onclick="handleLogin()"><i class="fas fa-sign-in-alt"></i> Accedi</button>
+  <!-- Layout -->
+  <div id="app" class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <i class="fa-solid fa-bell"></i>
+        <span>ReminderTribù</span>
       </div>
-    </div>
 
-    <div id="main-app" class="main-app hidden">
-      <header class="app-header">
-        <div class="header-brand"><i class="fas fa-bell"></i><span class="brand-text">ReminderTribù</span></div>
-        <div class="header-user" onclick="showTestToast()" title="Clicca per test toast">TT</div>
+      <nav id="main-navigation" class="nav">
+        <div class="nav-item active" data-page="dashboard">
+          <i class="fa-solid fa-gauge"></i> <span>Dashboard</span>
+        </div>
+        <div class="nav-item" data-page="tesserati">
+          <i class="fa-solid fa-id-card"></i> <span>Tesserati CSEN</span>
+        </div>
+        <div class="nav-item" data-page="scadenze">
+          <i class="fa-solid fa-triangle-exclamation"></i> <span>Scadenze</span>
+          <span class="badge" id="badge-scadenze" hidden>0</span>
+        </div>
+        <div class="nav-item" data-page="marketing">
+          <i class="fa-solid fa-bullhorn"></i> <span>Marketing</span>
+          <span class="badge" id="badge-marketing" hidden>0</span>
+        </div>
+        <div class="nav-item" data-page="calendario">
+          <i class="fa-solid fa-calendar-days"></i> <span>Calendario</span>
+          <span class="badge" id="badge-calendario" hidden>0</span>
+        </div>
+        <div class="nav-item" data-page="automazione">
+          <i class="fa-solid fa-robot"></i> <span>Automazione</span>
+          <span class="badge" id="badge-automazione" hidden>0</span>
+        </div>
+        <div class="nav-item" data-page="whatsapp">
+          <i class="fa-brands fa-whatsapp"></i> <span>WhatsApp</span>
+        </div>
+        <div class="nav-item" data-page="import-csv">
+          <i class="fa-solid fa-file-arrow-up"></i> <span>Import CSV</span>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <header class="page-header">
+        <h1 id="page-title">Dashboard</h1>
+        <div class="header-actions">
+          <button id="btn-refresh" class="btn btn-secondary">
+            <i class="fa-solid fa-rotate"></i> Aggiorna
+          </button>
+        </div>
       </header>
 
-      <div class="main-content">
-        <aside class="sidebar">
-          <nav class="nav" id="main-navigation">
-            <div class="nav-item active" data-page="dashboard"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></div>
-            <div class="nav-item" data-page="tesserati"><i class="fas fa-id-card"></i><span>Tesserati CSEN</span></div>
-            <div class="nav-item" data-page="scadenze"><i class="fas fa-exclamation-triangle"></i><span>Scadenze</span><span class="notification-badge" id="scadenzeBadge"></span></div>
-            <div class="nav-item" data-page="marketing"><i class="fas fa-bullhorn"></i><span>Marketing</span></div>
-            <div class="nav-item" data-page="calendario"><i class="fas fa-calendar-alt"></i><span>Calendario</span><span class="notification-badge" id="calendarBadge"></span></div>
-            <div class="nav-item" data-page="automazione"><i class="fas fa-robot"></i><span>Automazione</span><span class="notification-badge" id="automationBadge"></span></div>
-            <div class="nav-item" data-page="whatsapp"><i class="fab fa-whatsapp"></i><span>WhatsApp</span></div>
-            <div class="nav-item" data-page="import"><i class="fas fa-upload"></i><span>Import CSV</span></div>
-          </nav>
-        </aside>
-        <main class="content-area">
-          <div id="page-content"></div>
-        </main>
-      </div>
-    </div>
+      <section id="page-content" class="page-content">
+        <!-- il contenuto delle pagine viene montato via JS -->
+        <div class="loading">
+          <i class="fa-solid fa-spinner fa-spin"></i> Caricamento…
+        </div>
+      </section>
+    </main>
   </div>
 
-  <div id="toast-container" class="toast-container"></div>
-  <div id="modal-container" class="modal-container"></div>
+  <!-- Toast -->
+  <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-  <script src="config.js"></script>
-  <script src="assets/js/compat/whatsapp-shim.js"></script>
+  <!-- =========================
+       ORDINE SCRIPT A PROVA DI RACE
+       ========================= -->
 
-  <!-- Components -->
-  <script src="assets/js/components/toast.js"></script>
-  <script src="assets/js/components/modal.js"></script>
-  <script src="assets/js/components/forms.js"></script>
-  <script src="assets/js/components/table.js"></script>
+  <!-- 1) Config generata da inject-env.cjs -->
+  <script defer src="config.js"></script>
 
-  <!-- Utils -->
-  <script src="assets/js/utils/helpers.js"></script>
-  <script src="assets/js/utils/validation.js"></script>
-  <script src="assets/js/utils/api.js"></script>
+  <!-- 2) Firebase compat SDK (OBBLIGATORIO prima del tuo firebase.js) -->
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics-compat.js"></script>
 
-  <!-- Modules base -->
-  <script src="assets/js/modules/auth.js"></script>
-  <script src="assets/js/config/firebase.js"></script>
-  <script src="assets/js/modules/storage.js"></script>
+  <!-- 3) Il tuo bootstrap di Firebase (legge AppConfig.FIREBASE / AppConfig.firebase) -->
+  <script defer src="assets/js/config/firebase.js"></script>
 
-  <!-- Moduli funzionali -->
-  <script src="assets/js/modules/analytics.js"></script>
-  <script src="assets/js/modules/contacts.js"></script>
-  <script src="assets/js/modules/reminders.js"></script>
-  <script src="assets/js/modules/billing.js"></script>
-  <script src="assets/js/modules/whatsapp.js"></script>
-  <script src="assets/js/modules/scadenze.js"></script>
-  <script src="assets/js/modules/import.js"></script>
-  <script src="assets/js/modules/calendar.js"></script>
-  <!-- 👇 NUOVO: Marketing -->
-  <script src="assets/js/modules/marketing.js"></script>
+  <!-- 4) Modulo Storage (dipende da FirebaseModule/window.firebase) -->
+  <script defer src="assets/js/modules/storage.js"></script>
 
-  <script src="assets/js/app.js"></script>
+  <!-- 5) Componenti/UI helpers -->
+  <script defer src="assets/js/components/forms.js"></script>
+  <script defer src="assets/js/components/modal.js"></script>
+  <script defer src="assets/js/components/table.js"></script>
+  <script defer src="assets/js/components/toast.js"></script>
+  <script defer src="assets/js/utils/helpers.js"></script>
+  <script defer src="assets/js/utils/validation.js"></script>
 
-  <script>
-    function handleLogin(){ if (window.Auth_Instance?.performLogin) window.Auth_Instance.performLogin(); else window.App_Instance?.showMainApp(); }
-    function showTestToast(){ if (window.Toast_Instance?.show) window.Toast_Instance.show('Ciao Admin!','info'); }
-    function showToast(msg,type='info',ms=4000){ if(window.Toast_Instance?.show) window.Toast_Instance.show(msg,type,ms); else console.log('Toast:',msg); }
+  <!-- 6) Moduli funzionali -->
+  <script defer src="assets/js/modules/analytics.js"></script>
+  <script defer src="assets/js/modules/auth.js"></script>
+  <script defer src="assets/js/modules/contacts.js"></script>
+  <script defer src="assets/js/modules/scadenze.js"></script>
+  <script defer src="assets/js/modules/marketing.js"></script>
+  <script defer src="assets/js/modules/reminders.js"></script>
+  <script defer src="assets/js/modules/calendar.js"></script>
+  <script defer src="assets/js/modules/billing.js"></script>
+  <script defer src="assets/js/modules/whatsapp.js"></script>
+  <!-- shim per apertura manuale WhatsApp se la Cloud API non è configurata -->
+  <script defer src="assets/js/modules/whatsapp-shim.js"></script>
 
-    document.addEventListener('DOMContentLoaded',()=>{ setTimeout(()=>{ try{
-      if(!window.App_Instance) throw new Error('App core non caricato');
-      window.App_Instance.init().then(()=>{
-        document.getElementById('loading-screen')?.classList.add('hidden');
-        document.getElementById('main-app')?.classList.remove('hidden');
-      }).catch(e=>{console.error(e);showToast('Errore inizializzazione app','error');});
-    }catch(err){console.error(err);} },400); });
-
-    window.addEventListener('error',e=>console.error('Global error:',e.error));
-    window.addEventListener('unhandledrejection',e=>console.error('Unhandled promise:',e.reason));
-  </script>
+  <!-- 7) App router (DEVE essere l’ultimo) -->
+  <script defer src="assets/js/app.js"></script>
 </body>
 </html>
