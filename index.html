@@ -6,11 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ReminderTribù</title>
 
-  <!-- Icone -->
+  <!-- Icone / Font Awesome -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-QYWK5KX1..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-  <!-- CSS principali (mantengo i tuoi file) -->
+  <!-- CSS (tuoi file) -->
   <link rel="stylesheet" href="assets/css/main.css" />
   <link rel="stylesheet" href="assets/css/dashboard.css" />
   <link rel="stylesheet" href="assets/css/components.css" />
@@ -21,8 +23,8 @@
 <body>
   <noscript>Attiva JavaScript per usare ReminderTribù.</noscript>
 
-  <!-- Layout -->
   <div id="app" class="app">
+    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="brand">
         <i class="fa-solid fa-bell"></i>
@@ -33,34 +35,42 @@
         <div class="nav-item active" data-page="dashboard">
           <i class="fa-solid fa-gauge"></i> <span>Dashboard</span>
         </div>
+
         <div class="nav-item" data-page="tesserati">
           <i class="fa-solid fa-id-card"></i> <span>Tesserati CSEN</span>
         </div>
+
         <div class="nav-item" data-page="scadenze">
           <i class="fa-solid fa-triangle-exclamation"></i> <span>Scadenze</span>
           <span class="badge" id="badge-scadenze" hidden>0</span>
         </div>
+
         <div class="nav-item" data-page="marketing">
           <i class="fa-solid fa-bullhorn"></i> <span>Marketing</span>
           <span class="badge" id="badge-marketing" hidden>0</span>
         </div>
+
         <div class="nav-item" data-page="calendario">
           <i class="fa-solid fa-calendar-days"></i> <span>Calendario</span>
           <span class="badge" id="badge-calendario" hidden>0</span>
         </div>
+
         <div class="nav-item" data-page="automazione">
           <i class="fa-solid fa-robot"></i> <span>Automazione</span>
           <span class="badge" id="badge-automazione" hidden>0</span>
         </div>
+
         <div class="nav-item" data-page="whatsapp">
           <i class="fa-brands fa-whatsapp"></i> <span>WhatsApp</span>
         </div>
+
         <div class="nav-item" data-page="import-csv">
           <i class="fa-solid fa-file-arrow-up"></i> <span>Import CSV</span>
         </div>
       </nav>
     </aside>
 
+    <!-- Content -->
     <main class="content">
       <header class="page-header">
         <h1 id="page-title">Dashboard</h1>
@@ -72,7 +82,6 @@
       </header>
 
       <section id="page-content" class="page-content">
-        <!-- il contenuto delle pagine viene montato via JS -->
         <div class="loading">
           <i class="fa-solid fa-spinner fa-spin"></i> Caricamento…
         </div>
@@ -80,28 +89,28 @@
     </main>
   </div>
 
-  <!-- Toast -->
+  <!-- Toast container -->
   <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
   <!-- =========================
-       ORDINE SCRIPT A PROVA DI RACE
+       ORDINE SCRIPT "SAFE"
        ========================= -->
 
   <!-- 1) Config generata da inject-env.cjs -->
   <script defer src="config.js"></script>
 
-  <!-- 2) Firebase compat SDK (OBBLIGATORIO prima del tuo firebase.js) -->
+  <!-- 2) Firebase compat SDK: deve venire PRIMA del tuo bootstrap Firebase -->
   <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics-compat.js"></script>
 
-  <!-- 3) Il tuo bootstrap di Firebase (legge AppConfig.FIREBASE / AppConfig.firebase) -->
+  <!-- 3) Bootstrap Firebase (usa AppConfig.FIREBASE / AppConfig.firebase) -->
   <script defer src="assets/js/config/firebase.js"></script>
 
-  <!-- 4) Modulo Storage (dipende da FirebaseModule/window.firebase) -->
+  <!-- 4) Storage (dipende da Firebase) -->
   <script defer src="assets/js/modules/storage.js"></script>
 
-  <!-- 5) Componenti/UI helpers -->
+  <!-- 5) Componenti/UI + utils -->
   <script defer src="assets/js/components/forms.js"></script>
   <script defer src="assets/js/components/modal.js"></script>
   <script defer src="assets/js/components/table.js"></script>
@@ -109,7 +118,7 @@
   <script defer src="assets/js/utils/helpers.js"></script>
   <script defer src="assets/js/utils/validation.js"></script>
 
-  <!-- 6) Moduli funzionali -->
+  <!-- 6) Moduli applicativi -->
   <script defer src="assets/js/modules/analytics.js"></script>
   <script defer src="assets/js/modules/auth.js"></script>
   <script defer src="assets/js/modules/contacts.js"></script>
@@ -119,10 +128,10 @@
   <script defer src="assets/js/modules/calendar.js"></script>
   <script defer src="assets/js/modules/billing.js"></script>
   <script defer src="assets/js/modules/whatsapp.js"></script>
-  <!-- shim per apertura manuale WhatsApp se la Cloud API non è configurata -->
+  <!-- shim WhatsApp (apre wa.me se Cloud API non è configurata) -->
   <script defer src="assets/js/modules/whatsapp-shim.js"></script>
 
-  <!-- 7) App router (DEVE essere l’ultimo) -->
+  <!-- 7) Router/app (DEVE essere l’ultimo) -->
   <script defer src="assets/js/app.js"></script>
 </body>
 </html>
