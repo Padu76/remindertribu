@@ -3,48 +3,70 @@ const fs = require('fs');
 const path = require('path');
 
 function safeJsonParse(s, def = null) {
+  if (!s) return def;
   try { return JSON.parse(s); } catch { return def; }
 }
 
-function envOrThrow(name, { optional = false } = {}) {
-  const v = process.env[name];
-  if (!v && !optional) throw new Error(`Missing ENV: ${name}`);
-  return v || '';
+function truthy(v, def = false) {
+  if (v === undefined || v === null || v === '') return def;
+  const s = String(v).trim().toLowerCase();
+  return !(['false', '0', 'no', 'off'].includes(s));
 }
 
 function buildVersion() {
-  // prova a leggere la SHA da Vercel oppure timestamp
   const sha = process.env.VERCEL_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || '';
   if (sha && /^[0-9a-f]{7,}$/.test(sha)) return sha;
   return String(Date.now());
 }
 
+function compact(obj) {
+  const out = {};
+  Object.entries(obj || {}).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') out[k] = v;
+  });
+  return Object.keys(out).length ? out : null;
+}
+
 try {
-  const FIREBASE_CONFIG_JSON = process.env.FIREBASE_WEB_CONFIG || process.env.FIREBASE_CONFIG || '';
-  const FIREBASE_ENABLED = String(process.env.FIREBASE_ENABLED || 'true').toLowerCase() !== 'false';
+  // --- Firebase config: preferisci JSON, altrimenti ricomponi dai pezzi NEXT_PUBLIC_FIREBASE_* ---
+  const fbFromJson =
+    safeJsonParse(process.env.FIREBASE_WEB_CONFIG, null) ||
+    safeJsonParse(process.env.FIREBASE_CONFIG, null);
 
-  const WHATSAPP_API_BASE = process.env.WHATSAPP_API_BASE || 'https://remindertribu-two.vercel.app/api';
-  const REMINDER_DAYS_AHEAD = parseInt(process.env.REMINDER_DAYS_AHEAD || '7', 10);
-  const GOOGLE_CALENDAR_EMBED_URL = process.env.GOOGLE_CALENDAR_EMBED_URL || '';
+  const fbFromPieces = compact({
+    apiKey:              process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    projectId:           process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    authDomain:          process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    storageBucket:       process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId:   process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId:               process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    measurementId:       process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  });
 
-  const fbConfigObj = safeJsonParse(FIREBASE_CONFIG_JSON, null);
-  if (!fbConfigObj) {
-    console.warn('⚠️ FIREBASE_WEB_CONFIG assente o non JSON. Proseguo ma Firebase potrebbe non inizializzarsi.');
+  const firebaseConfig = fbFromJson || fbFromPieces || null;
+
+  // abilita Firebase se hai una config valida, oppure se FIREBASE_ENABLED è true
+  const FIREBASE_ENABLED = firebaseConfig
+    ? true
+    : truthy(process.env.FIREBASE_ENABLED, false);
+
+  if (!firebaseConfig) {
+    console.warn('⚠️  inject-env: Firebase config non trovata. L\'app partirà, ma Firebase resterà OFF.');
   }
 
   const out = {
     FIREBASE: {
       enabled: FIREBASE_ENABLED,
-      config: fbConfigObj
+      config: firebaseConfig
     },
-    // alias minuscolo per compatibilità col vecchio codice
+    // alias minuscolo per compatibilità con vecchio codice
     firebase: {
       enabled: FIREBASE_ENABLED,
-      config: fbConfigObj
+      config: firebaseConfig
     },
-    REMINDER_DAYS_AHEAD,
-    WHATSAPP_API_BASE,
-    GOOGLE_CALENDAR_EMBED_URL,
+    REMINDER_DAYS_AHEAD: parseInt(process.env.REMINDER_DAYS_AHEAD || '7', 10),
+    WHATSAPP_API_BASE: process.env.WHATSAPP_API_BASE || 'https://remindertribu-two.vercel.app/api',
+    GOOGLE_CALENDAR_EMBED_URL: process.env.GOOGLE_CALENDAR_EMBED_URL || '',
     VERSION: buildVersion(),
     BUILD_AT: new Date().toISOString()
   };
