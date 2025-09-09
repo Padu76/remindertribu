@@ -17,6 +17,7 @@
       try {
         await this._ensureFirebaseReady();
         await this.refreshMembers();
+        await this.refreshReminders().catch(() => {});
         await this.refreshTemplates().catch(() => {});
         this.isInitialized = true;
       } catch (e) {
@@ -27,15 +28,11 @@
       return true;
     }
 
-    // ---------- PUBLIC ----------
+    // ---------- PUBLIC: MEMBERS ----------
     getMembersCached() { return Array.isArray(this.cache.members) ? this.cache.members : []; }
 
     async refreshMembers() {
-      if (!this.useFirebase) {
-        console.warn('[Storage] refreshMembers: Firebase disabilitato');
-        this.cache.members = [];
-        return this.cache.members;
-      }
+      if (!this.useFirebase) { this.cache.members = []; return this.cache.members; }
       const raw = await this._fetchMembersFromFirebase();
       const normalized = raw.map(r => this._normalizeMember(r)).filter(Boolean);
       this.cache.members = normalized;
@@ -67,6 +64,18 @@
       return true;
     }
 
+    // ---------- PUBLIC: REMINDERS ----------
+    getRemindersCached() { return Array.isArray(this.cache.reminders) ? this.cache.reminders : []; }
+
+    async refreshReminders() {
+      if (!this.useFirebase) { this.cache.reminders = []; return this.cache.reminders; }
+      const list = await this._fetchRemindersFromFirebase();
+      this.cache.reminders = Array.isArray(list) ? list : [];
+      console.log('[Storage] reminders refreshed:', this.cache.reminders.length);
+      return this.cache.reminders;
+    }
+
+    // ---------- PUBLIC: TEMPLATES ----------
     getTemplates() { return this.cache.templates || {}; }
 
     async refreshTemplates() {
@@ -89,35 +98,54 @@
       return true;
     }
 
-    // KPI per billing / dashboard (non bloccare se mancano dati)
+    // KPI rapidi (per dashboard/billing)
     async getUserStats() {
+      const members = this.getMembersCached();
       return {
-        members: this.getMembersCached().length || 0,
-        expiring: this.getMembersCached().filter(m => m.status === 'expiring').length || 0,
-        expired: this.getMembersCached().filter(m => m.status === 'expired').length || 0
+        members: members.length || 0,
+        expiring: members.filter(m => m.status === 'expiring').length || 0,
+        expired:  members.filter(m => m.status === 'expired').length || 0
       };
     }
 
     // ---------- PRIVATE: Firebase bridge ----------
     async _ensureFirebaseReady() {
       if (!this.useFirebase) throw new Error('Firebase disabilitato');
-      const FM = window.FirebaseModule;
-      if (FM && FM.ready) return true;
 
-      // attesa breve
+      // 1) FirebaseModule
+      if (window.FirebaseModule && window.FirebaseModule.ready) return true;
+
+      // 2) compat già inizializzato
+      if (window.firebase && typeof window.firebase.firestore === 'function') {
+        try {
+          // se c'è almeno un'app inizializzata, lo consideriamo ok
+          if (window.firebase.apps && window.firebase.apps.length) return true;
+        } catch (_) {}
+      }
+
+      // attesa breve (3s)
       const start = Date.now();
       while (Date.now() - start < 3000) {
         if (window.FirebaseModule && window.FirebaseModule.ready) return true;
+        if (window.firebase && window.firebase.apps && window.firebase.apps.length) return true;
         await new Promise(r => setTimeout(r, 100));
       }
       throw new Error('Firebase non pronto');
     }
 
     async _fetchMembersFromFirebase() {
+      // preferisci API del modulo
       const FB = window.FirebaseModule || {};
       if (typeof FB.getMembers === 'function') {
         const list = await FB.getMembers();
         if (Array.isArray(list)) return list;
+      }
+      // fallback compat (se possibile)
+      if (window.firebase && typeof window.firebase.firestore === 'function' &&
+          window.firebase.apps && window.firebase.apps.length) {
+        const db = window.firebase.firestore();
+        const snap = await db.collection('members').get();
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
       }
       console.warn('[Storage] getMembers non disponibile');
       return [];
@@ -126,24 +154,76 @@
     async _updateMemberDoc(id, update) {
       const FB = window.FirebaseModule || {};
       if (typeof FB.updateMember === 'function') return FB.updateMember(id, update);
+
+      if (window.firebase && typeof window.firebase.firestore === 'function' &&
+          window.firebase.apps && window.firebase.apps.length) {
+        const db = window.firebase.firestore();
+        await db.collection('members').doc(id).set(update, { merge: true });
+        return true;
+      }
       throw new Error('updateMember non disponibile');
     }
 
     async _deleteMemberDoc(id) {
       const FB = window.FirebaseModule || {};
       if (typeof FB.deleteMember === 'function') return FB.deleteMember(id);
+
+      if (window.firebase && typeof window.firebase.firestore === 'function' &&
+          window.firebase.apps && window.firebase.apps.length) {
+        const db = window.firebase.firestore();
+        await db.collection('members').doc(id).delete();
+        return true;
+      }
       throw new Error('deleteMember non disponibile');
+    }
+
+    async _fetchRemindersFromFirebase() {
+      const FB = window.FirebaseModule || {};
+      if (typeof FB.getReminders === 'function') {
+        const list = await FB.getReminders();
+        if (Array.isArray(list)) return list;
+      }
+      if (window.firebase && typeof window.firebase.firestore === 'function' &&
+          window.firebase.apps && window.firebase.apps.length) {
+        const db = window.firebase.firestore();
+        const snap = await db.collection('reminders').get().catch(() => null);
+        if (!snap) return [];
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      }
+      return [];
     }
 
     async _fetchTemplatesFromFirebase() {
       const FB = window.FirebaseModule || {};
       if (typeof FB.getTemplates === 'function') return FB.getTemplates();
+      if (window.firebase && typeof window.firebase.firestore === 'function' &&
+          window.firebase.apps && window.firebase.apps.length) {
+        const db = window.firebase.firestore();
+        const snap = await db.collection('templates').get().catch(() => null);
+        if (snap && !snap.empty) {
+          const out = {};
+          snap.forEach(d => {
+            const v = d.data() || {};
+            const key = d.id;
+            out[key] = { key, name: v.name || key, body: v.body || '', updatedAt: v.updatedAt || null };
+          });
+          return out;
+        }
+      }
       return {};
     }
 
     async _saveTemplateDoc(key, tpl) {
       const FB = window.FirebaseModule || {};
       if (typeof FB.saveTemplate === 'function') return FB.saveTemplate(key, tpl);
+
+      if (window.firebase && typeof window.firebase.firestore === 'function' &&
+          window.firebase.apps && window.firebase.apps.length) {
+        const db = window.firebase.firestore();
+        const data = Object.assign({}, tpl, { name: tpl.name || key, updatedAt: new Date().toISOString() });
+        await db.collection('templates').doc(key).set(data, { merge: true });
+        return true;
+      }
       throw new Error('saveTemplate non disponibile');
     }
 
@@ -154,13 +234,17 @@
       this._retryTimer = setInterval(async () => {
         tries++;
         try {
-          if (window.FirebaseModule && window.FirebaseModule.ready) {
+          const ready =
+            (window.FirebaseModule && window.FirebaseModule.ready) ||
+            (window.firebase && window.firebase.apps && window.firebase.apps.length);
+          if (ready) {
             clearInterval(this._retryTimer);
             this._retryTimer = null;
-            console.log('🔄 [Storage] Firebase pronto, carico membri...');
+            console.log('🔄 [Storage] Firebase pronto, warmup cache…');
             await this.refreshMembers();
+            await this.refreshReminders().catch(() => {});
             await this.refreshTemplates().catch(() => {});
-          } else if (tries > 60) { // ~60*500ms = 30s
+          } else if (tries > 60) { // ~30s
             clearInterval(this._retryTimer);
             this._retryTimer = null;
             console.warn('⏱️ [Storage] Firebase non è diventato pronto nei tempi previsti.');
