@@ -41,7 +41,6 @@
         importcsv: window.ImportCsvModule     // opzionale
       };
       this.modules = candidates;
-      // fallback di cortesia per moduli mancanti (non bloccare l’app)
       if (!this.modules.auth) {
         this.modules.auth = { init: async ()=>true, mount: ()=>{} };
       }
@@ -57,12 +56,10 @@
       const s = this.modules.storage;
       if (!s) throw new Error('Storage non disponibile');
 
-      // se non inizializzato, inizializza
       if (!s.isInitialized && typeof s.init === 'function') {
         await s.init();
       }
 
-      // se zero membri, prova un refresh
       if (typeof s.getMembersCached === 'function' &&
           s.getMembersCached().length === 0 &&
           typeof s.refreshMembers === 'function') {
@@ -83,7 +80,6 @@
           this.renderPage(page);
         });
 
-        // attiva l'item già marcato active (se presente)
         const active = nav.querySelector('.nav-item.active');
         if (active) this.state.currentPage = active.getAttribute('data-page') || 'dashboard';
       }
@@ -120,14 +116,12 @@
       if (titleEl) titleEl.textContent = this._prettyTitle(page);
       if (!container) return;
 
-      // Spinner
       container.innerHTML = `
         <div class="loading">
           <i class="fa-solid fa-spinner fa-spin"></i> Caricamento…
         </div>
       `;
 
-      // mappa pagina -> modulo
       const map = {
         dashboard: 'analytics',
         tesserati: 'contacts',
@@ -139,10 +133,9 @@
         'import-csv':'importcsv'
       };
 
-      const key = map[page] || page; // fallback: stesso nome
+      const key = map[page] || page;
       const mod = this.modules[key];
 
-      // se non c'è, messaggio elegante
       if (!mod) {
         container.innerHTML = `
           <section class="empty-state">
@@ -153,22 +146,14 @@
         return;
       }
 
-      // init one-shot
       if (typeof mod.init === 'function' && !this._initedModules.has(key)) {
-        try {
-          await mod.init();
-        } catch (e) {
-          console.warn(`[${key}] init warning:`, e?.message || e);
-        } finally {
-          this._initedModules.add(key);
-        }
+        try { await mod.init(); } catch (e) { console.warn(`[${key}] init`, e); }
+        this._initedModules.add(key);
       }
 
-      // mount
       if (typeof mod.mount === 'function') {
-        try {
-          await mod.mount(container, { page, app: this });
-        } catch (e) {
+        try { await mod.mount(container, { page, app: this }); }
+        catch (e) {
           console.error(`[${key}] mount error:`, e);
           container.innerHTML = `
             <section class="empty-state">
@@ -212,7 +197,6 @@
         bScad.hidden = total <= 0;
       }
 
-      // badge marketing: numero template disponibili
       const tpls = (typeof s.getTemplates === 'function' ? s.getTemplates() : {}) || {};
       const bMkt = document.getElementById('badge-marketing');
       if (bMkt) {
@@ -221,13 +205,9 @@
         bMkt.hidden = n <= 0;
       }
 
-      // badge calendario (se vuoi mostrare numero eventi, qui potremmo leggerli in futuro)
       const bCal = document.getElementById('badge-calendario');
-      if (bCal) {
-        bCal.hidden = true;
-      }
+      if (bCal) bCal.hidden = true;
 
-      // badge automazione: reminders in coda (se collezione esiste)
       const rems = (typeof s.getRemindersCached === 'function' ? s.getRemindersCached() : []) || [];
       const bAuto = document.getElementById('badge-automazione');
       if (bAuto) {
@@ -280,4 +260,16 @@
   // Esporta global
   window.App = App;
   window.App_Instance = App; // compat vecchio codice
+
+  // -------- AUTOBOOT SICURO --------
+  function boot() {
+    try { window.App.init(); }
+    catch (e) { console.error('App boot error:', e); }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    // con <script defer> DOM è già pronto
+    boot();
+  }
 })();
