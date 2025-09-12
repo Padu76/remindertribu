@@ -5,43 +5,58 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>ReminderTribù</title>
 
-  <!-- CSS: tieni l’ordine, non cambio font -->
+  <!-- SAFE CORE: layout minimo anche se i CSS esterni non caricano -->
+  <style id="layout-core">
+    :root{ --sidebar-w:260px; }
+    html,body{height:100%;margin:0}
+    body{
+      background:linear-gradient(135deg,#089e89 0%,#5f66ff 50%,#e08a57 100%) fixed;
+      color:#fff; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    #sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);z-index:10;overflow:auto}
+    #page-content{margin-left:var(--sidebar-w);min-height:100vh;padding:16px;overflow:auto}
+    .nav{display:flex;flex-direction:column;gap:.25rem;padding:10px}
+    .nav.brand{padding:12px 10px;font-weight:700}
+    .nav-item{display:flex;align-items:center;gap:.5rem;padding:.5rem .6rem;border-radius:8px;color:#fff;text-decoration:none}
+    .nav-item:hover,.nav-item.active{background:rgba(255,255,255,.1)}
+    .nav-badge{margin-left:auto;background:#e74c3c;border-radius:999px;padding:0 .45rem;font-size:.75rem}
+    .page-content{display:block}
+    @media(max-width:980px){ #sidebar{position:relative;width:100%;height:auto} #page-content{margin-left:0} }
+  </style>
+
+  <!-- CSS PROGETTO (mantieni l’ordine) -->
   <link rel="stylesheet" href="assets/css/components.css">
   <link rel="stylesheet" href="assets/css/dashboard.css">
   <link rel="stylesheet" href="assets/css/auth.css">
   <link rel="stylesheet" href="assets/css/main.css">
   <link rel="stylesheet" href="assets/css/responsive.css">
 
-  <!-- (opzionale per icone, se già incluse altrove puoi rimuovere) -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-LlQyQw8k5..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <!-- Font Awesome: SENZA integrity (quello vecchio era troncato e bloccava il foglio) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body>
-  <!-- Sidebar fissa -->
+  <!-- Sidebar -->
   <aside id="sidebar">
-    <div class="nav brand">
-      <div class="logo">🔔 ReminderTribù</div>
-    </div>
+    <div class="nav brand">🔔 ReminderTribù</div>
     <nav class="nav" id="main-navigation">
-      <a href="#" class="nav-item active" data-page="dashboard"><i class="fa-solid fa-gauge"></i> <span>Dashboard</span></a>
-      <a href="#" class="nav-item" data-page="tesserati"><i class="fa-regular fa-id-card"></i> <span>Tesserati CSEN</span></a>
-      <a href="#" class="nav-item" data-page="scadenze"><i class="fa-regular fa-bell"></i> <span>Scadenze</span> <span class="nav-badge" id="badge-scadenze"></span></a>
-      <a href="#" class="nav-item" data-page="marketing"><i class="fa-regular fa-message"></i> <span>Marketing</span></a>
-      <a href="#" class="nav-item" data-page="calendario"><i class="fa-regular fa-calendar"></i> <span>Calendario</span></a>
-      <a href="#" class="nav-item" data-page="automazione"><i class="fa-regular fa-clock"></i> <span>Automazione</span> <span class="nav-badge" id="badge-automazione"></span></a>
-      <a href="#" class="nav-item" data-page="whatsapp"><i class="fa-brands fa-whatsapp"></i> <span>WhatsApp</span></a>
-      <a href="#" class="nav-item" data-page="importcsv"><i class="fa-regular fa-file-arrow-up"></i> <span>Import CSV</span></a>
+      <a href="#" class="nav-item active" data-page="dashboard"><i class="fa-solid fa-gauge"></i><span>Dashboard</span></a>
+      <a href="#" class="nav-item" data-page="tesserati"><i class="fa-regular fa-id-card"></i><span>Tesserati CSEN</span></a>
+      <a href="#" class="nav-item" data-page="scadenze"><i class="fa-regular fa-bell"></i><span>Scadenze</span><span class="nav-badge" id="badge-scadenze"></span></a>
+      <a href="#" class="nav-item" data-page="marketing"><i class="fa-regular fa-message"></i><span>Marketing</span></a>
+      <a href="#" class="nav-item" data-page="calendario"><i class="fa-regular fa-calendar"></i><span>Calendario</span></a>
+      <a href="#" class="nav-item" data-page="automazione"><i class="fa-regular fa-clock"></i><span>Automazione</span><span class="nav-badge" id="badge-automazione"></span></a>
+      <a href="#" class="nav-item" data-page="whatsapp"><i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span></a>
+      <a href="#" class="nav-item" data-page="importcsv"><i class="fa-regular fa-file-arrow-up"></i><span>Import CSV</span></a>
     </nav>
   </aside>
 
   <!-- Contenuto -->
-  <main id="page-content" class="page-content">
-    <!-- popolato via App.renderPage(...) -->
-  </main>
+  <main id="page-content" class="page-content"></main>
 
-  <!-- Config generata dal build -->
+  <!-- Config -->
   <script defer src="config.js"></script>
 
-  <!-- Infra & moduli (ordine IMPORTANTE) -->
+  <!-- Infra & Moduli (ordine importante) -->
   <script defer src="assets/js/components/toast.js"></script>
   <script defer src="assets/js/firebase.js"></script>
   <script defer src="assets/js/modules/storage.js"></script>
@@ -59,7 +74,7 @@
   <!-- Orchestratore -->
   <script defer src="assets/js/app.js"></script>
 
-  <!-- Bootstrap sicuro: sempre dashboard al primo carico -->
+  <!-- Bootstrap sicuro -->
   <script defer>
     (async () => {
       try {
@@ -68,7 +83,7 @@
       } catch (e) {
         console.error('Bootstrap error', e);
         const c = document.getElementById('page-content');
-        if (c) c.innerHTML = '<section class="card"><h2>Errore inizializzazione</h2><p>Riprova a ricaricare la pagina.</p></section>';
+        if (c) c.innerHTML = '<section class="card"><h2>Errore inizializzazione</h2><p>Ricarica la pagina.</p></section>';
       }
     })();
   </script>
