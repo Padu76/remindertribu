@@ -20,18 +20,17 @@
     .nav-item{display:flex;align-items:center;gap:.5rem;padding:.5rem .6rem;border-radius:8px;color:#fff;text-decoration:none}
     .nav-item:hover,.nav-item.active{background:rgba(255,255,255,.1)}
     .nav-badge{margin-left:auto;background:#e74c3c;border-radius:999px;padding:0 .45rem;font-size:.75rem}
-    .page-content{display:block}
     @media(max-width:980px){ #sidebar{position:relative;width:100%;height:auto} #page-content{margin-left:0} }
   </style>
 
-  <!-- CSS PROGETTO (mantieni l’ordine) -->
+  <!-- CSS del progetto (mantieni l’ordine) -->
   <link rel="stylesheet" href="assets/css/components.css">
   <link rel="stylesheet" href="assets/css/dashboard.css">
   <link rel="stylesheet" href="assets/css/auth.css">
   <link rel="stylesheet" href="assets/css/main.css">
   <link rel="stylesheet" href="assets/css/responsive.css">
 
-  <!-- Font Awesome: SENZA integrity (quello vecchio era troncato e bloccava il foglio) -->
+  <!-- Font Awesome (senza SRI rotto) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body>
@@ -53,14 +52,19 @@
   <!-- Contenuto -->
   <main id="page-content" class="page-content"></main>
 
-  <!-- Config -->
+  <!-- 🔔 Container richiesto dal tuo toast.js -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Config generata dal build -->
   <script defer src="config.js"></script>
 
-  <!-- Infra & Moduli (ordine importante) -->
+  <!-- Infra & Storage (ordine importante) -->
   <script defer src="assets/js/components/toast.js"></script>
-  <script defer src="assets/js/firebase.js"></script>
+  <!-- ✅ percorso corretto del firebase -->
+  <script defer src="assets/js/config/firebase.js"></script>
   <script defer src="assets/js/modules/storage.js"></script>
 
+  <!-- Moduli -->
   <script defer src="assets/js/modules/analytics.js"></script>
   <script defer src="assets/js/modules/contacts.js"></script>
   <script defer src="assets/js/modules/scadenze.js"></script>
