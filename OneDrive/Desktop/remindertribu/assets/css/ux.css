@@ -1,0 +1,230 @@
+/* assets/css/ux.css */
+/* Design system compatto per ReminderTribù – nessuna chiave, zero mock  */
+:root{
+  --maxw: 1180px;
+  --radius: 12px;
+  --gap-1: 8px;
+  --gap-2: 12px;
+  --gap-3: 16px;
+  --glass-bg: rgba(11,18,32,.55);
+  --border: #243041;
+  --text-dim: rgba(255,255,255,.78);
+  --text-soft: rgba(255,255,255,.6);
+  --focus: #3b82f6;
+}
+
+/* ===== Layout principale ===== */
+.content-area{
+  padding: var(--gap-3);
+  display: block;
+}
+#page-content,
+.page-container{
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+}
+
+/* ===== Header di pagina (compatto) ===== */
+.page-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: var(--gap-2);
+  padding: var(--gap-2) 0 var(--gap-2);
+}
+.page-title{
+  margin:0;
+  font-size: 1.6rem; /* ~26px */
+  line-height:1.2;
+}
+.page-subtitle{
+  margin:.25rem 0 0 0;
+  color: var(--text-soft);
+}
+
+/* Riduci eventuali “hero/gradient banner” legacy */
+.section-hero,
+.hero,
+.gradient-hero,
+.banner-hero{
+  min-height: unset !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* ===== Card & contenitori ===== */
+.card{
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--gap-3);
+  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+}
+.card + .card{ margin-top: var(--gap-3); }
+
+/* Sezioni vuote / helper */
+.empty{
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--text-soft);
+  background: rgba(11,18,32,.3);
+}
+
+/* ===== Griglie KPI ===== */
+.kpi-grid .kpi-card{
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.kpi-grid .kpi-card:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(0,0,0,.22);
+  border-color: #2e3b50;
+}
+
+/* ===== Tabelle compatte ===== */
+.table-wrap{
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--glass-bg);
+}
+.table{
+  width:100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: .95rem;
+}
+.table thead th{
+  position: sticky;
+  top: 0;
+  background: #0e1626;
+  z-index: 2;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px;
+}
+.table tbody td{
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(36,48,65,.65);
+}
+.table tbody tr:hover{
+  background: rgba(62,81,115,.18);
+}
+
+/* ===== Form e controlli ===== */
+.form-control{
+  height: 38px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(8,12,22,.7);
+  color: #fff;
+  width: 100%;
+  outline: none;
+}
+.form-control:focus{
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.25);
+}
+
+textarea.form-control{
+  min-height: 110px;
+  line-height: 1.35;
+}
+
+/* ===== Bottoni ===== */
+.btn{
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 600;
+}
+.btn-sm{ padding: 6px 10px; font-size: .92rem; border-radius: 9px; }
+.btn-primary{
+  background: #22c55e;
+  border: 1px solid #189149;
+  color: #03140a;
+}
+.btn-primary:hover{ filter: brightness(1.05); }
+.btn-outline{
+  background: transparent;
+  border: 1px solid var(--border);
+  color: #e6eefc;
+}
+.btn-outline:hover{
+  background: rgba(255,255,255,.06);
+}
+
+/* ===== Sidebar ===== */
+.sidebar .nav .nav-item{
+  padding: 9px 10px;
+  border-radius: 10px;
+}
+.sidebar .nav .nav-item i{
+  width: 20px;
+}
+
+/* ===== Calendario (più denso) ===== */
+.cal-head{ opacity:.8; }
+.cal-grid{ gap: 6px; }
+.cal-cell{
+  min-height: 78px; /* meno alta */
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--glass-bg);
+}
+.cal-cell .day{ font-weight:700; opacity:.9; }
+.cal-cell .dot{
+  display:inline-block;
+  min-width:18px;
+  padding:.05rem .35rem;
+  border-radius:8px;border:1px solid var(--border);
+  font-size:.75rem;
+  margin-right:4px;
+}
+.cal-cell.today{ outline: 2px solid var(--focus); }
+
+/* ===== WhatsApp / moduli azioni rapide ===== */
+.quick-actions{
+  display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;
+}
+.quick-actions .btn{ padding:7px 10px; }
+
+/* ===== Liste con scroll controllato ===== */
+.scroll-y{
+  max-height: 65vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--glass-bg);
+}
+
+/* ===== Utility ===== */
+.badge{
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 4px 8px;
+  font-size: .9rem;
+  background: rgba(11,18,32,.6);
+}
+.text-soft{ color: var(--text-soft); }
+.text-dim{ color: var(--text-dim); }
+
+/* ===== Responsiveness ===== */
+@media (max-width: 1200px){
+  :root{ --maxw: 1040px; }
+}
+@media (max-width: 980px){
+  :root{ --maxw: 900px; }
+  .page-header{ flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 720px){
+  :root{ --maxw: 100%; }
+  .content-area{ padding: var(--gap-2); }
+  .page-title{ font-size: 1.35rem; }
+  .cal-cell{ min-height: 66px; }
+}

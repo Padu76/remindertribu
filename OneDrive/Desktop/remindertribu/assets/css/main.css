@@ -1,0 +1,124 @@
+/* assets/css/main.css  —  LAYOUT STABILE 2 COLONNE + FIX TITOLI  */
+
+/* ---------- Base / Reset ---------- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+:root{
+  /* larghezza sidebar e padding contenuto */
+  --sidebar-w: 260px;
+  --content-pad: 16px;
+
+  /* colori di base (non invasivi: usati solo se mancano altri css) */
+  --bg-grad-1: #089e89;
+  --bg-grad-2: #5f66ff;
+  --bg-grad-3: #e08a57;
+
+  --z-sidebar: 10;
+}
+
+/* ---------- Sfondo app (gradient fisso come già usato) ---------- */
+body{
+  /* gradient fisso, non scorre con la pagina */
+  background: linear-gradient(135deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 50%, var(--bg-grad-3) 100%) fixed;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------- Layout 2 colonne ---------- */
+/* Sidebar: id preferito #sidebar, fallback .sidebar */
+#sidebar,
+.sidebar{
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-w);
+  z-index: var(--z-sidebar);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Contenuto principale a destra della sidebar */
+#page-content{
+  margin-left: var(--sidebar-w);
+  min-height: 100vh;
+  padding: var(--content-pad);
+  display: block;
+  overflow: auto;
+  /* spazio per eventuali notch/safe-area su iOS */
+  padding-left: calc(var(--content-pad) + env(safe-area-inset-left, 0px));
+  padding-right: calc(var(--content-pad) + env(safe-area-inset-right, 0px));
+  padding-top: calc(var(--content-pad) + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(var(--content-pad) + env(safe-area-inset-bottom, 0px));
+}
+
+/* ---------- Difese: evita elementi “ancorati” in basso ---------- */
+.page-title,
+.section-title,
+.page-header,
+.section-header{
+  position: static !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  width: auto !important;
+}
+
+/* Alcuni temi mettono footer fixed: qui lo rendiamo normale se presente */
+.page-footer,
+.section-footer{
+  position: static !important;
+}
+
+/* ---------- Helpers non invasivi ---------- */
+.container,
+.page-container{
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.hidden{ display: none !important; }
+
+/* ---------- Tabelle generiche (soft) ---------- */
+table.rt{
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+table.rt th,
+table.rt td{
+  padding: .55rem .65rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+/* ---------- Card generica (soft, per coerenza) ---------- */
+.card{
+  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+/* ---------- Responsive: mobile, sidebar sopra ---------- */
+@media (max-width: 980px){
+  #sidebar,
+  .sidebar{
+    position: relative;
+    width: 100%;
+    height: auto;
+    max-height: none;
+  }
+  #page-content{
+    margin-left: 0;
+    padding: 12px;
+  }
+}
