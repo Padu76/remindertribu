@@ -21,14 +21,22 @@
     }
     return null;
   }
+  
   function formatISO(d) {
+    if (!d) return '';
     const z = new Date(d);
     const yyyy = z.getFullYear();
     const mm = String(z.getMonth() + 1).padStart(2, '0');
     const dd = String(z.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
   }
-  function addYears(d, n) { const x = new Date(d.getTime()); x.setFullYear(x.getFullYear() + (n||1)); return x; }
+  
+  function addYears(d, n) { 
+    const x = new Date(d.getTime()); 
+    x.setFullYear(x.getFullYear() + (n||1)); 
+    return x; 
+  }
+  
   function daysLeftFromToday(d) {
     if (!d) return null;
     const today = new Date();
@@ -36,104 +44,390 @@
     const b = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
     return Math.floor((b - a) / DAY);
   }
+  
   function computeStatus(daysLeft) {
     if (daysLeft == null) return 'unknown';
     if (daysLeft < 0) return 'expired';
     if (daysLeft <= 30) return 'expiring';
     return 'active';
   }
-  function pickPhone(m) { return m?.whatsapp || m?.phone || m?.telefono || ''; }
-  function pickName(m)  { return m?.fullName || m?.name || m?.nome || ''; }
-  function pickExpiry(m){ return m?.scadenza || m?.expiryDate || m?.expiry || m?.nextRenewal || null; }
+  
+  function pickPhone(m) { 
+    return m?.whatsapp || m?.phone || m?.telefono || m?.cellulare || ''; 
+  }
+  
+  function pickName(m) { 
+    return m?.fullName || m?.name || m?.nome || m?.nominativo || ''; 
+  }
+  
+  function pickExpiry(m) { 
+    return m?.scadenza || m?.dataScadenza || m?.expiryDate || m?.expiry || m?.nextRenewal || null; 
+  }
 
   function vmFromMember(m) {
     const expiry = parseDateMaybe(pickExpiry(m));
     const daysLeft = daysLeftFromToday(expiry);
     const status = computeStatus(daysLeft);
-    return { id: m.id, name: pickName(m), phone: pickPhone(m), expiry, daysLeft, status, raw: m };
+    return { 
+      id: m.id, 
+      name: pickName(m), 
+      phone: pickPhone(m), 
+      expiry, 
+      daysLeft, 
+      status, 
+      raw: m 
+    };
   }
 
-  function chip(st) {
-    const map = {
-      expiring: { c:'badge-amber', t:'In scadenza' },
-      expired:  { c:'badge-red',   t:'Scaduto' }
-    };
-    const x = map[st] || { c:'badge-gray', t:'—' };
-    return `<span class="chip ${x.c}">${x.t}</span>`;
+  function statusBadge(status, daysLeft) {
+    if (status === 'unknown') {
+      return '<span class="badge badge-gray">Sconosciuto</span>';
+    }
+    if (status === 'expired') {
+      return '<span class="badge badge-danger">Scaduto</span>';
+    }
+    if (status === 'expiring') {
+      return '<span class="badge badge-warning">In scadenza</span>';
+    }
+    return '<span class="badge badge-success">Attivo</span>';
   }
 
   function ensureStylesOnce() {
-    if (document.getElementById('scadenze-inline-styles')) return;
+    if (document.getElementById('scadenze-styles')) return;
     const css = `
-      .rt-toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:.75rem 0;}
-      .rt-toolbar .right{margin-left:auto;display:flex;gap:.5rem;align-items:center}
-      .rt-input,.rt-select{padding:.5rem .6rem;border-radius:.5rem;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.15);color:#fff}
-      .rt-btn{padding:.45rem .7rem;border-radius:.6rem;border:0;background:#2f7ddc;color:#fff;cursor:pointer}
-      .rt-btn.secondary{background:#3c4658}
-      .rt-btn.danger{background:#c23b3b}
-      .rt-table{width:100%;border-collapse:separate;border-spacing:0;margin-top:.25rem}
-      .rt-table th,.rt-table td{padding:.55rem .65rem;border-bottom:1px solid rgba(255,255,255,.08)}
-      .chip{display:inline-block;padding:.2rem .45rem;border-radius:999px;font-size:.8rem;line-height:1}
-      .badge-amber{background:#a97a1f;color:#fff}
-      .badge-red{background:#b43333;color:#fff}
-      .rt-actions{display:flex;gap:.35rem;flex-wrap:wrap}
-      .rt-pop{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:9999}
-      .rt-pop .box{min-width:280px;max-width:92vw;background:#1f2937;color:#fff;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px;box-shadow:0 12px 38px rgba(0,0,0,.35)}
-      .rt-pop h3{margin:.2rem 0 1rem;font-size:1.05rem}
-      .rt-row{display:flex;gap:.5rem;align-items:center;margin:.35rem 0}
+      /* TribuStudio Style */
+      .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+      }
+      
+      .page-header h1 {
+        font-size: 1.875rem;
+        font-weight: 700;
+        color: #1e293b;
+      }
+      
+      .toolbar {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        margin-bottom: 1.5rem;
+      }
+      
+      .search-box {
+        flex: 1;
+        max-width: 400px;
+        position: relative;
+      }
+      
+      .search-input {
+        width: 100%;
+        padding: 0.625rem 1rem 0.625rem 2.5rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        transition: all 0.3s;
+      }
+      
+      .search-input:focus {
+        outline: none;
+        border-color: #f97316;
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+      }
+      
+      .search-icon {
+        position: absolute;
+        left: 0.875rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #64748b;
+      }
+      
+      .btn {
+        padding: 0.625rem 1.25rem;
+        border-radius: 8px;
+        border: none;
+        font-weight: 500;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      
+      .btn-primary {
+        background: #f97316;
+        color: white;
+      }
+      
+      .btn-primary:hover {
+        background: #ea580c;
+      }
+      
+      .btn-secondary {
+        background: #e2e8f0;
+        color: #1e293b;
+      }
+      
+      .btn-secondary:hover {
+        background: #cbd5e1;
+      }
+      
+      .btn-success {
+        background: #10b981;
+        color: white;
+      }
+      
+      .btn-success:hover {
+        background: #059669;
+      }
+      
+      .btn-danger {
+        background: #ef4444;
+        color: white;
+      }
+      
+      .btn-danger:hover {
+        background: #dc2626;
+      }
+      
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+      }
+      
+      .data-table thead {
+        background: #f8fafc;
+        border-bottom: 2px solid #e2e8f0;
+      }
+      
+      .data-table th {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+      }
+      
+      .data-table tbody tr {
+        border-bottom: 1px solid #e2e8f0;
+        transition: background 0.2s;
+      }
+      
+      .data-table tbody tr:hover {
+        background: #f8fafc;
+      }
+      
+      .data-table td {
+        padding: 1rem;
+        color: #1e293b;
+      }
+      
+      .badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+      }
+      
+      .badge-success {
+        background: #dcfce7;
+        color: #166534;
+      }
+      
+      .badge-warning {
+        background: #fed7aa;
+        color: #9a3412;
+      }
+      
+      .badge-danger {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      
+      .badge-gray {
+        background: #f1f5f9;
+        color: #475569;
+      }
+      
+      .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+      }
+      
+      .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.75rem;
+      }
+      
+      .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #64748b;
+      }
+      
+      .empty-state i {
+        font-size: 4rem;
+        color: #e2e8f0;
+        margin-bottom: 1rem;
+      }
+      
+      .empty-state h3 {
+        font-size: 1.25rem;
+        color: #1e293b;
+        margin-bottom: 0.5rem;
+      }
+      
+      .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .modal-overlay.active {
+        display: flex;
+      }
+      
+      .modal {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      
+      .modal-header {
+        margin-bottom: 1.5rem;
+      }
+      
+      .modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1e293b;
+      }
+      
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+      
+      .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #1e293b;
+      }
+      
+      .form-input {
+        width: 100%;
+        padding: 0.625rem 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.875rem;
+      }
+      
+      .form-input:focus {
+        outline: none;
+        border-color: #f97316;
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+      }
+      
+      .modal-footer {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        margin-top: 2rem;
+      }
     `;
     const style = document.createElement('style');
-    style.id = 'scadenze-inline-styles';
+    style.id = 'scadenze-styles';
     style.textContent = css;
     document.head.appendChild(style);
   }
 
-  function askDate(defaultISO) {
+  function askDate(member) {
     return new Promise((resolve) => {
-      const wrap = document.createElement('div');
-      wrap.className = 'rt-pop';
-      wrap.innerHTML = `
-        <div class="box">
-          <h3>Imposta nuova scadenza</h3>
-          <div class="rt-row">
-            <input type="date" id="rt-renew-date" class="rt-input" value="${defaultISO}" />
+      const currentExpiry = parseDateMaybe(pickExpiry(member.raw));
+      const suggestedDate = currentExpiry ? addYears(currentExpiry, 1) : addYears(new Date(), 1);
+      
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal">
+          <div class="modal-header">
+            <h3 class="modal-title">Imposta Scadenza - ${member.name}</h3>
           </div>
-          <div class="rt-row" style="justify-content:flex-end">
-            <button class="rt-btn secondary" data-act="cancel">Annulla</button>
-            <button class="rt-btn" data-act="ok">Salva</button>
+          <div class="form-group">
+            <label class="form-label">Data Scadenza</label>
+            <input type="date" id="renewal-date" class="form-input" value="${formatISO(suggestedDate)}">
           </div>
-        </div>`;
-      document.body.appendChild(wrap);
-      const onClose = (val) => { wrap.remove(); resolve(val); };
-      wrap.addEventListener('click', (e) => { if (e.target === wrap) onClose(null); });
-      wrap.querySelector('[data-act="cancel"]').onclick = () => onClose(null);
-      wrap.querySelector('[data-act="ok"]').onclick = () => {
-        const v = wrap.querySelector('#rt-renew-date').value;
-        onClose(v || null);
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-btn">Annulla</button>
+            <button class="btn btn-primary" id="save-btn">Salva</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      setTimeout(() => modal.classList.add('active'), 10);
+      
+      const cleanup = (value) => {
+        modal.classList.remove('active');
+        setTimeout(() => {
+          modal.remove();
+          resolve(value);
+        }, 300);
       };
+      
+      modal.querySelector('#cancel-btn').onclick = () => cleanup(null);
+      modal.querySelector('#save-btn').onclick = () => {
+        const date = modal.querySelector('#renewal-date').value;
+        cleanup(date || null);
+      };
+      
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) cleanup(null);
+      });
     });
   }
 
   async function renewMember(member, storage) {
-    const current = parseDateMaybe(pickExpiry(member)) || new Date();
-    const suggested = addYears(current, 1);
-    const val = await askDate(formatISO(suggested));
-    if (!val) return false;
+    const newDate = await askDate(member);
+    if (!newDate) return false;
 
-    const payload = { scadenza: val };
+    const payload = { 
+      scadenza: newDate,
+      dataScadenza: newDate 
+    };
+    
     try {
-      if (typeof storage.updateMemberRenewal === 'function') {
-        await storage.updateMemberRenewal(member.id, val);
+      if (storage.firebase?.db) {
+        await storage.firebase.db.collection('members').doc(member.id).set(payload, { merge: true });
       } else if (typeof storage.updateMember === 'function') {
         await storage.updateMember(member.id, payload);
-      } else if (typeof storage.saveMember === 'function') {
-        await storage.saveMember(member.id, payload);
-      } else if (storage.firebase?.db) {
-        await storage.firebase.db.collection('members').doc(member.id).set(payload, { merge: true });
       } else {
         alert('Aggiornamento non disponibile.');
         return false;
       }
+      
       await storage.refreshMembers?.();
       window.App?._updateBadges?.();
       return true;
@@ -145,56 +439,79 @@
   }
 
   async function deleteMember(member, storage) {
-    if (!confirm(`Eliminare "${pickName(member)}"?`)) return false;
+    if (!confirm(`Eliminare "${member.name}"?`)) return false;
+    
     try {
-      if (typeof storage.deleteMember === 'function') {
-        await storage.deleteMember(member.id);
-      } else if (typeof storage.removeMember === 'function') {
-        await storage.removeMember(member.id);
-      } else if (storage.firebase?.db) {
+      if (storage.firebase?.db) {
         await storage.firebase.db.collection('members').doc(member.id).delete();
+      } else if (typeof storage.deleteMember === 'function') {
+        await storage.deleteMember(member.id);
       } else {
         alert('Eliminazione non disponibile.');
         return false;
       }
+      
       await storage.refreshMembers?.();
       window.App?._updateBadges?.();
       return true;
     } catch (e) {
       console.error('deleteMember error:', e);
-      alert('Errore nell’eliminazione.');
+      alert('Errore nell\'eliminazione.');
       return false;
     }
   }
 
   function sendWhatsApp(phone, message) {
-    if (window.WhatsAppModule?.sendText) {
-      return window.WhatsAppModule.sendText(phone, message);
-    }
-    if (window.TribuApp?.sendWhatsAppMessage) {
-      return window.TribuApp.sendWhatsAppMessage(phone, message);
-    }
-    alert('Modulo WhatsApp non disponibile.');
+    const cleanPhone = phone.replace(/\D/g, '');
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
   }
 
-  function render(container, vms, q = '') {
-    let list = vms.filter(x => x.status === 'expired' || x.status === 'expiring');
-    if (q) {
-      const qq = q.toLowerCase();
-      list = list.filter(x => (x.name||'').toLowerCase().includes(qq) || (x.phone||'').toLowerCase().includes(qq));
+  function render(container, vms, query = '') {
+    // Filtro per query
+    let list = vms;
+    if (query) {
+      const q = query.toLowerCase();
+      list = list.filter(vm => 
+        (vm.name || '').toLowerCase().includes(q) || 
+        (vm.phone || '').toLowerCase().includes(q)
+      );
     }
+    
+    // Separa per stato
+    const expired = list.filter(vm => vm.status === 'expired');
+    const expiring = list.filter(vm => vm.status === 'expiring');
+    const unknown = list.filter(vm => vm.status === 'unknown');
+    
+    // Mostra tutti i tesserati che non hanno stato 'active'
+    const toShow = [...expired, ...expiring, ...unknown];
 
     container.innerHTML = `
-      <section class="page-block">
-        <div class="rt-toolbar">
-          <div class="right">
-            <input id="s-search" class="rt-input" placeholder="Cerca…" value="${q || ''}">
-            <button id="s-reload" class="rt-btn secondary"><i class="fa-solid fa-rotate"></i> Ricarica</button>
-          </div>
+      <div class="toolbar">
+        <div class="search-box">
+          <i class="fas fa-search search-icon"></i>
+          <input 
+            type="text" 
+            id="search-input" 
+            class="search-input" 
+            placeholder="Cerca per nome o telefono..." 
+            value="${query}"
+          >
         </div>
+        <button id="reload-btn" class="btn btn-secondary">
+          <i class="fas fa-sync-alt"></i> Ricarica
+        </button>
+      </div>
 
-        <div class="card">
-          <table class="rt-table">
+      <div class="card">
+        ${toShow.length === 0 ? `
+          <div class="empty-state">
+            <i class="fas fa-check-circle"></i>
+            <h3>Tutto in regola!</h3>
+            <p>Non ci sono tesserati in scadenza o senza data di scadenza.</p>
+          </div>
+        ` : `
+          <table class="data-table">
             <thead>
               <tr>
                 <th>Nome</th>
@@ -202,132 +519,142 @@
                 <th>Scadenza</th>
                 <th>Stato</th>
                 <th>Giorni</th>
-                <th style="width:260px">Azioni</th>
+                <th>Azioni</th>
               </tr>
             </thead>
-            <tbody id="s-rows">
-              ${list.length ? '' : `<tr><td colspan="6">Nessun tesserato in scadenza.</td></tr>`}
+            <tbody id="table-body">
+              ${toShow.map(vm => `
+                <tr data-id="${vm.id}">
+                  <td><strong>${vm.name || '—'}</strong></td>
+                  <td>${vm.phone || '—'}</td>
+                  <td>${vm.expiry ? formatISO(vm.expiry) : '—'}</td>
+                  <td>${statusBadge(vm.status, vm.daysLeft)}</td>
+                  <td>${vm.daysLeft != null ? `${vm.daysLeft} gg` : '—'}</td>
+                  <td>
+                    <div class="action-buttons">
+                      <button class="btn btn-sm btn-secondary" data-action="whatsapp" data-id="${vm.id}">
+                        <i class="fab fa-whatsapp"></i> WhatsApp
+                      </button>
+                      <button class="btn btn-sm btn-success" data-action="renew" data-id="${vm.id}">
+                        <i class="fas fa-check"></i> Rinnova
+                      </button>
+                      <button class="btn btn-sm btn-danger" data-action="delete" data-id="${vm.id}">
+                        <i class="fas fa-trash"></i> Elimina
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
             </tbody>
           </table>
-        </div>
-      </section>
+        `}
+      </div>
     `;
 
-    const tbody = container.querySelector('#s-rows');
-    for (const vm of list) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${vm.name || ''}</td>
-        <td>${vm.phone || ''}</td>
-        <td>${vm.expiry ? formatISO(vm.expiry) : '—'}</td>
-        <td>${chip(vm.status)}</td>
-        <td>${vm.daysLeft == null ? '—' : `${vm.daysLeft} gg`}</td>
-        <td>
-          <div class="rt-actions">
-            <button class="rt-btn secondary" data-act="wa" data-id="${vm.id}">
-              <i class="fa-brands fa-whatsapp"></i> WhatsApp
-            </button>
-            <button class="rt-btn" data-act="renew" data-id="${vm.id}">
-              <i class="fa-solid fa-check"></i> Rinnova
-            </button>
-            <button class="rt-btn danger" data-act="del" data-id="${vm.id}">
-              <i class="fa-solid fa-trash"></i> Elimina
-            </button>
-          </div>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    }
+    // Event handlers
+    const searchInput = container.querySelector('#search-input');
+    const reloadBtn = container.querySelector('#reload-btn');
+    const tableBody = container.querySelector('#table-body');
+    
+    let searchTimeout;
+    searchInput?.addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        render(container, vms, e.target.value);
+      }, 300);
+    });
+    
+    reloadBtn?.addEventListener('click', async () => {
+      reloadBtn.disabled = true;
+      reloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Caricamento...';
+      await ScadenzeModule.init();
+      ScadenzeModule.mount(container);
+    });
+    
+    tableBody?.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+      const vm = vms.find(v => v.id === id);
+      if (!vm) return;
+      
+      const storage = window.Storage_Instance;
+      
+      if (action === 'whatsapp') {
+        const status = vm.status === 'expired' ? 'è scaduta' : 
+                      vm.status === 'expiring' ? 'è in scadenza' : 
+                      'non ha una data di scadenza impostata';
+        const message = `Ciao ${vm.name}! La tua tessera ${status}. Vuoi rinnovarla? 💪`;
+        sendWhatsApp(vm.phone, message);
+      }
+      
+      if (action === 'renew') {
+        const success = await renewMember(vm, storage);
+        if (success) {
+          await ScadenzeModule.init();
+          ScadenzeModule.mount(container);
+        }
+      }
+      
+      if (action === 'delete') {
+        const success = await deleteMember(vm, storage);
+        if (success) {
+          await ScadenzeModule.init();
+          ScadenzeModule.mount(container);
+        }
+      }
+    });
   }
 
   const ScadenzeModule = {
     _vms: [],
-    _q: '',
 
     async init() {
-      console.log('⏰ [Scadenze] init');
+      console.log('📅 [Scadenze] init');
       ensureStylesOnce();
 
-      const s = window.Storage_Instance;
-      if (!s) return;
+      const storage = window.Storage_Instance;
+      if (!storage) return;
 
-      if (!s.isInitialized) try { await s.init(); } catch {}
-      if (typeof s.getMembersCached === 'function' && s.getMembersCached().length === 0) {
-        try { await s.refreshMembers(); } catch {}
+      if (!storage.isInitialized) {
+        try { await storage.init(); } catch {}
+      }
+      
+      if (typeof storage.getMembersCached === 'function' && storage.getMembersCached().length === 0) {
+        try { await storage.refreshMembers(); } catch {}
       }
 
-      const members = s.getMembersCached?.() || [];
+      const members = storage.getMembersCached?.() || [];
       this._vms = members.map(vmFromMember);
+      
+      // Aggiorna titolo pagina
+      if (window.updatePageTitle) {
+        window.updatePageTitle('Scadenze');
+      }
+      
       return true;
     },
 
     async mount(container) {
-      const s = window.Storage_Instance;
-      if (!s) {
-        container.innerHTML = `<section class="empty-state"><h2>Storage non disponibile</h2></section>`;
+      const storage = window.Storage_Instance;
+      if (!storage) {
+        container.innerHTML = `
+          <div class="card">
+            <div class="empty-state">
+              <i class="fas fa-exclamation-triangle"></i>
+              <h3>Storage non disponibile</h3>
+              <p>Impossibile caricare i dati dei tesserati.</p>
+            </div>
+          </div>
+        `;
         return;
       }
 
-      // ricostruisci VM dal cache corrente
-      const members = s.getMembersCached?.() || [];
+      const members = storage.getMembersCached?.() || [];
       this._vms = members.map(vmFromMember);
-
-      render(container, this._vms, this._q);
-
-      const $search = container.querySelector('#s-search');
-      const $reload = container.querySelector('#s-reload');
-      const $tbody  = container.querySelector('#s-rows');
-
-      let t;
-      $search?.addEventListener('input', () => {
-        clearTimeout(t);
-        t = setTimeout(() => {
-          this._q = $search.value;
-          render(container, this._vms, this._q);
-        }, 150);
-      });
-
-      $reload?.addEventListener('click', async () => {
-        $reload.disabled = true;
-        try {
-          await s.refreshMembers?.();
-          const again = s.getMembersCached?.() || [];
-          this._vms = again.map(vmFromMember);
-          render(container, this._vms, this._q);
-          window.App?._updateBadges?.();
-        } finally {
-          $reload.disabled = false;
-        }
-      });
-
-      $tbody?.addEventListener('click', async (e) => {
-        const btn = e.target.closest('button[data-act]');
-        if (!btn) return;
-        const id = btn.getAttribute('data-id');
-        const vm = this._vms.find(x => x.id === id);
-        if (!vm) return;
-
-        if (btn.dataset.act === 'wa') {
-          const msg = `${vm.name?.split(' ')[0] || ''}, promemoria: la tua tessera ${vm.status==='expired'?'è scaduta':'è in scadenza'} ${vm.daysLeft!=null?`(${vm.daysLeft} gg)`:''}. Vuoi rinnovarla? 💪`;
-          sendWhatsApp(vm.phone, msg);
-        }
-        if (btn.dataset.act === 'renew') {
-          const ok = await renewMember(vm.raw, s);
-          if (ok) {
-            const again = s.getMembersCached?.() || [];
-            this._vms = again.map(vmFromMember);
-            render(container, this._vms, this._q);
-          }
-        }
-        if (btn.dataset.act === 'del') {
-          const ok = await deleteMember(vm.raw, s);
-          if (ok) {
-            const again = s.getMembersCached?.() || [];
-            this._vms = again.map(vmFromMember);
-            render(container, this._vms, this._q);
-          }
-        }
-      });
+      render(container, this._vms);
     }
   };
 
