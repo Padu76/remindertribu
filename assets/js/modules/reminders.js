@@ -48,9 +48,10 @@
     }
     const s = String(v).trim();
     const iso = new Date(s);
-    if (!Number.isNaNaN?.(iso.getTime()) ? Number.isNaN(iso.getTime()) : isNaN(iso.getTime())) return null;
-    return iso;
+    if (!Number.isNaN(iso.getTime())) return iso;
+    return null;
   }
+  
   function daysLeftFromToday(d) {
     if (!d) return null;
     const today = new Date();
@@ -58,6 +59,7 @@
     const b = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
     return Math.floor((b - a) / DAY);
   }
+  
   function formatISO(d) {
     if (!d) return '';
     const z = new Date(d);
@@ -103,6 +105,7 @@
     }
     return [];
   }
+  
   async function saveReminder(s, r) {
     if (typeof s.saveReminder === 'function') return s.saveReminder(r);
     if (typeof s.updateReminder === 'function') return s.updateReminder(r.id, r);
@@ -112,6 +115,7 @@
     }
     throw new Error('API salvataggio reminder non disponibile');
   }
+  
   async function deleteReminder(s, id) {
     if (typeof s.deleteReminder === 'function') return s.deleteReminder(id);
     if (s.firebase?.db) return s.firebase.db.collection('reminders').doc(id).delete();
@@ -377,8 +381,12 @@
       try { await s.refreshTemplates?.(); } catch {}
       try { await s.refreshReminders?.(); } catch {}
 
-      this._members   = s.getMembersCached?.() || [];
-      this._templates = (s.getTemplates?.() || []).map(x => ({ id: x.id || x.key, ...x }));
+      this._members = s.getMembersCached?.() || [];
+      
+      // FIX: getTemplates ritorna un oggetto, non un array
+      const templatesObj = s.getTemplates?.() || {};
+      this._templates = Object.values(templatesObj).map(x => ({ id: x.id || x.key, ...x }));
+      
       this._reminders = await listReminders(s);
 
       return true;
@@ -392,8 +400,12 @@
       }
 
       // refresh dati rapidi
-      this._members   = s.getMembersCached?.() || this._members;
-      this._templates = (s.getTemplates?.() || this._templates).map(x => ({ id: x.id || x.key, ...x }));
+      this._members = s.getMembersCached?.() || this._members;
+      
+      // FIX: getTemplates ritorna un oggetto, non un array
+      const templatesObj = s.getTemplates?.() || {};
+      this._templates = Object.values(templatesObj).map(x => ({ id: x.id || x.key, ...x }));
+      
       this._reminders = await listReminders(s);
 
       if (this._editing) {
