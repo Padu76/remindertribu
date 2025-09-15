@@ -2,92 +2,262 @@
 (function () {
   'use strict';
 
-  const log = (...a) => console.log.apply(console, a);
-  const warn = (...a) => console.warn.apply(console, a);
-  const err  = (...a) => console.error.apply(console, a);
+  const log = (...args) => console.log('[Firebase]', ...args);
+  const warn = (...args) => console.warn('[Firebase]', ...args);
+  const err = (...args) => console.error('[Firebase]', ...args);
 
-  const cfgRoot = (window.AppConfig && (window.AppConfig.FIREBASE || window.AppConfig.firebase)) || {};
-  const fbEnabled = !!(cfgRoot && (cfgRoot.enabled || cfgRoot.config));
-  const fbConfig = (cfgRoot && cfgRoot.config) || null;
+  // Inizializzazione sicura con fallback
+  function initFirebase() {
+    // Legge la configurazione da window.AppConfig (generata da inject-env.cjs)
+    const appConfig = window.AppConfig || {};
+    
+    // Supporta sia FIREBASE che firebase (minuscolo) per retrocompatibilità
+    const firebaseSection = appConfig.FIREBASE || appConfig.firebase || {};
+    const fbEnabled = firebaseSection.enabled !== false && !!firebaseSection.config;
+    const fbConfig = firebaseSection.config || null;
 
-  log('🔥 Initializing Firebase for TribuReminder...');
-  if (!fbEnabled || !fbConfig) {
-    warn('🔥 Firebase disabled in configuration');
-    window.FirebaseModule = { ready: false };
-    return;
-  }
-
-  // compat check
-  const compat = (window.firebase && typeof window.firebase.initializeApp === 'function');
-  if (!compat) {
-    warn('⚠️ Firebase compat SDK non trovato. Assicurati di includere lo script compat prima di questo file.');
-    window.FirebaseModule = { ready: false };
-    return;
-  }
-
-  try {
-    // evita doppia init
-    const app = window.firebase.apps && window.firebase.apps.length
-      ? window.firebase.app()
-      : window.firebase.initializeApp(fbConfig);
-
-    const db = window.firebase.firestore();
-
-    // test veloce
-    db.settings && typeof db.settings === 'function' && db.settings({ ignoreUndefinedProperties: true });
-    log('✅ Firebase initialized successfully');
-    log('📊 Connected to project:', fbConfig.projectId);
-
-    async function getMembers() {
-      const snap = await db.collection('members').get();
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    log('🔥 Initializing Firebase for ReminderTribù...');
+    
+    // Verifica se Firebase è abilitato
+    if (!fbEnabled || !fbConfig) {
+      warn('⚠️ Firebase is disabled or not configured');
+      warn('Check your environment variables on Vercel');
+      window.FirebaseModule = { 
+        ready: false,
+        error: 'Firebase not configured'
+      };
+      return false;
     }
 
-    async function updateMember(id, update) {
-      await db.collection('members').doc(id).set(update, { merge: true });
-      return true;
+    // Verifica che Firebase SDK sia caricato
+    if (!window.firebase || typeof window.firebase.initializeApp !== 'function') {
+      err('❌ Firebase SDK not loaded. Check index.html includes Firebase scripts');
+      window.FirebaseModule = { 
+        ready: false,
+        error: 'Firebase SDK not loaded'
+      };
+      return false;
     }
 
-    async function deleteMember(id) {
-      await db.collection('members').doc(id).delete();
-      return true;
+    // Validazione della configurazione
+    const requiredFields = ['apiKey', 'projectId', 'authDomain'];
+    const missingFields = requiredFields.filter(field => !fbConfig[field]);
+    
+    if (missingFields.length > 0) {
+      err('❌ Missing required Firebase config fields:', missingFields);
+      window.FirebaseModule = { 
+        ready: false,
+        error: `Missing config: ${missingFields.join(', ')}`
+      };
+      return false;
     }
 
-    async function getTemplates(collectionName) {
-      const coll = collectionName || 'templates';
-      const snap = await db.collection(coll).get();
-      if (!snap.empty) {
-        const out = {};
-        snap.forEach(d => {
-          const v = d.data() || {};
-          const key = d.id;
-          out[key] = { key, name: v.name || key, body: v.body || '', updatedAt: v.updatedAt || null };
-        });
-        return out;
+    try {
+      // Evita doppia inizializzazione
+      let app;
+      if (window.firebase.apps && window.firebase.apps.length > 0) {
+        app = window.firebase.app();
+        log('✅ Using existing Firebase app');
+      } else {
+        app = window.firebase.initializeApp(fbConfig);
+        log('✅ Firebase app initialized');
       }
-      // fallback
-      if (!collectionName) return getTemplates('whatsapp_templates');
-      return {};
-    }
 
-    async function saveTemplate(key, payload) {
-      const data = Object.assign({}, payload, { name: payload.name || key, updatedAt: new Date().toISOString() });
-      await db.collection('templates').doc(key).set(data, { merge: true });
+      // Inizializza Firestore
+      const db = window.firebase.firestore();
+      
+      // Configurazione Firestore
+      if (db.settings && typeof db.settings === 'function') {
+        db.settings({ 
+          ignoreUndefinedProperties: true,
+          merge: true 
+        });
+      }
+
+      log('✅ Firebase initialized successfully');
+      log('📊 Connected to project:', fbConfig.projectId);
+
+      // API Functions
+      async function getMembers() {
+        try {
+          const snapshot = await db.collection('members').get();
+          return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+        } catch (error) {
+          err('Error fetching members:', error);
+          throw error;
+        }
+      }
+
+      async function getMember(id) {
+        try {
+          const doc = await db.collection('members').doc(id).get();
+          if (!doc.exists) return null;
+          return { id: doc.id, ...doc.data() };
+        } catch (error) {
+          err('Error fetching member:', error);
+          throw error;
+        }
+      }
+
+      async function createMember(data) {
+        try {
+          const docRef = await db.collection('members').add({
+            ...data,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+          return docRef.id;
+        } catch (error) {
+          err('Error creating member:', error);
+          throw error;
+        }
+      }
+
+      async function updateMember(id, update) {
+        try {
+          await db.collection('members').doc(id).set({
+            ...update,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+          return true;
+        } catch (error) {
+          err('Error updating member:', error);
+          throw error;
+        }
+      }
+
+      async function deleteMember(id) {
+        try {
+          await db.collection('members').doc(id).delete();
+          return true;
+        } catch (error) {
+          err('Error deleting member:', error);
+          throw error;
+        }
+      }
+
+      async function getTemplates(collectionName = 'templates') {
+        try {
+          const snapshot = await db.collection(collectionName).get();
+          const templates = {};
+          
+          snapshot.forEach(doc => {
+            const data = doc.data() || {};
+            templates[doc.id] = {
+              key: doc.id,
+              name: data.name || doc.id,
+              body: data.body || '',
+              category: data.category || 'general',
+              updatedAt: data.updatedAt || null
+            };
+          });
+          
+          // Fallback to whatsapp_templates if empty
+          if (Object.keys(templates).length === 0 && collectionName === 'templates') {
+            return getTemplates('whatsapp_templates');
+          }
+          
+          return templates;
+        } catch (error) {
+          err('Error fetching templates:', error);
+          return {};
+        }
+      }
+
+      async function saveTemplate(key, payload) {
+        try {
+          const data = {
+            ...payload,
+            name: payload.name || key,
+            updatedAt: new Date().toISOString()
+          };
+          await db.collection('templates').doc(key).set(data, { merge: true });
+          return true;
+        } catch (error) {
+          err('Error saving template:', error);
+          throw error;
+        }
+      }
+
+      async function getReminders() {
+        try {
+          const snapshot = await db.collection('reminders').get();
+          return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+        } catch (error) {
+          err('Error fetching reminders:', error);
+          return [];
+        }
+      }
+
+      async function saveReminder(data) {
+        try {
+          const docRef = await db.collection('reminders').add({
+            ...data,
+            createdAt: new Date().toISOString()
+          });
+          return docRef.id;
+        } catch (error) {
+          err('Error saving reminder:', error);
+          throw error;
+        }
+      }
+
+      // Export module
+      window.FirebaseModule = {
+        ready: true,
+        app,
+        db,
+        // Members
+        getMembers,
+        getMember,
+        createMember,
+        updateMember,
+        deleteMember,
+        // Templates
+        getTemplates,
+        saveTemplate,
+        // Reminders
+        getReminders,
+        saveReminder,
+        // Utils
+        timestamp: () => window.firebase.firestore.Timestamp.now(),
+        serverTimestamp: () => window.firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      log('✅ FirebaseModule ready with all methods');
       return true;
-    }
 
-    window.FirebaseModule = {
-      ready: true,
-      app,
-      db,
-      getMembers,
-      updateMember,
-      deleteMember,
-      getTemplates,
-      saveTemplate
-    };
-  } catch (e) {
-    err('❌ Firebase init error:', e);
-    window.FirebaseModule = { ready: false, error: e };
+    } catch (error) {
+      err('❌ Firebase initialization failed:', error);
+      window.FirebaseModule = {
+        ready: false,
+        error: error.message || 'Unknown error'
+      };
+      return false;
+    }
   }
+
+  // Attendi che il DOM e la configurazione siano pronti
+  function waitForConfig() {
+    if (window.AppConfig) {
+      initFirebase();
+    } else {
+      // Riprova dopo 100ms se AppConfig non è ancora disponibile
+      setTimeout(waitForConfig, 100);
+    }
+  }
+
+  // Inizia il processo
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', waitForConfig);
+  } else {
+    waitForConfig();
+  }
+
 })();
