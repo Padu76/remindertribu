@@ -23,7 +23,7 @@
       } catch (e) {
         console.warn('⚠️ [Storage] init: Firebase non pronto, entro in modalità lazy. Motivo:', e?.message || e);
         this.isInitialized = true;
-        this._lazyWaitFirebaseAndWarmup(); // retry silenzioso
+        this._lazyWaitFirebaseAndWarmup();
       }
       return true;
     }
@@ -40,15 +40,10 @@
       return normalized;
     }
 
-    async markMemberRenewed(id, { startDate }) {
-      if (!id) throw new Error('markMemberRenewed: id mancante');
-      const start = this._parseYMD(startDate);
-      if (!start) throw new Error('markMemberRenewed: startDate invalida');
-      const newExpiry = new Date(start); newExpiry.setFullYear(newExpiry.getFullYear() + 1);
-
-      const update = { lastRenewalAt: new Date().toISOString(), dataScadenza: this._toYMD(newExpiry) };
+    async updateMember(id, update) {
+      if (!id) throw new Error('updateMember: id mancante');
       await this._updateMemberDoc(id, update);
-
+      
       const m = this.cache.members.find(x => x.id === id);
       if (m) {
         Object.assign(m, update);
@@ -112,18 +107,14 @@
     async _ensureFirebaseReady() {
       if (!this.useFirebase) throw new Error('Firebase disabilitato');
 
-      // 1) FirebaseModule
       if (window.FirebaseModule && window.FirebaseModule.ready) return true;
 
-      // 2) compat già inizializzato
       if (window.firebase && typeof window.firebase.firestore === 'function') {
         try {
-          // se c'è almeno un'app inizializzata, lo consideriamo ok
           if (window.firebase.apps && window.firebase.apps.length) return true;
         } catch (_) {}
       }
 
-      // attesa breve (3s)
       const start = Date.now();
       while (Date.now() - start < 3000) {
         if (window.FirebaseModule && window.FirebaseModule.ready) return true;
@@ -134,13 +125,11 @@
     }
 
     async _fetchMembersFromFirebase() {
-      // preferisci API del modulo
       const FB = window.FirebaseModule || {};
       if (typeof FB.getMembers === 'function') {
         const list = await FB.getMembers();
         if (Array.isArray(list)) return list;
       }
-      // fallback compat (se possibile)
       if (window.firebase && typeof window.firebase.firestore === 'function' &&
           window.firebase.apps && window.firebase.apps.length) {
         const db = window.firebase.firestore();
@@ -244,7 +233,7 @@
             await this.refreshMembers();
             await this.refreshReminders().catch(() => {});
             await this.refreshTemplates().catch(() => {});
-          } else if (tries > 60) { // ~30s
+          } else if (tries > 60) {
             clearInterval(this._retryTimer);
             this._retryTimer = null;
             console.warn('⏱️ [Storage] Firebase non è diventato pronto nei tempi previsti.');
@@ -255,13 +244,33 @@
       }, 500);
     }
 
-    // ---------- NORMALIZZAZIONE ----------
+    // ---------- NORMALIZZAZIONE - FIX PER NOME E COGNOME ----------
     _normalizeMember(raw) {
       if (!raw) return null;
       const id = raw.id || raw.uid || raw._id || null;
-      const fullName = raw.fullName || raw.nome || raw.name || '';
-      const phone = raw.whatsapp || raw.telefono || raw.phone || '';
-      const expiryDate = this._parseAnyDate(raw.dataScadenza || raw.expiry || raw.scadenza || raw.expirationDate);
+      
+      // COMBINARE NOME E COGNOME
+      let fullName = '';
+      if (raw.fullName) {
+        fullName = raw.fullName;
+      } else if (raw.nominativo) {
+        fullName = raw.nominativo;
+      } else {
+        // Combina nome e cognome se sono separati
+        const nome = raw.nome || raw.name || '';
+        const cognome = raw.cognome || raw.surname || raw.lastName || '';
+        fullName = `${nome} ${cognome}`.trim();
+      }
+      
+      const phone = raw.whatsapp || raw.telefono || raw.phone || raw.cellulare || '';
+      const expiryDate = this._parseAnyDate(
+        raw.dataScadenza || 
+        raw.scadenza || 
+        raw.expiry || 
+        raw.expirationDate ||
+        raw.expiryDate
+      );
+      
       const daysTillExpiry = (expiryDate) ? this._diffInDays(expiryDate, new Date()) : null;
 
       let status = raw.status;
@@ -276,7 +285,9 @@
       return {
         ...raw,
         id,
-        fullName,
+        fullName,  // Nome e cognome combinati
+        nome: raw.nome,  // Mantieni anche i campi originali
+        cognome: raw.cognome,
         whatsapp: phone,
         dataScadenza: expiryDate ? this._toYMD(expiryDate) : (raw.dataScadenza || null),
         daysTillExpiry,
