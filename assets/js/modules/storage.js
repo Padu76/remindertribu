@@ -244,22 +244,32 @@
       }, 500);
     }
 
-    // ---------- NORMALIZZAZIONE - FIX PER NOME E COGNOME ----------
+    // ---------- NORMALIZZAZIONE - FIX DEFINITIVO ----------
     _normalizeMember(raw) {
       if (!raw) return null;
       const id = raw.id || raw.uid || raw._id || null;
       
-      // COMBINARE NOME E COGNOME
+      // COSTRUISCI FULLNAME CORRETTAMENTE
       let fullName = '';
+      
+      // Prima controlla se c'è già un fullName o nominativo
       if (raw.fullName) {
         fullName = raw.fullName;
       } else if (raw.nominativo) {
         fullName = raw.nominativo;
       } else {
-        // Combina nome e cognome se sono separati
-        const nome = raw.nome || raw.name || '';
-        const cognome = raw.cognome || raw.surname || raw.lastName || '';
-        fullName = `${nome} ${cognome}`.trim();
+        // Altrimenti combina nome e cognome
+        const nome = (raw.nome || raw.name || '').trim();
+        const cognome = (raw.cognome || raw.surname || raw.lastName || '').trim();
+        
+        // IMPORTANTE: Combina sempre nome e cognome se esistono entrambi
+        if (nome && cognome) {
+          fullName = `${nome} ${cognome}`;
+        } else if (nome) {
+          fullName = nome;
+        } else if (cognome) {
+          fullName = cognome;
+        }
       }
       
       const phone = raw.whatsapp || raw.telefono || raw.phone || raw.cellulare || '';
@@ -285,8 +295,8 @@
       return {
         ...raw,
         id,
-        fullName,  // Nome e cognome combinati
-        nome: raw.nome,  // Mantieni anche i campi originali
+        fullName,  // Ora contiene nome e cognome correttamente
+        nome: raw.nome,
         cognome: raw.cognome,
         whatsapp: phone,
         dataScadenza: expiryDate ? this._toYMD(expiryDate) : (raw.dataScadenza || null),
