@@ -204,8 +204,8 @@
           this.renderFallback(container, page);
         }
 
-        // Aggiorna badge dopo il rendering
-        setTimeout(() => this._updateBadges(), 100);
+        // Badge aggiornati dal modulo analytics
+// setTimeout(() => this._updateBadges(), 100);
         
       } catch (error) {
         console.error(`❌ Error loading page ${page}:`, error);
