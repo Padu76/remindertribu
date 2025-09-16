@@ -31,6 +31,12 @@
     return `${dd}/${mm}/${yyyy}`;
   }
   
+  function formatDateTime(d) {
+    if (!d) return '';
+    const date = new Date(d);
+    return `${formatISO(date)} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
+  }
+  
   function addYears(d, n) { 
     const x = new Date(d.getTime()); 
     x.setFullYear(x.getFullYear() + (n||1)); 
@@ -45,6 +51,15 @@
     return Math.floor((b - a) / DAY);
   }
   
+  function daysSince(d) {
+    if (!d) return null;
+    const date = parseDateMaybe(d);
+    if (!date) return null;
+    const today = new Date();
+    const diff = today - date;
+    return Math.floor(diff / DAY);
+  }
+  
   function computeStatus(daysLeft) {
     if (daysLeft == null) return 'unknown';
     if (daysLeft < 0) return 'expired';
@@ -57,7 +72,6 @@
   }
   
   function pickName(m) { 
-    // Prendi solo il nome (prima parola)
     const fullName = m?.fullName || m?.name || m?.nome || m?.nominativo || '';
     return fullName.split(' ')[0] || fullName;
   }
@@ -69,11 +83,18 @@
   function pickTessera(m) {
     return m?.numeroTessera || m?.tesseraNumber || m?.tessera || '';
   }
+  
+  function pickLastReminder(m) {
+    return m?.lastReminderSent || m?.ultimoPromemoria || null;
+  }
 
   function vmFromMember(m) {
     const expiry = parseDateMaybe(pickExpiry(m));
     const daysLeft = daysLeftFromToday(expiry);
     const status = computeStatus(daysLeft);
+    const lastReminder = pickLastReminder(m);
+    const daysSinceReminder = daysSince(lastReminder);
+    
     return { 
       id: m.id, 
       name: pickName(m), 
@@ -82,7 +103,9 @@
       numeroTessera: pickTessera(m),
       expiry, 
       daysLeft, 
-      status, 
+      status,
+      lastReminderSent: lastReminder,
+      daysSinceReminder,
       raw: m 
     };
   }
@@ -99,17 +122,29 @@
     }
     return '<span class="badge badge-success">Attivo</span>';
   }
+  
+  function reminderIcon(lastReminder, daysSince) {
+    if (!lastReminder) {
+      return '<span class="reminder-icon reminder-never" title="Mai inviato"><i class="fas fa-envelope"></i></span>';
+    }
+    
+    const tooltip = `Ultimo invio: ${formatDateTime(lastReminder)}`;
+    
+    if (daysSince <= 7) {
+      // Inviato negli ultimi 7 giorni - verde
+      return `<span class="reminder-icon reminder-recent" title="${tooltip}"><i class="fas fa-check-circle"></i></span>`;
+    } else if (daysSince <= 30) {
+      // Inviato nel mese - giallo
+      return `<span class="reminder-icon reminder-old" title="${tooltip}"><i class="fas fa-exclamation-circle"></i></span>`;
+    } else {
+      // Inviato da più di un mese - rosso
+      return `<span class="reminder-icon reminder-very-old" title="${tooltip}"><i class="fas fa-times-circle"></i></span>`;
+    }
+  }
 
   function ensureStylesOnce() {
     if (document.getElementById('scadenze-styles')) return;
     const css = `
-      .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-      }
-      
       .toolbar {
         display: flex;
         gap: 1rem;
@@ -256,9 +291,31 @@
         color: #6b7280;
       }
       
+      .reminder-icon {
+        font-size: 1.2rem;
+        cursor: help;
+      }
+      
+      .reminder-never {
+        color: #999;
+      }
+      
+      .reminder-recent {
+        color: #22c55e;
+      }
+      
+      .reminder-old {
+        color: #f59e0b;
+      }
+      
+      .reminder-very-old {
+        color: #ef4444;
+      }
+      
       .action-buttons {
         display: flex;
         gap: 0.5rem;
+        align-items: center;
       }
       
       .btn-sm {
@@ -454,6 +511,27 @@
       return false;
     }
   }
+  
+  async function updateLastReminder(memberId, storage) {
+    const now = new Date().toISOString();
+    const payload = {
+      lastReminderSent: now,
+      ultimoPromemoria: now
+    };
+    
+    try {
+      if (storage.firebase?.db) {
+        await storage.firebase.db.collection('members').doc(memberId).set(payload, { merge: true });
+      } else if (typeof storage.updateMember === 'function') {
+        await storage.updateMember(memberId, payload);
+      }
+      await storage.refreshMembers?.();
+      return true;
+    } catch (e) {
+      console.error('updateLastReminder error:', e);
+      return false;
+    }
+  }
 
   function sendWhatsApp(phone, message) {
     const cleanPhone = phone.replace(/\D/g, '');
@@ -462,7 +540,6 @@
   }
 
   function render(container, vms, query = '') {
-    // Filtro per query
     let list = vms;
     if (query) {
       const q = query.toLowerCase();
@@ -472,12 +549,10 @@
       );
     }
     
-    // Separa per stato
     const expired = list.filter(vm => vm.status === 'expired');
     const expiring = list.filter(vm => vm.status === 'expiring');
     const unknown = list.filter(vm => vm.status === 'unknown');
     
-    // Mostra tutti i tesserati che non hanno stato 'active'
     const toShow = [...expired, ...expiring, ...unknown];
 
     container.innerHTML = `
@@ -513,6 +588,7 @@
                 <th>Scadenza</th>
                 <th>Stato</th>
                 <th>Giorni</th>
+                <th>Promemoria</th>
                 <th>Azioni</th>
               </tr>
             </thead>
@@ -524,6 +600,7 @@
                   <td>${vm.expiry ? formatISO(vm.expiry) : '—'}</td>
                   <td>${statusBadge(vm.status, vm.daysLeft)}</td>
                   <td>${vm.daysLeft != null ? `${vm.daysLeft} gg` : '—'}</td>
+                  <td>${reminderIcon(vm.lastReminderSent, vm.daysSinceReminder)}</td>
                   <td>
                     <div class="action-buttons">
                       <button class="btn btn-sm btn-secondary" data-action="whatsapp" data-id="${vm.id}">
@@ -545,7 +622,6 @@
       </div>
     `;
 
-    // Event handlers
     const searchInput = container.querySelector('#search-input');
     const reloadBtn = container.querySelector('#reload-btn');
     const tableBody = container.querySelector('#table-body');
@@ -577,25 +653,26 @@
       const storage = window.Storage_Instance;
       
       if (action === 'whatsapp') {
-        // MESSAGGIO FORMATTATO CORRETTAMENTE
         let message = '';
-        const nome = vm.name; // Solo il primo nome
-        const numeroTessera = vm.numeroTessera || Math.floor(100000 + Math.random() * 900000); // Genera numero random se non c'è
+        const nome = vm.name;
+        const numeroTessera = vm.numeroTessera || Math.floor(100000 + Math.random() * 900000);
         
         if (vm.status === 'expired') {
-          // Messaggio per tessera scaduta
           message = `Ciao ${nome}! Il tuo tesseramento e copertura assicurativa (n. ${numeroTessera}) sono scaduti. Rinnovali subito! 💪\n\nTi aspettiamo in studio.\nTeam Tribù`;
         } else if (vm.status === 'expiring') {
-          // Messaggio per tessera in scadenza
           const giorni = Math.abs(vm.daysLeft);
           const scadenza = formatISO(vm.expiry);
           message = `Ciao ${nome}! Il tuo tesseramento e copertura assicurativa (n. ${numeroTessera}) scadrà tra ${giorni} giorni (il ${scadenza}).\n\nRinnovala in tempo! 💪\n\nTi aspettiamo in studio.\nTeam Tribù`;
         } else {
-          // Messaggio per data non impostata
           message = `Ciao ${nome}! Il tuo tesseramento e copertura assicurativa (n. ${numeroTessera}) necessitano di aggiornamento.\n\nContattaci per il rinnovo! 💪\n\nTi aspettiamo in studio.\nTeam Tribù`;
         }
         
         sendWhatsApp(vm.phone, message);
+        
+        // Aggiorna la data dell'ultimo promemoria
+        await updateLastReminder(vm.id, storage);
+        await ScadenzeModule.init();
+        ScadenzeModule.mount(container);
       }
       
       if (action === 'renew') {
@@ -637,7 +714,6 @@
       const members = storage.getMembersCached?.() || [];
       this._vms = members.map(vmFromMember);
       
-      // Aggiorna titolo pagina
       if (window.updatePageTitle) {
         window.updatePageTitle('Scadenze');
       }
