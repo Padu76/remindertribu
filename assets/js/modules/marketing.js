@@ -728,10 +728,10 @@ Team Tribù`,
         <div class="marketing-toolbar">
           <h2 style="font-size: 1.5rem; color: #1e293b; margin: 0;">Template Messaggi</h2>
           <div style="display: flex; gap: 0.5rem;">
-            <button type="button" class="btn btn-secondary" id="refresh-templates">
+            <button type="button" class="btn btn-secondary" data-action="refresh">
               <i class="fas fa-sync-alt"></i> Ricarica
             </button>
-            <button type="button" class="btn btn-primary" id="add-template-btn">
+            <button type="button" class="btn btn-primary" data-action="new">
               <i class="fas fa-plus"></i> Nuovo Template
             </button>
           </div>
@@ -763,13 +763,13 @@ Team Tribù`,
                 ` : ''}
                 
                 <div class="template-actions">
-                  <button type="button" class="btn btn-sm btn-secondary" onclick="MarketingModule.editTemplate('${template.id}')">
+                  <button type="button" class="btn btn-sm btn-secondary" data-action="edit" data-id="${template.id}">
                     <i class="fas fa-edit"></i> Modifica
                   </button>
-                  <button type="button" class="btn btn-sm btn-success" onclick="MarketingModule.sendTemplate('${template.id}')">
+                  <button type="button" class="btn btn-sm btn-success" data-action="send" data-id="${template.id}">
                     <i class="fab fa-whatsapp"></i> Invia
                   </button>
-                  <button type="button" class="btn btn-sm" style="background: #ef4444; color: white;" onclick="MarketingModule.deleteTemplate('${template.id}')">
+                  <button type="button" class="btn btn-sm" style="background: #ef4444; color: white;" data-action="delete" data-id="${template.id}">
                     <i class="fas fa-trash"></i> Elimina
                   </button>
                 </div>
@@ -780,16 +780,33 @@ Team Tribù`,
       </div>
     `;
     
-    // Event handlers
-    const addBtn = container.querySelector('#add-template-btn');
-    if (addBtn) {
-      addBtn.onclick = () => MarketingModule.newTemplate();
-    }
-    
-    const refreshBtn = container.querySelector('#refresh-templates');
-    if (refreshBtn) {
-      refreshBtn.onclick = () => MarketingModule.refreshTemplates();
-    }
+    // Event delegation per tutti i pulsanti
+    container.addEventListener('click', async (e) => {
+      const button = e.target.closest('button[data-action]');
+      if (!button) return;
+      
+      const action = button.dataset.action;
+      const templateId = button.dataset.id;
+      
+      console.log('Button clicked:', action, templateId);
+      
+      try {
+        if (action === 'new') {
+          await MarketingModule.newTemplate();
+        } else if (action === 'refresh') {
+          await MarketingModule.refreshTemplates();
+        } else if (action === 'edit' && templateId) {
+          await MarketingModule.editTemplate(templateId);
+        } else if (action === 'send' && templateId) {
+          await MarketingModule.sendTemplate(templateId);
+        } else if (action === 'delete' && templateId) {
+          await MarketingModule.deleteTemplate(templateId);
+        }
+      } catch (error) {
+        console.error('Action failed:', action, error);
+        alert('Errore: ' + error.message);
+      }
+    });
   }
 
   const MarketingModule = {
@@ -864,8 +881,10 @@ Team Tribù`,
       renderTemplates(container, this.templates);
     },
     
-    // API pubblica per gestione template
+    // Funzioni pubbliche per gestione template
     async newTemplate() {
+      console.log('Creating new template');
+      
       showTemplateEditor(null, async (template) => {
         try {
           await saveTemplate(template);
@@ -877,6 +896,8 @@ Team Tribù`,
     },
     
     async editTemplate(templateId) {
+      console.log('Editing template:', templateId);
+      
       const template = this.templates.find(t => t.id === templateId || t.key === templateId);
       if (!template) {
         alert('Template non trovato');
@@ -894,6 +915,8 @@ Team Tribù`,
     },
     
     async sendTemplate(templateId) {
+      console.log('Sending template:', templateId);
+      
       const template = this.templates.find(t => t.id === templateId || t.key === templateId);
       if (!template) {
         alert('Template non trovato');
@@ -944,6 +967,8 @@ Team Tribù`,
     },
     
     async deleteTemplate(templateId) {
+      console.log('Deleting template:', templateId);
+      
       if (!confirm('Sei sicuro di voler eliminare questo template?')) {
         return;
       }
@@ -957,6 +982,8 @@ Team Tribù`,
     },
     
     async refreshTemplates() {
+      console.log('Refreshing templates');
+      
       const storage = window.Storage_Instance;
       if (storage) {
         try {
@@ -976,5 +1003,8 @@ Team Tribù`,
     }
   };
   
+  // Esposizione globale del modulo
   window.MarketingModule = MarketingModule;
+  
+  console.log('📣 Marketing module loaded and ready');
 })();
