@@ -4,6 +4,7 @@
 
   const DAY = 24 * 60 * 60 * 1000;
 
+  // Utility functions identiche al modulo scadenze per calcoli consistenti
   function parseDateMaybe(v) {
     if (!v) return null;
     if (v instanceof Date) return v;
@@ -124,6 +125,8 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
       }
       
       .refresh-btn {
@@ -233,6 +236,16 @@
         color: #d1d5db;
         margin-bottom: 1rem;
       }
+      
+      .debug-info {
+        background: #f1f5f9;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        font-size: 0.75rem;
+        color: #64748b;
+        font-family: monospace;
+      }
     `;
     
     const style = document.createElement('style');
@@ -251,13 +264,54 @@
     return badges[status] || badges.unknown;
   }
 
+  // Calcola KPI con stessa logica del modulo scadenze
+  function calculateKPIs(members) {
+    let totalMembers = members.length;
+    let expiredCount = 0;
+    let expiringCount = 0;
+    let activeCount = 0;
+    let unknownCount = 0;
+
+    const processedMembers = members.map(member => {
+      const expiry = parseDateMaybe(pickExpiry(member));
+      const daysLeft = daysLeftFromToday(expiry);
+      const status = computeStatus(daysLeft);
+      
+      switch (status) {
+        case 'expired': expiredCount++; break;
+        case 'expiring': expiringCount++; break;
+        case 'active': activeCount++; break;
+        default: unknownCount++; break;
+      }
+
+      return {
+        id: member.id,
+        fullName: member.fullName || `${member.nome || ''} ${member.cognome || ''}`.trim() || 'Senza nome',
+        phone: member.whatsapp || member.phone || member.telefono || '',
+        expiry,
+        daysLeft,
+        status
+      };
+    });
+
+    return {
+      totalMembers,
+      expiredCount,
+      expiringCount,
+      activeCount,
+      unknownCount,
+      daContattare: expiredCount + expiringCount,
+      processedMembers
+    };
+  }
+
   const AnalyticsModule = {
     _initialized: false,
 
     async init() {
       if (this._initialized) return true;
       
-      console.log('📊 [Analytics] Initializing...');
+      console.log('📊 [Analytics] Initializing dashboard...');
       ensureStylesOnce();
 
       const storage = window.Storage_Instance;
@@ -268,16 +322,14 @@
       }
 
       try {
-        // Assicurati che lo storage sia inizializzato
+        // Forza inizializzazione storage se necessario
         if (!storage.isInitialized && typeof storage.init === 'function') {
           await storage.init();
         }
 
-        // Ricarica i dati se necessario
-        if (typeof storage.getMembersCached === 'function' && storage.getMembersCached().length === 0) {
-          await storage.refreshMembers?.();
-        }
-
+        // Forza refresh dei dati per avere sempre i più recenti
+        await storage.refreshMembers?.();
+        
         // Carica altri dati per KPI completi
         await Promise.allSettled([
           storage.refreshTemplates?.(),
@@ -309,43 +361,20 @@
         return;
       }
 
-      // Forza refresh dei dati per avere sempre i più recenti
-      await storage.refreshMembers?.();
+      // FORZA REFRESH dei membri per avere dati freschi
+      try {
+        await storage.refreshMembers?.();
+        console.log('✅ Dashboard: dati membri refreshati');
+      } catch (error) {
+        console.warn('⚠️ Dashboard: errore refresh membri:', error);
+      }
       
       const members = storage.getMembersCached?.() || [];
       const templatesObj = storage.getTemplates?.() || {};
       const reminders = storage.getRemindersCached?.() || [];
 
-      // Calcola KPI utilizzando la stessa logica del modulo scadenze
-      let totalMembers = members.length;
-      let expiredCount = 0;
-      let expiringCount = 0;
-      let activeCount = 0;
-      let unknownCount = 0;
-
-      const processedMembers = members.map(member => {
-        const expiry = parseDateMaybe(pickExpiry(member));
-        const daysLeft = daysLeftFromToday(expiry);
-        const status = computeStatus(daysLeft);
-        
-        switch (status) {
-          case 'expired': expiredCount++; break;
-          case 'expiring': expiringCount++; break;
-          case 'active': activeCount++; break;
-          default: unknownCount++; break;
-        }
-
-        return {
-          id: member.id,
-          fullName: member.fullName || `${member.nome || ''} ${member.cognome || ''}`.trim() || 'Senza nome',
-          phone: member.whatsapp || member.phone || member.telefono || '',
-          expiry,
-          daysLeft,
-          status
-        };
-      });
-
-      const daContattare = expiredCount + expiringCount;
+      // Calcola KPI con stessa logica del modulo scadenze
+      const kpis = calculateKPIs(members);
       
       const templatesCount = Array.isArray(templatesObj) 
         ? templatesObj.length 
@@ -353,8 +382,17 @@
       
       const remindersCount = reminders.length;
 
+      // Debug info per troubleshooting
+      console.log('📊 Dashboard KPI calculated:', {
+        totalMembers: kpis.totalMembers,
+        daContattare: kpis.daContattare,
+        expired: kpis.expiredCount,
+        expiring: kpis.expiringCount,
+        active: kpis.activeCount
+      });
+
       // Prossime scadenze (solo in scadenza e scaduti, ordinati per giorni)
-      const upcomingExpiries = processedMembers
+      const upcomingExpiries = kpis.processedMembers
         .filter(m => m.status === 'expiring' || m.status === 'expired')
         .sort((a, b) => (a.daysLeft || -999) - (b.daysLeft || -999))
         .slice(0, 10);
@@ -364,8 +402,12 @@
           <h2 style="margin: 0; font-size: 1.5rem; color: #111827;">Dashboard</h2>
           <button id="refresh-dashboard" class="refresh-btn">
             <i class="fas fa-sync-alt"></i>
-            Ricarica
+            Ricarica Dati
           </button>
+        </div>
+
+        <div class="debug-info">
+          📊 KPI calcolati: ${kpis.totalMembers} totali | ${kpis.daContattare} da contattare (${kpis.expiredCount} scaduti + ${kpis.expiringCount} in scadenza) | Storage: ${storage ? '✅' : '❌'}
         </div>
 
         <div class="dashboard-grid">
@@ -376,9 +418,9 @@
               </div>
               <div class="kpi-title">Tesserati totali</div>
             </div>
-            <div class="kpi-value">${totalMembers}</div>
+            <div class="kpi-value">${kpis.totalMembers}</div>
             <div class="kpi-subtitle">
-              Attivi ${activeCount} • In scadenza ${expiringCount} • Scaduti ${expiredCount}
+              Attivi ${kpis.activeCount} • In scadenza ${kpis.expiringCount} • Scaduti ${kpis.expiredCount}
             </div>
           </div>
 
@@ -389,9 +431,9 @@
               </div>
               <div class="kpi-title">Da contattare</div>
             </div>
-            <div class="kpi-value">${daContattare}</div>
+            <div class="kpi-value">${kpis.daContattare}</div>
             <div class="kpi-subtitle">
-              ${daContattare === 0 ? 'Tutto in regola!' : 'Apri elenco scadenze'}
+              ${kpis.daContattare === 0 ? 'Tutto in regola!' : 'Apri elenco scadenze'}
             </div>
           </div>
 
@@ -461,10 +503,8 @@
       // Bind eventi
       this._bindEvents(container);
 
-      // Aggiorna i badge del menu
-      if (window.App && typeof window.App._updateBadges === 'function') {
-        window.App._updateBadges();
-      }
+      // IMPORTANTE: Aggiorna i badge del menu con i dati calcolati
+      this._updateMenuBadges(kpis);
     },
 
     _bindEvents(container) {
@@ -489,23 +529,63 @@
           try {
             const storage = window.Storage_Instance;
             if (storage) {
+              // Forza refresh di tutti i dati
               await Promise.allSettled([
                 storage.refreshMembers?.(),
                 storage.refreshTemplates?.(),
                 storage.refreshReminders?.()
               ]);
+              
+              console.log('✅ Dashboard: tutti i dati refreshati');
             }
             
-            // Re-mount per aggiornare i dati
+            // Re-mount per aggiornare i KPI
             await this.mount(container);
             
           } catch (error) {
-            console.error('Errore durante il refresh:', error);
+            console.error('❌ Errore durante il refresh:', error);
           } finally {
             refreshBtn.disabled = false;
-            refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Ricarica';
+            refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Ricarica Dati';
           }
         });
+      }
+    },
+
+    // Aggiorna i badge del menu con i dati corretti
+    _updateMenuBadges(kpis) {
+      try {
+        // Badge scadenze
+        const badgeScadenze = document.getElementById('badge-scadenze');
+        if (badgeScadenze) {
+          if (kpis.daContattare > 0) {
+            badgeScadenze.textContent = String(kpis.daContattare);
+            badgeScadenze.style.display = 'inline-block';
+          } else {
+            badgeScadenze.style.display = 'none';
+          }
+        }
+
+        // Badge automazioni
+        const storage = window.Storage_Instance;
+        const reminders = storage?.getRemindersCached?.() || [];
+        const badgeAutomazione = document.getElementById('badge-automazione');
+        if (badgeAutomazione) {
+          if (reminders.length > 0) {
+            badgeAutomazione.textContent = String(reminders.length);
+            badgeAutomazione.style.display = 'inline-block';
+          } else {
+            badgeAutomazione.style.display = 'none';
+          }
+        }
+
+        console.log('✅ Menu badges updated:', {
+          scadenze: kpis.daContattare,
+          automazioni: reminders.length
+        });
+        
+      } catch (error) {
+        console.warn('⚠️ Error updating menu badges:', error);
       }
     }
   };
@@ -519,32 +599,21 @@
         if (!storage) return;
 
         const members = storage.getMembersCached?.() || [];
-        const reminders = storage.getRemindersCached?.() || [];
+        const kpis = calculateKPIs(members);
 
-        // Calcola scadenze con la stessa logica del modulo analytics
-        let expiringCount = 0;
-        for (const member of members) {
-          const expiry = parseDateMaybe(pickExpiry(member));
-          const daysLeft = daysLeftFromToday(expiry);
-          const status = computeStatus(daysLeft);
-          
-          if (status === 'expired' || status === 'expiring') {
-            expiringCount++;
-          }
-        }
-
-        // Aggiorna badge scadenze
+        // Aggiorna badge scadenze con calcolo corretto
         const badgeScadenze = document.getElementById('badge-scadenze');
         if (badgeScadenze) {
-          if (expiringCount > 0) {
-            badgeScadenze.textContent = String(expiringCount);
+          if (kpis.daContattare > 0) {
+            badgeScadenze.textContent = String(kpis.daContattare);
             badgeScadenze.style.display = 'inline-block';
           } else {
             badgeScadenze.style.display = 'none';
           }
         }
 
-        // Aggiorna badge automazioni
+        // Badge automazioni
+        const reminders = storage.getRemindersCached?.() || [];
         const badgeAutomazione = document.getElementById('badge-automazione');
         if (badgeAutomazione) {
           if (reminders.length > 0) {
@@ -555,8 +624,13 @@
           }
         }
         
+        console.log('✅ App badges updated via Analytics override:', {
+          daContattare: kpis.daContattare,
+          reminders: reminders.length
+        });
+        
       } catch (error) {
-        console.warn('Error updating badges:', error);
+        console.warn('⚠️ Error in Analytics _updateBadges override:', error);
         // Fallback alla funzione originale se presente
         if (originalUpdateBadges) {
           originalUpdateBadges.call(this);
@@ -566,4 +640,5 @@
   }
 
   window.AnalyticsModule = AnalyticsModule;
+  console.log('📊 Analytics module loaded - Dashboard KPI fixed');
 })();
