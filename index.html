@@ -1,672 +1,128 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>ReminderTribù - Gestione Tesseramenti</title>
-  <meta name="description" content="Sistema di gestione tesseramenti e reminder automatici per Tribù Personal Training">
-  
-  <!-- Preconnect per performance -->
-  <link rel="preconnect" href="https://www.gstatic.com">
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  
-  <!-- Font TribuStudio -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- Core Layout CSS - Stile TribuStudio -->
-  <style id="critical-css">
-    :root {
-      /* Colori TribuStudio */
-      --primary: #f97316;      /* Orange principale */
-      --primary-dark: #ea580c;
-      --primary-light: #fb923c;
-      --secondary: #1e293b;    /* Grigio scuro */
-      --dark: #0f172a;        /* Nero blu */
-      --light: #f8fafc;       /* Bianco sporco */
-      --gray: #64748b;        /* Grigio medio */
-      --gray-light: #e2e8f0;  /* Grigio chiaro */
-      --success: #10b981;
-      --danger: #ef4444;
-      --warning: #f59e0b;
-      
-      /* Layout */
-      --sidebar-w: 260px;
-      --sidebar-collapsed: 70px;
-      --header-h: 70px;
-      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      
-      /* Font */
-      --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-    
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    html, body {
-      height: 100%;
-      font-family: var(--font-family);
-      font-size: 16px;
-      line-height: 1.6;
-      color: var(--secondary);
-      background: var(--light);
-    }
-    
-    body {
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      overflow: hidden;
-    }
-    
-    /* Layout Structure */
-    .app-wrapper {
-      display: flex;
-      height: 100vh;
-      background: var(--light);
-    }
-    
-    /* Sidebar */
-    #sidebar {
-      width: var(--sidebar-w);
-      background: white;
-      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
-      display: flex;
-      flex-direction: column;
-      transition: var(--transition);
-      position: relative;
-      z-index: 100;
-    }
-    
-    #sidebar.collapsed {
-      width: var(--sidebar-collapsed);
-    }
-    
-    /* Logo Area */
-    .sidebar-header {
-      height: var(--header-h);
-      padding: 0 1.5rem;
-      background: white;
-      border-bottom: 1px solid var(--gray-light);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      text-decoration: none;
-      color: var(--secondary);
-    }
-    
-    .logo-icon {
-      width: 40px;
-      height: 40px;
-      background: var(--primary);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-      color: white;
-      flex-shrink: 0;
-    }
-    
-    .logo-text {
-      font-weight: 700;
-      font-size: 1.25rem;
-      white-space: nowrap;
-      transition: opacity 0.3s, transform 0.3s;
-    }
-    
-    #sidebar.collapsed .logo-text {
-      opacity: 0;
-      transform: translateX(-10px);
-      pointer-events: none;
-    }
-    
-    /* Navigation */
-    .nav {
-      flex: 1;
-      overflow-y: auto;
-      padding: 1.5rem 1rem;
-    }
-    
-    .nav-section {
-      margin-bottom: 2rem;
-    }
-    
-    .nav-section-title {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      color: var(--gray);
-      font-weight: 600;
-      padding: 0 0.75rem;
-      margin-bottom: 0.75rem;
-      letter-spacing: 0.05em;
-      white-space: nowrap;
-      overflow: hidden;
-      transition: opacity 0.3s;
-    }
-    
-    #sidebar.collapsed .nav-section-title {
-      opacity: 0;
-      height: 0;
-      margin: 0;
-    }
-    
-    .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.75rem;
-      margin-bottom: 0.25rem;
-      border-radius: 10px;
-      color: var(--secondary);
-      text-decoration: none;
-      transition: var(--transition);
-      position: relative;
-      font-weight: 500;
-    }
-    
-    .nav-item:hover {
-      background: var(--gray-light);
-    }
-    
-    .nav-item.active {
-      background: var(--primary);
-      color: white;
-    }
-    
-    .nav-item i {
-      width: 20px;
-      font-size: 1.1rem;
-      text-align: center;
-      flex-shrink: 0;
-    }
-    
-    .nav-item-text {
-      white-space: nowrap;
-      overflow: hidden;
-      transition: opacity 0.3s, transform 0.3s;
-    }
-    
-    #sidebar.collapsed .nav-item-text {
-      opacity: 0;
-      transform: translateX(-10px);
-      pointer-events: none;
-    }
-    
-    .nav-badge {
-      margin-left: auto;
-      background: var(--danger);
-      color: white;
-      border-radius: 999px;
-      padding: 0.125rem 0.5rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      min-width: 20px;
-      text-align: center;
-    }
-    
-    #sidebar.collapsed .nav-badge {
-      position: absolute;
-      top: 0.5rem;
-      right: 0.5rem;
-      margin: 0;
-    }
-    
-    /* Main Content Area */
-    .main-wrapper {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    
-    /* Header */
-    .main-header {
-      height: var(--header-h);
-      background: white;
-      border-bottom: 1px solid var(--gray-light);
-      padding: 0 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    
-    .header-title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--secondary);
-    }
-    
-    .header-actions {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-    }
-    
-    .btn-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      border: 1px solid var(--gray-light);
-      background: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: var(--transition);
-      color: var(--secondary);
-    }
-    
-    .btn-icon:hover {
-      background: var(--gray-light);
-    }
-    
-    /* Content Area */
-    #page-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 2rem;
-      background: var(--light);
-    }
-    
-    /* Cards */
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      margin-bottom: 1.5rem;
-    }
-    
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid var(--gray-light);
-    }
-    
-    .card-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--secondary);
-    }
-    
-    /* Buttons */
-    .btn {
-      padding: 0.625rem 1.25rem;
-      border-radius: 8px;
-      border: none;
-      font-weight: 500;
-      font-size: 0.875rem;
-      cursor: pointer;
-      transition: var(--transition);
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-    }
-    
-    .btn-primary:hover {
-      background: var(--primary-dark);
-    }
-    
-    .btn-secondary {
-      background: var(--gray-light);
-      color: var(--secondary);
-    }
-    
-    .btn-secondary:hover {
-      background: var(--gray);
-      color: white;
-    }
-    
-    /* Loading Overlay */
-    .loading-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(255, 255, 255, 0.95);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      transition: opacity 0.3s;
-    }
-    
-    .loading-overlay.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
-    
-    .loading-spinner {
-      width: 50px;
-      height: 50px;
-      border: 3px solid var(--gray-light);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
-    /* Toast Container */
-    #toast-container {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      z-index: 10000;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      pointer-events: none;
-    }
-    
-    .toast {
-      background: white;
-      padding: 1rem 1.5rem;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      min-width: 300px;
-      pointer-events: auto;
-      animation: slideIn 0.3s ease-out;
-    }
-    
-    @keyframes slideIn {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-    
-    /* Responsive */
-    @media (max-width: 768px) {
-      #sidebar {
-        position: fixed;
-        left: -100%;
-        top: 0;
-        bottom: 0;
-        z-index: 1000;
-        transition: left 0.3s;
-      }
-      
-      #sidebar.mobile-open {
-        left: 0;
-      }
-      
-      #sidebar.collapsed {
-        width: var(--sidebar-w);
-      }
-      
-      .main-wrapper {
-        margin-left: 0;
-      }
-      
-      .mobile-menu-trigger {
-        display: flex !important;
-      }
-    }
-    
-    .mobile-menu-trigger {
-      display: none;
-    }
-    
-    .mobile-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 999;
-    }
-    
-    .mobile-overlay.active {
-      display: block;
-    }
-  </style>
+// assets/js/modules/calendar.js
+(function() {
+  'use strict';
 
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" />
-  
-  <!-- External CSS -->
-  <link rel="stylesheet" href="assets/css/components.css">
-  <link rel="stylesheet" href="assets/css/dashboard.css">
-  <link rel="stylesheet" href="assets/css/main.css">
-  <link rel="stylesheet" href="assets/css/responsive.css">
-</head>
-<body>
-  <!-- Loading Overlay -->
-  <div id="loading-overlay" class="loading-overlay">
-    <div class="loading-spinner"></div>
-  </div>
-  
-  <!-- Mobile Overlay -->
-  <div class="mobile-overlay" id="mobile-overlay"></div>
-
-  <!-- App Wrapper -->
-  <div class="app-wrapper">
-    <!-- Sidebar -->
-    <aside id="sidebar">
-      <div class="sidebar-header">
-        <a href="#" class="logo">
-          <div class="logo-icon">🔔</div>
-          <span class="logo-text">ReminderTribù</span>
-        </a>
-      </div>
+  const CalendarModule = {
+    initialized: false,
+    
+    async init() {
+      console.log('📅 [Calendar] init');
+      this.initialized = true;
       
-      <nav class="nav" id="main-navigation">
-        <div class="nav-section">
-          <div class="nav-section-title">Principale</div>
-          <a href="#" class="nav-item active" data-page="dashboard">
-            <i class="fas fa-home"></i>
-            <span class="nav-item-text">Dashboard</span>
-          </a>
-          <a href="#" class="nav-item" data-page="tesserati">
-            <i class="fas fa-users"></i>
-            <span class="nav-item-text">Tesserati</span>
-          </a>
-          <a href="#" class="nav-item" data-page="scadenze">
-            <i class="fas fa-calendar-xmark"></i>
-            <span class="nav-item-text">Scadenze</span>
-            <span class="nav-badge" id="badge-scadenze"></span>
-          </a>
-        </div>
-        
-        <div class="nav-section">
-          <div class="nav-section-title">Comunicazione</div>
-          <a href="#" class="nav-item" data-page="marketing">
-            <i class="fas fa-megaphone"></i>
-            <span class="nav-item-text">Marketing</span>
-          </a>
-          <a href="#" class="nav-item" data-page="whatsapp">
-            <i class="fab fa-whatsapp"></i>
-            <span class="nav-item-text">WhatsApp</span>
-          </a>
-        </div>
-        
-        <div class="nav-section">
-          <div class="nav-section-title">Strumenti</div>
-          <a href="#" class="nav-item" data-page="calendario">
-            <i class="fas fa-calendar-days"></i>
-            <span class="nav-item-text">Calendario</span>
-          </a>
-          <a href="#" class="nav-item" data-page="automazione">
-            <i class="fas fa-wand-magic-sparkles"></i>
-            <span class="nav-item-text">Automazione</span>
-            <span class="nav-badge" id="badge-automazione"></span>
-          </a>
-          <a href="#" class="nav-item" data-page="importcsv">
-            <i class="fas fa-file-csv"></i>
-            <span class="nav-item-text">Import CSV</span>
-          </a>
-        </div>
-      </nav>
-    </aside>
-
-    <!-- Main Area -->
-    <div class="main-wrapper">
-      <!-- Header -->
-      <header class="main-header">
-        <button class="btn-icon mobile-menu-trigger" id="mobile-menu-trigger">
-          <i class="fas fa-bars"></i>
-        </button>
-        <h1 class="header-title" id="page-title">Dashboard</h1>
-        <div class="header-actions">
-          <button class="btn-icon">
-            <i class="fas fa-bell"></i>
-          </button>
-          <button class="btn-icon">
-            <i class="fas fa-user-circle"></i>
-          </button>
-        </div>
-      </header>
-      
-      <!-- Content -->
-      <main id="page-content">
-        <!-- Il contenuto verrà caricato qui dinamicamente -->
-      </main>
-    </div>
-  </div>
-
-  <!-- Toast Container -->
-  <div id="toast-container"></div>
-
-  <!-- Firebase SDK Compat -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  
-  <!-- Config generata dal build -->
-  <script src="config.js"></script>
-  
-  <!-- Core modules -->
-  <script src="assets/js/components/toast.js"></script>
-  <script src="assets/js/config/firebase.js"></script>
-  <script src="assets/js/modules/storage.js"></script>
-  
-  <!-- App modules -->
-  <script src="assets/js/modules/analytics.js"></script>
-  <script src="assets/js/modules/contacts.js"></script>
-  <script src="assets/js/modules/scadenze.js"></script>
-  <script src="assets/js/modules/marketing.js"></script>
-  <script src="assets/js/modules/calendar.js"></script>
-  <script src="assets/js/modules/reminders.js"></script>
-  <script src="assets/js/modules/billing.js"></script>
-  <script src="assets/js/modules/whatsapp.js"></script>
-  <script src="assets/js/modules/import.js"></script>
-  
-  <!-- Main App -->
-  <script src="assets/js/app.js"></script>
-  
-  <!-- Bootstrap App -->
-  <script>
-    (function() {
-      'use strict';
-      
-      // UI Setup
-      function initUI() {
-        const sidebar = document.getElementById('sidebar');
-        const mobileMenuTrigger = document.getElementById('mobile-menu-trigger');
-        const mobileOverlay = document.getElementById('mobile-overlay');
-        
-        // Mobile menu
-        mobileMenuTrigger?.addEventListener('click', () => {
-          sidebar.classList.add('mobile-open');
-          mobileOverlay.classList.add('active');
-        });
-        
-        mobileOverlay?.addEventListener('click', () => {
-          sidebar.classList.remove('mobile-open');
-          mobileOverlay.classList.remove('active');
-        });
-        
-        // Close mobile menu on nav click
-        if (window.innerWidth <= 768) {
-          document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => {
-              sidebar.classList.remove('mobile-open');
-              mobileOverlay.classList.remove('active');
-            });
-          });
-        }
-        
-        // Update page title
-        window.updatePageTitle = function(title) {
-          const pageTitle = document.getElementById('page-title');
-          if (pageTitle) pageTitle.textContent = title;
-        };
+      if (window.updatePageTitle) {
+        window.updatePageTitle('Calendario');
       }
       
-      // Initialize app
-      async function bootstrap() {
-        try {
-          initUI();
-          
-          // Hide loading after delay
-          setTimeout(() => {
-            const overlay = document.getElementById('loading-overlay');
-            if (overlay) overlay.classList.add('hidden');
-          }, 500);
-          
-          // Initialize main app
-          if (window.App && typeof window.App.init === 'function') {
-            await window.App.init();
-            await window.App.renderPage('dashboard');
-          } else {
-            console.error('App module not loaded');
-            const content = document.getElementById('page-content');
-            if (content) {
-              content.innerHTML = `
-                <div class="card">
-                  <h2 style="color: var(--danger);">Errore di caricamento</h2>
-                  <p>L'applicazione non è riuscita a caricarsi correttamente.</p>
-                  <button onclick="location.reload()" class="btn btn-primary" style="margin-top: 1rem;">
-                    Ricarica Pagina
-                  </button>
-                </div>
-              `;
-            }
+      return true;
+    },
+    
+    async mount(container) {
+      // Calendario Google di Tribù - EMAIL CORRETTA
+      const calendarId = 'tribupersonalstudio@gmail.com';
+      const calendarSrc = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendarId)}&ctz=Europe/Rome&mode=MONTH&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&showTz=0&hl=it`;
+      
+      container.innerHTML = `
+        <style>
+          .calendar-container {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e5e5;
+            height: calc(100vh - 180px);
+            min-height: 600px;
           }
-        } catch (error) {
-          console.error('Bootstrap error:', error);
-          const overlay = document.getElementById('loading-overlay');
-          if (overlay) overlay.classList.add('hidden');
-        }
-      }
-      
-      // Start when DOM is ready
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', bootstrap);
-      } else {
-        bootstrap();
-      }
-    })();
-  </script>
-</body>
-</html>
+          
+          .calendar-header {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e5e5e5;
+          }
+          
+          .calendar-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #000;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+          }
+          
+          .calendar-iframe {
+            width: 100%;
+            height: calc(100% - 60px);
+            border: none;
+            border-radius: 8px;
+          }
+          
+          .calendar-info {
+            background: #fafafa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            color: #525252;
+            border: 1px solid #e5e5e5;
+          }
+          
+          .calendar-info i {
+            color: #ff6b35;
+            margin-right: 0.5rem;
+          }
+          
+          .btn-external {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            background: #000;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+          }
+          
+          .btn-external:hover {
+            background: #262626;
+          }
+        </style>
+        
+        <div class="calendar-container">
+          <div class="calendar-header">
+            <h2 class="calendar-title">
+              <i class="fas fa-calendar-days"></i>
+              Calendario Tribù Personal Studio
+            </h2>
+          </div>
+          
+          <div class="calendar-info">
+            <i class="fas fa-info-circle"></i>
+            Questo calendario mostra tutti gli appuntamenti e le scadenze di Tribù Personal Studio.
+          </div>
+          
+          <iframe 
+            class="calendar-iframe"
+            src="${calendarSrc}"
+            frameborder="0" 
+            scrolling="no"
+          ></iframe>
+          
+          <div style="margin-top: 1rem;">
+            <a href="https://calendar.google.com/calendar/u/0?cid=${encodeURIComponent(calendarId)}" 
+               target="_blank" 
+               class="btn-external">
+              <i class="fas fa-external-link-alt"></i>
+              Apri in Google Calendar
+            </a>
+          </div>
+        </div>
+      `;
+    }
+  };
+  
+  window.CalendarModule = CalendarModule;
+})();
