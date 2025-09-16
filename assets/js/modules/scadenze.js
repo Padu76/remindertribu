@@ -229,6 +229,15 @@
         background: #dc2626;
       }
       
+      .btn-info {
+        background: #3b82f6;
+        color: white;
+      }
+      
+      .btn-info:hover {
+        background: #2563eb;
+      }
+      
       .data-table {
         width: 100%;
         border-collapse: collapse;
@@ -316,6 +325,7 @@
         display: flex;
         gap: 0.5rem;
         align-items: center;
+        flex-wrap: wrap;
       }
       
       .btn-sm {
@@ -606,8 +616,11 @@
                       <button class="btn btn-sm btn-secondary" data-action="whatsapp" data-id="${vm.id}">
                         <i class="fab fa-whatsapp"></i> WhatsApp
                       </button>
+                      <button class="btn btn-sm btn-info" data-action="contacted" data-id="${vm.id}" title="Segna come contattato manualmente">
+                        <i class="fas fa-check"></i> Contattato
+                      </button>
                       <button class="btn btn-sm btn-success" data-action="renew" data-id="${vm.id}">
-                        <i class="fas fa-check"></i> Rinnova
+                        <i class="fas fa-calendar-plus"></i> Rinnova
                       </button>
                       <button class="btn btn-sm btn-danger" data-action="delete" data-id="${vm.id}">
                         <i class="fas fa-trash"></i> Elimina
@@ -673,6 +686,26 @@
         await updateLastReminder(vm.id, storage);
         await ScadenzeModule.init();
         ScadenzeModule.mount(container);
+      }
+      
+      if (action === 'contacted') {
+        // NUOVO: Pulsante "Contattato" - aggiorna lastReminderSent senza inviare WhatsApp
+        if (confirm(`Segnare ${vm.fullName} come contattato?`)) {
+          const success = await updateLastReminder(vm.id, storage);
+          if (success) {
+            // Mostra feedback positivo
+            btn.innerHTML = '<i class="fas fa-check-circle"></i> Fatto!';
+            btn.disabled = true;
+            
+            // Ricarica la vista dopo 1 secondo
+            setTimeout(async () => {
+              await ScadenzeModule.init();
+              ScadenzeModule.mount(container);
+            }, 1000);
+          } else {
+            alert('Errore nel segnare come contattato');
+          }
+        }
       }
       
       if (action === 'renew') {
