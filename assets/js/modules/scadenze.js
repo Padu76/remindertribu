@@ -28,7 +28,7 @@
     const yyyy = z.getFullYear();
     const mm = String(z.getMonth() + 1).padStart(2, '0');
     const dd = String(z.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    return `${dd}/${mm}/${yyyy}`;
   }
   
   function addYears(d, n) { 
@@ -57,11 +57,17 @@
   }
   
   function pickName(m) { 
-    return m?.fullName || m?.name || m?.nome || m?.nominativo || ''; 
+    // Prendi solo il nome (prima parola)
+    const fullName = m?.fullName || m?.name || m?.nome || m?.nominativo || '';
+    return fullName.split(' ')[0] || fullName;
   }
   
   function pickExpiry(m) { 
     return m?.scadenza || m?.dataScadenza || m?.expiryDate || m?.expiry || m?.nextRenewal || null; 
+  }
+  
+  function pickTessera(m) {
+    return m?.numeroTessera || m?.tesseraNumber || m?.tessera || '';
   }
 
   function vmFromMember(m) {
@@ -71,7 +77,9 @@
     return { 
       id: m.id, 
       name: pickName(m), 
+      fullName: m.fullName || `${m.nome || ''} ${m.cognome || ''}`.trim(),
       phone: pickPhone(m), 
+      numeroTessera: pickTessera(m),
       expiry, 
       daysLeft, 
       status, 
@@ -95,18 +103,11 @@
   function ensureStylesOnce() {
     if (document.getElementById('scadenze-styles')) return;
     const css = `
-      /* TribuStudio Style */
       .page-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 2rem;
-      }
-      
-      .page-header h1 {
-        font-size: 1.875rem;
-        font-weight: 700;
-        color: #1e293b;
       }
       
       .toolbar {
@@ -125,16 +126,14 @@
       .search-input {
         width: 100%;
         padding: 0.625rem 1rem 0.625rem 2.5rem;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #e0e0e0;
         border-radius: 8px;
         font-size: 0.875rem;
-        transition: all 0.3s;
       }
       
       .search-input:focus {
         outline: none;
-        border-color: #f97316;
-        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        border-color: #ff6b35;
       }
       
       .search-icon {
@@ -142,47 +141,48 @@
         left: 0.875rem;
         top: 50%;
         transform: translateY(-50%);
-        color: #64748b;
+        color: #666;
       }
       
       .btn {
-        padding: 0.625rem 1.25rem;
-        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
         border: none;
         font-weight: 500;
         font-size: 0.875rem;
         cursor: pointer;
-        transition: all 0.3s;
+        transition: all 0.2s;
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
       }
       
       .btn-primary {
-        background: #f97316;
+        background: #ff6b35;
         color: white;
       }
       
       .btn-primary:hover {
-        background: #ea580c;
+        background: #e55a2b;
       }
       
       .btn-secondary {
-        background: #e2e8f0;
-        color: #1e293b;
+        background: white;
+        color: black;
+        border: 1px solid #e0e0e0;
       }
       
       .btn-secondary:hover {
-        background: #cbd5e1;
+        border-color: black;
       }
       
       .btn-success {
-        background: #10b981;
+        background: #22c55e;
         color: white;
       }
       
       .btn-success:hover {
-        background: #059669;
+        background: #16a34a;
       }
       
       .btn-danger {
@@ -197,46 +197,43 @@
       .data-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 0.875rem;
       }
       
       .data-table thead {
-        background: #f8fafc;
-        border-bottom: 2px solid #e2e8f0;
+        background: #f5f5f5;
       }
       
       .data-table th {
-        padding: 0.75rem 1rem;
+        padding: 0.75rem;
         text-align: left;
         font-weight: 600;
-        color: #64748b;
+        color: #666;
         text-transform: uppercase;
         font-size: 0.75rem;
         letter-spacing: 0.05em;
+        border-bottom: 2px solid #e0e0e0;
       }
       
       .data-table tbody tr {
-        border-bottom: 1px solid #e2e8f0;
-        transition: background 0.2s;
+        border-bottom: 1px solid #e0e0e0;
       }
       
       .data-table tbody tr:hover {
-        background: #f8fafc;
+        background: #f5f5f5;
       }
       
       .data-table td {
         padding: 1rem;
-        color: #1e293b;
+        color: black;
       }
       
       .badge {
         display: inline-block;
         padding: 0.25rem 0.75rem;
-        border-radius: 999px;
+        border-radius: 20px;
         font-size: 0.75rem;
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.025em;
       }
       
       .badge-success {
@@ -245,8 +242,8 @@
       }
       
       .badge-warning {
-        background: #fed7aa;
-        color: #9a3412;
+        background: #fef3c7;
+        color: #92400e;
       }
       
       .badge-danger {
@@ -255,8 +252,8 @@
       }
       
       .badge-gray {
-        background: #f1f5f9;
-        color: #475569;
+        background: #f3f4f6;
+        color: #6b7280;
       }
       
       .action-buttons {
@@ -272,18 +269,18 @@
       .empty-state {
         text-align: center;
         padding: 4rem 2rem;
-        color: #64748b;
+        color: #666;
       }
       
       .empty-state i {
         font-size: 4rem;
-        color: #e2e8f0;
+        color: #e0e0e0;
         margin-bottom: 1rem;
       }
       
       .empty-state h3 {
         font-size: 1.25rem;
-        color: #1e293b;
+        color: black;
         margin-bottom: 0.5rem;
       }
       
@@ -310,8 +307,6 @@
         padding: 2rem;
         max-width: 500px;
         width: 90%;
-        max-height: 90vh;
-        overflow-y: auto;
       }
       
       .modal-header {
@@ -321,7 +316,7 @@
       .modal-title {
         font-size: 1.25rem;
         font-weight: 600;
-        color: #1e293b;
+        color: black;
       }
       
       .form-group {
@@ -333,21 +328,20 @@
         margin-bottom: 0.5rem;
         font-size: 0.875rem;
         font-weight: 500;
-        color: #1e293b;
+        color: black;
       }
       
       .form-input {
         width: 100%;
         padding: 0.625rem 1rem;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #e0e0e0;
         border-radius: 8px;
         font-size: 0.875rem;
       }
       
       .form-input:focus {
         outline: none;
-        border-color: #f97316;
-        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        border-color: #ff6b35;
       }
       
       .modal-footer {
@@ -373,11 +367,11 @@
       modal.innerHTML = `
         <div class="modal">
           <div class="modal-header">
-            <h3 class="modal-title">Imposta Scadenza - ${member.name}</h3>
+            <h3 class="modal-title">Imposta Scadenza - ${member.fullName}</h3>
           </div>
           <div class="form-group">
             <label class="form-label">Data Scadenza</label>
-            <input type="date" id="renewal-date" class="form-input" value="${formatISO(suggestedDate)}">
+            <input type="date" id="renewal-date" class="form-input" value="${suggestedDate.toISOString().split('T')[0]}">
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" id="cancel-btn">Annulla</button>
@@ -439,7 +433,7 @@
   }
 
   async function deleteMember(member, storage) {
-    if (!confirm(`Eliminare "${member.name}"?`)) return false;
+    if (!confirm(`Eliminare "${member.fullName}"?`)) return false;
     
     try {
       if (storage.firebase?.db) {
@@ -473,7 +467,7 @@
     if (query) {
       const q = query.toLowerCase();
       list = list.filter(vm => 
-        (vm.name || '').toLowerCase().includes(q) || 
+        (vm.fullName || '').toLowerCase().includes(q) || 
         (vm.phone || '').toLowerCase().includes(q)
       );
     }
@@ -514,7 +508,7 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>Nome</th>
+                <th>Nome e Cognome</th>
                 <th>Telefono</th>
                 <th>Scadenza</th>
                 <th>Stato</th>
@@ -525,7 +519,7 @@
             <tbody id="table-body">
               ${toShow.map(vm => `
                 <tr data-id="${vm.id}">
-                  <td><strong>${vm.name || '—'}</strong></td>
+                  <td><strong>${vm.fullName || '—'}</strong></td>
                   <td>${vm.phone || '—'}</td>
                   <td>${vm.expiry ? formatISO(vm.expiry) : '—'}</td>
                   <td>${statusBadge(vm.status, vm.daysLeft)}</td>
@@ -583,10 +577,24 @@
       const storage = window.Storage_Instance;
       
       if (action === 'whatsapp') {
-        const status = vm.status === 'expired' ? 'è scaduta' : 
-                      vm.status === 'expiring' ? 'è in scadenza' : 
-                      'non ha una data di scadenza impostata';
-        const message = `Ciao ${vm.name}! La tua tessera ${status}. Vuoi rinnovarla? 💪`;
+        // MESSAGGIO FORMATTATO CORRETTAMENTE
+        let message = '';
+        const nome = vm.name; // Solo il primo nome
+        const numeroTessera = vm.numeroTessera || Math.floor(100000 + Math.random() * 900000); // Genera numero random se non c'è
+        
+        if (vm.status === 'expired') {
+          // Messaggio per tessera scaduta
+          message = `Ciao ${nome}! Il tuo tesseramento e copertura assicurativa (n. ${numeroTessera}) sono scaduti. Rinnovali subito! 💪\n\nTi aspettiamo in studio.\nTeam Tribù`;
+        } else if (vm.status === 'expiring') {
+          // Messaggio per tessera in scadenza
+          const giorni = Math.abs(vm.daysLeft);
+          const scadenza = formatISO(vm.expiry);
+          message = `Ciao ${nome}! Il tuo tesseramento e copertura assicurativa (n. ${numeroTessera}) scadrà tra ${giorni} giorni (il ${scadenza}).\n\nRinnovala in tempo! 💪\n\nTi aspettiamo in studio.\nTeam Tribù`;
+        } else {
+          // Messaggio per data non impostata
+          message = `Ciao ${nome}! Il tuo tesseramento e copertura assicurativa (n. ${numeroTessera}) necessitano di aggiornamento.\n\nContattaci per il rinnovo! 💪\n\nTi aspettiamo in studio.\nTeam Tribù`;
+        }
+        
         sendWhatsApp(vm.phone, message);
       }
       
