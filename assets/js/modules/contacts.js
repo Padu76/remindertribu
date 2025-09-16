@@ -5,7 +5,6 @@
   function ensureStylesOnce() {
     if (document.getElementById('contacts-styles')) return;
     const css = `
-      /* TribuStudio Style per Contacts */
       .toolbar {
         display: flex;
         gap: 1rem;
@@ -22,16 +21,16 @@
       .search-input {
         width: 100%;
         padding: 0.625rem 1rem 0.625rem 2.5rem;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #e0e0e0;
         border-radius: 8px;
         font-size: 0.875rem;
-        transition: all 0.3s;
+        background: white;
+        color: black;
       }
       
       .search-input:focus {
         outline: none;
-        border-color: #f97316;
-        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        border-color: #ff6b35;
       }
       
       .search-icon {
@@ -39,38 +38,48 @@
         left: 0.875rem;
         top: 50%;
         transform: translateY(-50%);
-        color: #64748b;
+        color: #666;
       }
       
       .btn {
-        padding: 0.625rem 1.25rem;
-        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
         border: none;
         font-weight: 500;
         font-size: 0.875rem;
         cursor: pointer;
-        transition: all 0.3s;
+        transition: all 0.2s;
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
       }
       
       .btn-primary {
-        background: #f97316;
+        background: #ff6b35;
         color: white;
       }
       
       .btn-primary:hover {
-        background: #ea580c;
+        background: #e55a2b;
       }
       
       .btn-secondary {
-        background: #e2e8f0;
-        color: #1e293b;
+        background: white;
+        color: black;
+        border: 1px solid #e0e0e0;
       }
       
       .btn-secondary:hover {
-        background: #cbd5e1;
+        border-color: black;
+      }
+      
+      .btn-danger {
+        background: #ef4444;
+        color: white;
+      }
+      
+      .btn-danger:hover {
+        background: #dc2626;
       }
       
       .data-table {
@@ -80,42 +89,40 @@
       }
       
       .data-table thead {
-        background: #f8fafc;
-        border-bottom: 2px solid #e2e8f0;
+        background: #f5f5f5;
       }
       
       .data-table th {
-        padding: 0.75rem 1rem;
+        padding: 0.75rem;
         text-align: left;
         font-weight: 600;
-        color: #64748b;
+        color: #666;
         text-transform: uppercase;
         font-size: 0.75rem;
         letter-spacing: 0.05em;
+        border-bottom: 2px solid #e0e0e0;
       }
       
       .data-table tbody tr {
-        border-bottom: 1px solid #e2e8f0;
-        transition: background 0.2s;
+        border-bottom: 1px solid #e0e0e0;
       }
       
       .data-table tbody tr:hover {
-        background: #f8fafc;
+        background: #f5f5f5;
       }
       
       .data-table td {
         padding: 1rem;
-        color: #1e293b;
+        color: black;
       }
       
       .badge {
         display: inline-block;
         padding: 0.25rem 0.75rem;
-        border-radius: 999px;
+        border-radius: 20px;
         font-size: 0.75rem;
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.025em;
       }
       
       .badge-success {
@@ -124,8 +131,8 @@
       }
       
       .badge-warning {
-        background: #fed7aa;
-        color: #9a3412;
+        background: #fef3c7;
+        color: #92400e;
       }
       
       .badge-danger {
@@ -136,19 +143,101 @@
       .empty-state {
         text-align: center;
         padding: 4rem 2rem;
-        color: #64748b;
+        color: #666;
       }
       
       .empty-state i {
         font-size: 4rem;
-        color: #e2e8f0;
+        color: #e0e0e0;
         margin-bottom: 1rem;
       }
       
       .empty-state h3 {
         font-size: 1.25rem;
-        color: #1e293b;
+        color: black;
         margin-bottom: 0.5rem;
+      }
+      
+      .btn-sm {
+        padding: 0.375rem 0.625rem;
+        font-size: 0.8rem;
+      }
+      
+      .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+      }
+      
+      /* Modal Styles */
+      .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .modal-overlay.active {
+        display: flex;
+      }
+      
+      .modal {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      
+      .modal-header {
+        margin-bottom: 1.5rem;
+      }
+      
+      .modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: black;
+      }
+      
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+      
+      .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: black;
+      }
+      
+      .form-input {
+        width: 100%;
+        padding: 0.625rem 1rem;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        background: white;
+        color: black;
+      }
+      
+      .form-input:focus {
+        outline: none;
+        border-color: #ff6b35;
+      }
+      
+      .modal-footer {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        margin-top: 2rem;
       }
     `;
     const style = document.createElement('style');
@@ -158,11 +247,9 @@
   }
 
   function getFullName(member) {
-    // Prova vari campi possibili per il nome completo
     if (member.fullName) return member.fullName;
     if (member.nominativo) return member.nominativo;
     
-    // Combina nome e cognome se sono separati
     const nome = member.nome || member.name || '';
     const cognome = member.cognome || member.surname || member.lastName || '';
     
@@ -170,7 +257,6 @@
       return `${nome} ${cognome}`;
     }
     
-    // Fallback su quello che c'è
     return nome || cognome || member.name || '';
   }
 
@@ -214,6 +300,117 @@
       return { text: 'In scadenza', class: 'badge-warning' };
     } else {
       return { text: 'Attivo', class: 'badge-success' };
+    }
+  }
+
+  function showEditModal(member, onSave) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal">
+        <div class="modal-header">
+          <h3 class="modal-title">Modifica Tesserato</h3>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Nome</label>
+          <input type="text" class="form-input" id="edit-nome" value="${member.nome || ''}">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Cognome</label>
+          <input type="text" class="form-input" id="edit-cognome" value="${member.cognome || ''}">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Telefono/WhatsApp</label>
+          <input type="tel" class="form-input" id="edit-telefono" value="${getPhone(member)}">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Numero Tessera</label>
+          <input type="text" class="form-input" id="edit-tessera" value="${member.numeroTessera || ''}">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Data Scadenza</label>
+          <input type="date" class="form-input" id="edit-scadenza" value="${member.dataScadenza || ''}">
+        </div>
+        
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="cancel-btn">Annulla</button>
+          <button class="btn btn-primary" id="save-btn">Salva</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    setTimeout(() => modal.classList.add('active'), 10);
+    
+    const cleanup = () => {
+      modal.classList.remove('active');
+      setTimeout(() => modal.remove(), 300);
+    };
+    
+    modal.querySelector('#cancel-btn').onclick = cleanup;
+    
+    modal.querySelector('#save-btn').onclick = () => {
+      const updatedData = {
+        nome: modal.querySelector('#edit-nome').value.trim(),
+        cognome: modal.querySelector('#edit-cognome').value.trim(),
+        whatsapp: modal.querySelector('#edit-telefono').value.trim(),
+        numeroTessera: modal.querySelector('#edit-tessera').value.trim(),
+        dataScadenza: modal.querySelector('#edit-scadenza').value
+      };
+      
+      onSave(updatedData);
+      cleanup();
+    };
+    
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) cleanup();
+    });
+  }
+
+  async function updateMember(memberId, updates) {
+    const storage = window.Storage_Instance;
+    if (!storage) return false;
+    
+    try {
+      if (storage.firebase?.db) {
+        await storage.firebase.db.collection('members').doc(memberId).set(updates, { merge: true });
+      } else if (typeof storage.updateMember === 'function') {
+        await storage.updateMember(memberId, updates);
+      }
+      
+      await storage.refreshMembers?.();
+      return true;
+    } catch (e) {
+      console.error('Error updating member:', e);
+      alert('Errore durante l\'aggiornamento');
+      return false;
+    }
+  }
+
+  async function deleteMember(memberId) {
+    if (!confirm('Sei sicuro di voler eliminare questo tesserato?')) return false;
+    
+    const storage = window.Storage_Instance;
+    if (!storage) return false;
+    
+    try {
+      if (storage.firebase?.db) {
+        await storage.firebase.db.collection('members').doc(memberId).delete();
+      } else if (typeof storage.deleteMember === 'function') {
+        await storage.deleteMember(memberId);
+      }
+      
+      await storage.refreshMembers?.();
+      return true;
+    } catch (e) {
+      console.error('Error deleting member:', e);
+      alert('Errore durante l\'eliminazione');
+      return false;
     }
   }
 
@@ -266,22 +463,24 @@
                 <th>Azioni</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="table-body">
               ${filtered.map(member => {
                 const status = getStatus(getExpiry(member));
                 return `
-                  <tr>
+                  <tr data-id="${member.id}">
                     <td><strong>${getFullName(member) || '—'}</strong></td>
                     <td>${getPhone(member) || '—'}</td>
                     <td>${formatDate(getExpiry(member))}</td>
                     <td><span class="badge ${status.class}">${status.text}</span></td>
                     <td>
-                      <button class="btn btn-sm btn-secondary" data-action="edit" data-id="${member.id}">
-                        <i class="fas fa-edit"></i>
-                      </button>
-                      <button class="btn btn-sm btn-danger" data-action="delete" data-id="${member.id}">
-                        <i class="fas fa-trash"></i>
-                      </button>
+                      <div class="action-buttons">
+                        <button class="btn btn-sm btn-secondary" data-action="edit" data-id="${member.id}">
+                          <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" data-action="delete" data-id="${member.id}">
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 `;
@@ -303,7 +502,22 @@
     });
 
     container.querySelector('#add-btn')?.addEventListener('click', () => {
-      alert('Funzione in sviluppo');
+      const newMember = {
+        nome: '',
+        cognome: '',
+        whatsapp: '',
+        numeroTessera: '',
+        dataScadenza: ''
+      };
+      
+      showEditModal(newMember, async (data) => {
+        const storage = window.Storage_Instance;
+        if (storage?.firebase?.db) {
+          await storage.firebase.db.collection('members').add(data);
+          await storage.refreshMembers?.();
+          ContactsModule.mount(container);
+        }
+      });
     });
 
     container.querySelector('#reload-btn')?.addEventListener('click', async () => {
@@ -312,6 +526,34 @@
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Caricamento...';
       await ContactsModule.init();
       ContactsModule.mount(container);
+    });
+    
+    // Table actions
+    container.querySelector('#table-body')?.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+      const member = members.find(m => m.id === id);
+      
+      if (action === 'edit' && member) {
+        showEditModal(member, async (updatedData) => {
+          const success = await updateMember(id, updatedData);
+          if (success) {
+            await ContactsModule.init();
+            ContactsModule.mount(container);
+          }
+        });
+      }
+      
+      if (action === 'delete') {
+        const success = await deleteMember(id);
+        if (success) {
+          await ContactsModule.init();
+          ContactsModule.mount(container);
+        }
+      }
     });
   }
 
