@@ -17,9 +17,8 @@
     },
     
     async mount(container) {
-      // URL del calendario Google di Tribù
-      // Sostituisci con il tuo calendario ID reale
-      const calendarId = 'tribupersonaltraining@gmail.com';
+      // Calendario Google di Tribù - EMAIL CORRETTA
+      const calendarId = 'tribupersonalstudio@gmail.com';
       const calendarSrc = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendarId)}&ctz=Europe/Rome&mode=MONTH&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&showTz=0&hl=it`;
       
       container.innerHTML = `
@@ -28,7 +27,8 @@
             background: white;
             border-radius: 12px;
             padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e5e5;
             height: calc(100vh - 180px);
             min-height: 600px;
           }
@@ -36,13 +36,13 @@
           .calendar-header {
             margin-bottom: 1.5rem;
             padding-bottom: 1rem;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e5e5e5;
           }
           
           .calendar-title {
             font-size: 1.25rem;
             font-weight: 600;
-            color: #1e293b;
+            color: #000;
             display: flex;
             align-items: center;
             gap: 0.5rem;
@@ -56,16 +56,17 @@
           }
           
           .calendar-info {
-            background: #f8fafc;
+            background: #fafafa;
             padding: 1rem;
             border-radius: 8px;
             margin-bottom: 1rem;
             font-size: 0.875rem;
-            color: #64748b;
+            color: #525252;
+            border: 1px solid #e5e5e5;
           }
           
           .calendar-info i {
-            color: #f97316;
+            color: #ff6b35;
             margin-right: 0.5rem;
           }
           
@@ -74,19 +75,19 @@
             align-items: center;
             gap: 0.5rem;
             padding: 0.625rem 1.25rem;
-            background: #f97316;
+            background: #000;
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             font-weight: 500;
             font-size: 0.875rem;
             cursor: pointer;
             text-decoration: none;
-            transition: all 0.3s;
+            transition: all 0.2s;
           }
           
           .btn-external:hover {
-            background: #ea580c;
+            background: #262626;
           }
         </style>
         
@@ -94,13 +95,13 @@
           <div class="calendar-header">
             <h2 class="calendar-title">
               <i class="fas fa-calendar-days"></i>
-              Calendario Tribù Personal Training
+              Calendario Tribù Personal Studio
             </h2>
           </div>
           
           <div class="calendar-info">
             <i class="fas fa-info-circle"></i>
-            Questo calendario mostra tutti gli appuntamenti e le scadenze di Tribù Personal Training.
+            Questo calendario mostra tutti gli appuntamenti e le scadenze di Tribù Personal Studio.
           </div>
           
           <iframe 
